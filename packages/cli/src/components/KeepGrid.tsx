@@ -63,8 +63,8 @@ export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [] }: K
 
   for (let y = 0; y < GRID_SIZE; y++) {
     const rowLabel = compact
-      ? (y % 16).toString(16).toUpperCase()
-      : (y % 10).toString().padStart(2, ' ');
+      ? y.toString(16).toUpperCase()
+      : ' ' + y.toString(16).toUpperCase();
     const cells: React.ReactNode[] = [];
 
     for (let x = 0; x < GRID_SIZE; x++) {

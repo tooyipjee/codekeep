@@ -24,17 +24,17 @@ describe('economy — resource grants', () => {
     const updated = grantCodingEventResources(keep, event);
     const grant = CODING_EVENT_GRANTS.git_commit;
 
-    expect(updated.resources.compute).toBe(STARTING_RESOURCES.compute + grant.compute);
-    expect(updated.resources.memory).toBe(STARTING_RESOURCES.memory + grant.memory);
-    expect(updated.resources.bandwidth).toBe(STARTING_RESOURCES.bandwidth + grant.bandwidth);
+    expect(updated.resources.gold).toBe(STARTING_RESOURCES.gold + grant.gold);
+    expect(updated.resources.wood).toBe(STARTING_RESOURCES.wood + grant.wood);
+    expect(updated.resources.stone).toBe(STARTING_RESOURCES.stone + grant.stone);
   });
 
   it('resources_grant_respects_cap', () => {
     const keep = createEmptyKeep('p1', 'Test');
     keep.resources = {
-      compute: DAILY_RESOURCE_CAP.compute * 10,
-      memory: DAILY_RESOURCE_CAP.memory * 10,
-      bandwidth: DAILY_RESOURCE_CAP.bandwidth * 10,
+      gold: DAILY_RESOURCE_CAP.gold * 10,
+      wood: DAILY_RESOURCE_CAP.wood * 10,
+      stone: DAILY_RESOURCE_CAP.stone * 10,
     };
 
     const event: CodingEvent = {
@@ -45,9 +45,9 @@ describe('economy — resource grants', () => {
 
     const updated = grantCodingEventResources(keep, event);
 
-    expect(updated.resources.compute).toBe(DAILY_RESOURCE_CAP.compute * 10);
-    expect(updated.resources.memory).toBe(DAILY_RESOURCE_CAP.memory * 10);
-    expect(updated.resources.bandwidth).toBe(DAILY_RESOURCE_CAP.bandwidth * 10);
+    expect(updated.resources.gold).toBe(DAILY_RESOURCE_CAP.gold * 10);
+    expect(updated.resources.wood).toBe(DAILY_RESOURCE_CAP.wood * 10);
+    expect(updated.resources.stone).toBe(DAILY_RESOURCE_CAP.stone * 10);
   });
 });
 
@@ -60,9 +60,9 @@ describe('economy — faucet', () => {
     );
     expect(event.timestamp).toBeGreaterThan(0);
     expect(event.grants).toBeDefined();
-    expect(event.grants.compute).toBeGreaterThanOrEqual(0);
-    expect(event.grants.memory).toBeGreaterThanOrEqual(0);
-    expect(event.grants.bandwidth).toBeGreaterThanOrEqual(0);
+    expect(event.grants.gold).toBeGreaterThanOrEqual(0);
+    expect(event.grants.wood).toBeGreaterThanOrEqual(0);
+    expect(event.grants.stone).toBeGreaterThanOrEqual(0);
 
     const expectedGrant = CODING_EVENT_GRANTS[event.type];
     expect(event.grants).toEqual(expectedGrant);

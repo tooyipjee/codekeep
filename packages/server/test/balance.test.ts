@@ -22,31 +22,31 @@ function makeStructure(
 
 function createBalancedKeep(): KeepGridState {
   const structures: PlacedStructure[] = [
-    // Data vault in the center
-    makeStructure('dataVault', 8, 8, 1),
+    // Treasury in the center
+    makeStructure('treasury', 8, 8, 1),
 
-    // Firewalls on north and west sides only — south and east are open
-    makeStructure('firewall', 7, 7, 1),
-    makeStructure('firewall', 8, 7, 1),
-    makeStructure('firewall', 9, 7, 1),
-    makeStructure('firewall', 7, 8, 1),
-    makeStructure('firewall', 7, 9, 1),
+    // Walls on north and west sides only — south and east are open
+    makeStructure('wall', 7, 7, 1),
+    makeStructure('wall', 8, 7, 1),
+    makeStructure('wall', 9, 7, 1),
+    makeStructure('wall', 7, 8, 1),
+    makeStructure('wall', 7, 9, 1),
 
-    // Honeypots on southern approach paths
-    makeStructure('honeypot', 8, 10, 1),
-    makeStructure('honeypot', 10, 8, 1),
-    makeStructure('honeypot', 6, 6, 1),
+    // Traps on southern approach paths
+    makeStructure('trap', 8, 10, 1),
+    makeStructure('trap', 10, 8, 1),
+    makeStructure('trap', 6, 6, 1),
 
-    // Encryption node adjacent to vault
-    makeStructure('encryptionNode', 9, 8, 1),
-    makeStructure('encryptionNode', 8, 9, 1),
+    // Ward adjacent to treasury
+    makeStructure('ward', 9, 8, 1),
+    makeStructure('ward', 8, 9, 1),
 
-    // Relay towers
-    makeStructure('relayTower', 10, 9, 1),
-    makeStructure('relayTower', 9, 9, 1),
+    // Watchtowers
+    makeStructure('watchtower', 10, 9, 1),
+    makeStructure('watchtower', 9, 9, 1),
 
-    // Scanner covering the southern approach
-    makeStructure('scanner', 8, 11, 1),
+    // Archer tower covering the southern approach
+    makeStructure('archerTower', 8, 11, 1),
   ];
 
   return { width: 16, height: 16, structures };
@@ -90,7 +90,7 @@ describe('balance — raid outcome diversity', () => {
   it('20_raids_across_varied_layouts_produce_mixed_outcomes', () => {
     const outcomes: RaidOutcome[] = [];
 
-    // Reachable vaults — expected to be breached
+    // Reachable treasuries — expected to be breached
     for (let i = 0; i < 17; i++) {
       const npcKeep = generateNpcKeep(`diversity-npc-${i}`, 1 + (i % 5));
       const replay = simulateRaid({
@@ -101,20 +101,20 @@ describe('balance — raid outcome diversity', () => {
       outcomes.push(getOutcome(replay));
     }
 
-    // Enclosed vault — probes can't reach, defense wins
+    // Enclosed treasury — raiders can't reach, defense wins
     const enclosedGrid: KeepGridState = {
       width: 16,
       height: 16,
       structures: [
-        makeStructure('dataVault', 8, 8, 1),
-        makeStructure('firewall', 7, 7, 2),
-        makeStructure('firewall', 8, 7, 2),
-        makeStructure('firewall', 9, 7, 2),
-        makeStructure('firewall', 7, 8, 2),
-        makeStructure('firewall', 9, 8, 2),
-        makeStructure('firewall', 7, 9, 2),
-        makeStructure('firewall', 8, 9, 2),
-        makeStructure('firewall', 9, 9, 2),
+        makeStructure('treasury', 8, 8, 1),
+        makeStructure('wall', 7, 7, 2),
+        makeStructure('wall', 8, 7, 2),
+        makeStructure('wall', 9, 7, 2),
+        makeStructure('wall', 7, 8, 2),
+        makeStructure('wall', 9, 8, 2),
+        makeStructure('wall', 7, 9, 2),
+        makeStructure('wall', 8, 9, 2),
+        makeStructure('wall', 9, 9, 2),
       ],
     };
     for (let i = 0; i < 3; i++) {
@@ -139,33 +139,33 @@ describe('balance — raid outcome diversity', () => {
   }, 30_000);
 
   it('different_layouts_produce_different_outcomes', () => {
-    // Fortress: vault enclosed by double ring of level 3 firewalls — unreachable
+    // Fortress: treasury enclosed by double ring of level 3 walls — unreachable
     const fortressGrid: KeepGridState = {
       width: 16,
       height: 16,
       structures: [
-        makeStructure('dataVault', 8, 8, 1),
+        makeStructure('treasury', 8, 8, 1),
         ...[
           [7, 7], [8, 7], [9, 7],
           [7, 8], [9, 8],
           [7, 9], [8, 9], [9, 9],
-        ].map(([x, y]) => makeStructure('firewall', x, y, 3, `fw-inner-${x}-${y}`)),
+        ].map(([x, y]) => makeStructure('wall', x, y, 3, `fw-inner-${x}-${y}`)),
         ...[
           [6, 6], [7, 6], [8, 6], [9, 6], [10, 6],
           [6, 7], [10, 7],
           [6, 8], [10, 8],
           [6, 9], [10, 9],
           [6, 10], [7, 10], [8, 10], [9, 10], [10, 10],
-        ].map(([x, y]) => makeStructure('firewall', x, y, 3, `fw-outer-${x}-${y}`)),
+        ].map(([x, y]) => makeStructure('wall', x, y, 3, `fw-outer-${x}-${y}`)),
       ],
     };
 
-    // Open: vault right on the edge with no defenses
+    // Open: treasury right on the edge with no defenses
     const openGrid: KeepGridState = {
       width: 16,
       height: 16,
       structures: [
-        makeStructure('dataVault', 0, 0, 1),
+        makeStructure('treasury', 0, 0, 1),
       ],
     };
 

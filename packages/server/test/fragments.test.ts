@@ -5,7 +5,7 @@ import {
   FRAGMENT_MAX,
   FRAGMENT_DECAY_MS,
   FRAGMENT_TYPES,
-  FRAGMENT_VAULT_BONUS,
+  FRAGMENT_TREASURY_BONUS,
   GRID_SIZE,
 } from '@codekeep/shared';
 
@@ -52,7 +52,7 @@ describe('fragments — spawnFragments', () => {
   it('does_not_exceed_fragment_max', () => {
     const existing: DataFragment[] = [];
     for (let i = 0; i < FRAGMENT_MAX; i++) {
-      existing.push(makeFragment('compute_shard', i, 0));
+      existing.push(makeFragment('gold_nugget', i, 0));
     }
     const result = spawnFragments(existing, emptyGrid(), Date.now(), deterministicRng());
     expect(result.length).toBe(FRAGMENT_MAX);
@@ -63,7 +63,7 @@ describe('fragments — spawnFragments', () => {
       width: 16, height: 16,
       structures: Array.from({ length: 16 }, (_, x) =>
         Array.from({ length: 16 }, (_, y) =>
-          makeStructure('firewall', x, y, 1, `fw-${x}-${y}`),
+          makeStructure('wall', x, y, 1, `fw-${x}-${y}`),
         ),
       ).flat(),
     };
@@ -72,7 +72,7 @@ describe('fragments — spawnFragments', () => {
   });
 
   it('does_not_place_on_existing_fragment_cells', () => {
-    const existing = [makeFragment('compute_shard', 0, 0)];
+    const existing = [makeFragment('gold_nugget', 0, 0)];
     const result = spawnFragments(existing, emptyGrid(), Date.now(), deterministicRng());
     for (const f of result) {
       const dupes = result.filter((o) => o.pos.x === f.pos.x && o.pos.y === f.pos.y);
@@ -80,32 +80,32 @@ describe('fragments — spawnFragments', () => {
     }
   });
 
-  it('scanner_boost_increases_spawn_count', () => {
-    const gridNoScanner = emptyGrid();
-    const gridWithScanners: KeepGridState = {
+  it('archer_tower_boost_increases_spawn_count', () => {
+    const gridNoArcher = emptyGrid();
+    const gridWithArcherTowers: KeepGridState = {
       width: 16, height: 16,
       structures: [
-        makeStructure('scanner', 4, 4, 1),
-        makeStructure('scanner', 8, 8, 1),
-        makeStructure('scanner', 12, 12, 1),
+        makeStructure('archerTower', 4, 4, 1),
+        makeStructure('archerTower', 8, 8, 1),
+        makeStructure('archerTower', 12, 12, 1),
       ],
     };
 
     let totalWithout = 0;
     let totalWith = 0;
     for (let i = 0; i < 50; i++) {
-      totalWithout += spawnFragments([], gridNoScanner, Date.now() + i, deterministicRng(i)).length;
-      totalWith += spawnFragments([], gridWithScanners, Date.now() + i, deterministicRng(i)).length;
+      totalWithout += spawnFragments([], gridNoArcher, Date.now() + i, deterministicRng(i)).length;
+      totalWith += spawnFragments([], gridWithArcherTowers, Date.now() + i, deterministicRng(i)).length;
     }
 
     expect(totalWith).toBeGreaterThan(totalWithout);
   });
 
-  it('scanner_boost_capped_at_plus_2', () => {
+  it('archer_tower_boost_capped_at_plus_2', () => {
     const grid: KeepGridState = {
       width: 16, height: 16,
       structures: Array.from({ length: 10 }, (_, i) =>
-        makeStructure('scanner', i, 0, 1, `sc-${i}`),
+        makeStructure('archerTower', i, 0, 1, `sc-${i}`),
       ),
     };
 
@@ -152,17 +152,17 @@ describe('fragments — spawnFragments', () => {
 
 describe('fragments — collectFragment', () => {
   it('collects_fragment_at_position', () => {
-    const fragments = [makeFragment('compute_shard', 5, 5)];
+    const fragments = [makeFragment('gold_nugget', 5, 5)];
     const result = collectFragment(fragments, { x: 5, y: 5 }, emptyGrid());
 
     expect(result).not.toBeNull();
     expect(result!.collected).toHaveLength(1);
     expect(result!.updatedFragments).toHaveLength(0);
-    expect(result!.yield.compute).toBe(FRAGMENT_TYPES.compute_shard.yield.compute);
+    expect(result!.yield.gold).toBe(FRAGMENT_TYPES.gold_nugget.yield.gold);
   });
 
   it('returns_null_when_no_fragment_at_position', () => {
-    const fragments = [makeFragment('compute_shard', 5, 5)];
+    const fragments = [makeFragment('gold_nugget', 5, 5)];
     const result = collectFragment(fragments, { x: 10, y: 10 }, emptyGrid());
     expect(result).toBeNull();
   });
@@ -172,70 +172,70 @@ describe('fragments — collectFragment', () => {
       const fragments = [makeFragment(type as DataFragment['type'], 8, 8)];
       const result = collectFragment(fragments, { x: 8, y: 8 }, emptyGrid());
       expect(result).not.toBeNull();
-      expect(result!.yield.compute).toBe(def.yield.compute);
-      expect(result!.yield.memory).toBe(def.yield.memory);
-      expect(result!.yield.bandwidth).toBe(def.yield.bandwidth);
+      expect(result!.yield.gold).toBe(def.yield.gold);
+      expect(result!.yield.wood).toBe(def.yield.wood);
+      expect(result!.yield.stone).toBe(def.yield.stone);
     }
   });
 
-  it('vault_proximity_gives_bonus_yield', () => {
+  it('treasury_proximity_gives_bonus_yield', () => {
     const grid: KeepGridState = {
       width: 16, height: 16,
-      structures: [makeStructure('dataVault', 5, 5)],
+      structures: [makeStructure('treasury', 5, 5)],
     };
-    const fragments = [makeFragment('compute_shard', 5, 6)]; // Manhattan 1 from vault
+    const fragments = [makeFragment('gold_nugget', 5, 6)]; // Manhattan 1 from treasury
 
     const result = collectFragment(fragments, { x: 5, y: 6 }, grid);
     expect(result).not.toBeNull();
 
-    const baseYield = FRAGMENT_TYPES.compute_shard.yield.compute;
-    const expectedYield = Math.ceil(baseYield * (1 + FRAGMENT_VAULT_BONUS));
-    expect(result!.yield.compute).toBe(expectedYield);
+    const baseYield = FRAGMENT_TYPES.gold_nugget.yield.gold;
+    const expectedYield = Math.ceil(baseYield * (1 + FRAGMENT_TREASURY_BONUS));
+    expect(result!.yield.gold).toBe(expectedYield);
   });
 
-  it('no_vault_bonus_when_vault_too_far', () => {
+  it('no_treasury_bonus_when_treasury_too_far', () => {
     const grid: KeepGridState = {
       width: 16, height: 16,
-      structures: [makeStructure('dataVault', 0, 0)],
+      structures: [makeStructure('treasury', 0, 0)],
     };
-    const fragments = [makeFragment('compute_shard', 10, 10)]; // Far from vault
+    const fragments = [makeFragment('gold_nugget', 10, 10)]; // Far from treasury
 
     const result = collectFragment(fragments, { x: 10, y: 10 }, grid);
     expect(result).not.toBeNull();
-    expect(result!.yield.compute).toBe(FRAGMENT_TYPES.compute_shard.yield.compute);
+    expect(result!.yield.gold).toBe(FRAGMENT_TYPES.gold_nugget.yield.gold);
   });
 
-  it('relay_auto_collects_adjacent_fragments', () => {
+  it('watchtower_auto_collects_adjacent_fragments', () => {
     const grid: KeepGridState = {
       width: 16, height: 16,
-      structures: [makeStructure('relayTower', 5, 5, 2)], // L2 relay: range 2
+      structures: [makeStructure('watchtower', 5, 5, 2)], // L2 watchtower: range 2
     };
     const fragments = [
-      makeFragment('compute_shard', 5, 5, 1000),   // at relay (and collection point)
-      makeFragment('memory_bit', 5, 6, 1000),       // Manhattan 1 from collect pos
-      makeFragment('bandwidth_packet', 6, 6, 1000), // Manhattan 2 from collect pos
-      makeFragment('data_bundle', 10, 10, 1000),    // Far away, should NOT be collected
+      makeFragment('gold_nugget', 5, 5, 1000),   // at watchtower (and collection point)
+      makeFragment('timber', 5, 6, 1000),       // Manhattan 1 from collect pos
+      makeFragment('ore', 6, 6, 1000), // Manhattan 2 from collect pos
+      makeFragment('gem', 10, 10, 1000),    // Far away, should NOT be collected
     ];
 
     const result = collectFragment(fragments, { x: 5, y: 5 }, grid);
     expect(result).not.toBeNull();
     expect(result!.collected.length).toBe(3); // the one at pos + 2 nearby
     expect(result!.updatedFragments.length).toBe(1); // only the far one remains
-    expect(result!.updatedFragments[0].type).toBe('data_bundle');
+    expect(result!.updatedFragments[0].type).toBe('gem');
   });
 
-  it('relay_range_scales_with_level', () => {
+  it('watchtower_range_scales_with_level', () => {
     const grid1: KeepGridState = {
       width: 16, height: 16,
-      structures: [makeStructure('relayTower', 5, 5, 1)], // L1 range: 1
+      structures: [makeStructure('watchtower', 5, 5, 1)], // L1 range: 1
     };
     const grid3: KeepGridState = {
       width: 16, height: 16,
-      structures: [makeStructure('relayTower', 5, 5, 3)], // L3 range: 3
+      structures: [makeStructure('watchtower', 5, 5, 3)], // L3 range: 3
     };
     const fragments = [
-      makeFragment('compute_shard', 5, 5, 1000),
-      makeFragment('memory_bit', 5, 8, 1000), // Manhattan 3 from collect point
+      makeFragment('gold_nugget', 5, 5, 1000),
+      makeFragment('timber', 5, 8, 1000), // Manhattan 3 from collect point
     ];
 
     const result1 = collectFragment([...fragments], { x: 5, y: 5 }, grid1);
@@ -247,15 +247,15 @@ describe('fragments — collectFragment', () => {
 
   it('leaves_other_fragments_intact', () => {
     const fragments = [
-      makeFragment('compute_shard', 3, 3),
-      makeFragment('memory_bit', 7, 7),
-      makeFragment('bandwidth_packet', 10, 10),
+      makeFragment('gold_nugget', 3, 3),
+      makeFragment('timber', 7, 7),
+      makeFragment('ore', 10, 10),
     ];
 
     const result = collectFragment(fragments, { x: 7, y: 7 }, emptyGrid());
     expect(result).not.toBeNull();
     expect(result!.updatedFragments).toHaveLength(2);
-    expect(result!.updatedFragments.map((f) => f.type)).toEqual(['compute_shard', 'bandwidth_packet']);
+    expect(result!.updatedFragments.map((f) => f.type)).toEqual(['gold_nugget', 'ore']);
   });
 });
 
@@ -263,22 +263,22 @@ describe('fragments — decayFragments', () => {
   it('removes_fragments_older_than_decay_threshold', () => {
     const now = 200_000;
     const fragments = [
-      makeFragment('compute_shard', 1, 1, now - FRAGMENT_DECAY_MS - 1),   // expired
-      makeFragment('memory_bit', 2, 2, now - FRAGMENT_DECAY_MS + 1000),   // still fresh
-      makeFragment('bandwidth_packet', 3, 3, now - 1000),                  // very fresh
+      makeFragment('gold_nugget', 1, 1, now - FRAGMENT_DECAY_MS - 1),   // expired
+      makeFragment('timber', 2, 2, now - FRAGMENT_DECAY_MS + 1000),   // still fresh
+      makeFragment('ore', 3, 3, now - 1000),                  // very fresh
     ];
 
     const result = decayFragments(fragments, now);
     expect(result).toHaveLength(2);
-    expect(result[0].type).toBe('memory_bit');
-    expect(result[1].type).toBe('bandwidth_packet');
+    expect(result[0].type).toBe('timber');
+    expect(result[1].type).toBe('ore');
   });
 
   it('keeps_all_fragments_when_none_expired', () => {
     const now = 10_000;
     const fragments = [
-      makeFragment('compute_shard', 1, 1, now - 1000),
-      makeFragment('memory_bit', 2, 2, now - 2000),
+      makeFragment('gold_nugget', 1, 1, now - 1000),
+      makeFragment('timber', 2, 2, now - 2000),
     ];
 
     const result = decayFragments(fragments, now);
@@ -288,8 +288,8 @@ describe('fragments — decayFragments', () => {
   it('returns_empty_when_all_expired', () => {
     const now = 1_000_000;
     const fragments = [
-      makeFragment('compute_shard', 1, 1, 0),
-      makeFragment('memory_bit', 2, 2, 100),
+      makeFragment('gold_nugget', 1, 1, 0),
+      makeFragment('timber', 2, 2, 100),
     ];
 
     const result = decayFragments(fragments, now);
@@ -316,9 +316,9 @@ describe('fragments — type weights', () => {
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
     expect(total).toBeGreaterThan(100);
 
-    // data_bundle (10% weight) should be the least common
-    const bundleRatio = (counts['data_bundle'] ?? 0) / total;
-    const shardRatio = (counts['compute_shard'] ?? 0) / total;
+    // gem (10% weight) should be the least common
+    const bundleRatio = (counts['gem'] ?? 0) / total;
+    const shardRatio = (counts['gold_nugget'] ?? 0) / total;
     expect(bundleRatio).toBeLessThan(shardRatio);
   });
 });

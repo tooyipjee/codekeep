@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { simulateRaid, type RaidConfig } from '../src/engine/raid-sim.js';
 import type { KeepGridState, PlacedStructure, RaidTickEvent } from '@codekeep/shared';
-import { PROBE_TYPES, FIREWALL_HP } from '@codekeep/shared';
+import { RAIDER_TYPES } from '@codekeep/shared';
 
 function makeStructure(
   kind: PlacedStructure['kind'],
@@ -19,32 +19,32 @@ function makeStructure(
   };
 }
 
-describe('probe types — stat differences', () => {
-  it('scout_has_lower_hp_than_standard', () => {
-    expect(PROBE_TYPES.scout.hp).toBeLessThan(PROBE_TYPES.standard.hp);
+describe('raider types — stat differences', () => {
+  it('scout_has_lower_hp_than_raider', () => {
+    expect(RAIDER_TYPES.scout.hp).toBeLessThan(RAIDER_TYPES.raider.hp);
   });
 
-  it('brute_has_higher_hp_and_damage_than_standard', () => {
-    expect(PROBE_TYPES.brute.hp).toBeGreaterThan(PROBE_TYPES.standard.hp);
-    expect(PROBE_TYPES.brute.damage).toBeGreaterThan(PROBE_TYPES.standard.damage);
+  it('brute_has_higher_hp_and_damage_than_raider', () => {
+    expect(RAIDER_TYPES.brute.hp).toBeGreaterThan(RAIDER_TYPES.raider.hp);
+    expect(RAIDER_TYPES.brute.damage).toBeGreaterThan(RAIDER_TYPES.raider.damage);
   });
 
   it('scout_has_speed_2', () => {
-    expect(PROBE_TYPES.scout.speed).toBe(2);
+    expect(RAIDER_TYPES.scout.speed).toBe(2);
   });
 
-  it('standard_and_brute_have_speed_1', () => {
-    expect(PROBE_TYPES.standard.speed).toBe(1);
-    expect(PROBE_TYPES.brute.speed).toBe(1);
+  it('raider_and_brute_have_speed_1', () => {
+    expect(RAIDER_TYPES.raider.speed).toBe(1);
+    expect(RAIDER_TYPES.brute.speed).toBe(1);
   });
 });
 
-describe('probe types — raid behavior', () => {
-  it('scout_probes_move_faster_reaching_vault_sooner', () => {
+describe('raider types — raid behavior', () => {
+  it('scout_raiders_move_faster_reaching_treasury_sooner', () => {
     const grid: KeepGridState = {
       width: 16,
       height: 16,
-      structures: [makeStructure('dataVault', 8, 8)],
+      structures: [makeStructure('treasury', 8, 8)],
     };
 
     const scoutReplay = simulateRaid({
@@ -53,27 +53,27 @@ describe('probe types — raid behavior', () => {
       seed: 'speed-test',
       probeTypes: ['scout'],
     });
-    const standardReplay = simulateRaid({
+    const raiderReplay = simulateRaid({
       probeCount: 1,
       keepGrid: grid,
       seed: 'speed-test',
-      probeTypes: ['standard'],
+      probeTypes: ['raider'],
     });
 
-    const scoutBreachTick = scoutReplay.events.find((e) => e.type === 'vault_breach')?.t ?? Infinity;
-    const standardBreachTick = standardReplay.events.find((e) => e.type === 'vault_breach')?.t ?? Infinity;
+    const scoutBreachTick = scoutReplay.events.find((e) => e.type === 'treasury_breach')?.t ?? Infinity;
+    const raiderBreachTick = raiderReplay.events.find((e) => e.type === 'treasury_breach')?.t ?? Infinity;
 
-    expect(scoutBreachTick).toBeLessThanOrEqual(standardBreachTick);
+    expect(scoutBreachTick).toBeLessThanOrEqual(raiderBreachTick);
   });
 
-  it('brute_probes_destroy_firewalls_faster', () => {
+  it('brute_raiders_destroy_walls_faster', () => {
     const grid: KeepGridState = {
       width: 16,
       height: 16,
       structures: [
-        makeStructure('dataVault', 8, 8),
+        makeStructure('treasury', 8, 8),
         ...Array.from({ length: 16 }, (_, x) =>
-          makeStructure('firewall', x, 4, 1, `fw-${x}-4`),
+          makeStructure('wall', x, 4, 1, `fw-${x}-4`),
         ),
       ],
     };
@@ -84,32 +84,32 @@ describe('probe types — raid behavior', () => {
       seed: 'brute-test',
       probeTypes: ['brute', 'brute', 'brute', 'brute'],
     });
-    const standardReplay = simulateRaid({
+    const raiderReplay = simulateRaid({
       probeCount: 4,
       keepGrid: grid,
       seed: 'brute-test',
-      probeTypes: ['standard', 'standard', 'standard', 'standard'],
+      probeTypes: ['raider', 'raider', 'raider', 'raider'],
     });
 
     const bruteFirstDestroy = bruteReplay.events.find(
-      (e) => e.type === 'firewall_damaged' && e.destroyed,
+      (e) => e.type === 'wall_damaged' && e.destroyed,
     )?.t ?? Infinity;
-    const standardFirstDestroy = standardReplay.events.find(
-      (e) => e.type === 'firewall_damaged' && e.destroyed,
+    const raiderFirstDestroy = raiderReplay.events.find(
+      (e) => e.type === 'wall_damaged' && e.destroyed,
     )?.t ?? Infinity;
 
-    expect(bruteFirstDestroy).toBeLessThanOrEqual(standardFirstDestroy);
+    expect(bruteFirstDestroy).toBeLessThanOrEqual(raiderFirstDestroy);
   });
 
-  it('mixed_probe_types_produce_varied_events', () => {
+  it('mixed_raider_types_produce_varied_events', () => {
     const grid: KeepGridState = {
       width: 16,
       height: 16,
       structures: [
-        makeStructure('dataVault', 8, 8),
-        makeStructure('firewall', 7, 4, 1),
-        makeStructure('firewall', 8, 4, 1),
-        makeStructure('honeypot', 6, 6),
+        makeStructure('treasury', 8, 8),
+        makeStructure('wall', 7, 4, 1),
+        makeStructure('wall', 8, 4, 1),
+        makeStructure('trap', 6, 6),
       ],
     };
 
@@ -117,25 +117,25 @@ describe('probe types — raid behavior', () => {
       probeCount: 3,
       keepGrid: grid,
       seed: 'mixed-types',
-      probeTypes: ['scout', 'standard', 'brute'],
+      probeTypes: ['scout', 'raider', 'brute'],
     });
 
-    expect(replay.events.filter((e) => e.type === 'probe_spawn')).toHaveLength(3);
+    expect(replay.events.filter((e) => e.type === 'raider_spawn')).toHaveLength(3);
     expect(replay.events.some((e) => e.type === 'raid_end')).toBe(true);
   });
 
-  it('brute_probe_survives_more_scanner_hits_than_scout', () => {
-    const scanners: PlacedStructure[] = [];
+  it('brute_raider_survives_more_archer_hits_than_scout', () => {
+    const archerTowers: PlacedStructure[] = [];
     for (let x = 2; x < 14; x += 2) {
-      scanners.push(makeStructure('scanner', x, 2, 1, `scanner-${x}-2`));
+      archerTowers.push(makeStructure('archerTower', x, 2, 1, `archerTower-${x}-2`));
     }
 
     const grid: KeepGridState = {
       width: 16,
       height: 16,
       structures: [
-        makeStructure('dataVault', 8, 8),
-        ...scanners,
+        makeStructure('treasury', 8, 8),
+        ...archerTowers,
       ],
     };
 
@@ -152,23 +152,23 @@ describe('probe types — raid behavior', () => {
       probeTypes: ['scout', 'scout'],
     });
 
-    const bruteDeaths = bruteReplay.events.filter((e) => e.type === 'probe_destroyed').length;
-    const scoutDeaths = scoutReplay.events.filter((e) => e.type === 'probe_destroyed').length;
+    const bruteDeaths = bruteReplay.events.filter((e) => e.type === 'raider_destroyed').length;
+    const scoutDeaths = scoutReplay.events.filter((e) => e.type === 'raider_destroyed').length;
 
     expect(scoutDeaths).toBeGreaterThanOrEqual(bruteDeaths);
   });
 
-  it('probeTypes_config_defaults_to_standard_when_omitted', () => {
+  it('probeTypes_config_defaults_to_raider_when_omitted', () => {
     const grid: KeepGridState = {
       width: 16,
       height: 16,
-      structures: [makeStructure('dataVault', 8, 8)],
+      structures: [makeStructure('treasury', 8, 8)],
     };
 
     const replay = simulateRaid({ probeCount: 2, keepGrid: grid, seed: 'default-type' });
 
     const spawns = replay.events.filter(
-      (e): e is Extract<RaidTickEvent, { type: 'probe_spawn' }> => e.type === 'probe_spawn',
+      (e): e is Extract<RaidTickEvent, { type: 'raider_spawn' }> => e.type === 'raider_spawn',
     );
     expect(spawns).toHaveLength(2);
   });

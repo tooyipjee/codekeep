@@ -1,35 +1,35 @@
 import { describe, it, expect } from 'vitest';
 import {
-  getScannerDamage,
-  getScannerRange,
-  getScannerCooldown,
+  getArcherDamage,
+  getArcherRange,
+  getArcherCooldown,
   getAdjacentCoords,
   chebyshevDistance,
   manhattanDistance,
 } from '../src/engine/structures.js';
 import {
-  SCANNER_DAMAGE,
-  SCANNER_RANGE,
-  SCANNER_COOLDOWN_TICKS,
+  ARCHER_DAMAGE,
+  ARCHER_RANGE,
+  ARCHER_COOLDOWN_TICKS,
 } from '@codekeep/shared';
 
-describe('structures — scanner helpers', () => {
-  it('getScannerDamage_returns_correct_values_per_level', () => {
-    expect(getScannerDamage(1)).toBe(SCANNER_DAMAGE[1]);
-    expect(getScannerDamage(2)).toBe(SCANNER_DAMAGE[2]);
-    expect(getScannerDamage(3)).toBe(SCANNER_DAMAGE[3]);
+describe('structures — archer helpers', () => {
+  it('getArcherDamage_returns_correct_values_per_level', () => {
+    expect(getArcherDamage(1)).toBe(ARCHER_DAMAGE[1]);
+    expect(getArcherDamage(2)).toBe(ARCHER_DAMAGE[2]);
+    expect(getArcherDamage(3)).toBe(ARCHER_DAMAGE[3]);
   });
 
-  it('getScannerRange_returns_correct_values_per_level', () => {
-    expect(getScannerRange(1)).toBe(SCANNER_RANGE[1]);
-    expect(getScannerRange(2)).toBe(SCANNER_RANGE[2]);
-    expect(getScannerRange(3)).toBe(SCANNER_RANGE[3]);
+  it('getArcherRange_returns_correct_values_per_level', () => {
+    expect(getArcherRange(1)).toBe(ARCHER_RANGE[1]);
+    expect(getArcherRange(2)).toBe(ARCHER_RANGE[2]);
+    expect(getArcherRange(3)).toBe(ARCHER_RANGE[3]);
   });
 
-  it('getScannerCooldown_returns_correct_values_per_level', () => {
-    expect(getScannerCooldown(1)).toBe(SCANNER_COOLDOWN_TICKS[1]);
-    expect(getScannerCooldown(2)).toBe(SCANNER_COOLDOWN_TICKS[2]);
-    expect(getScannerCooldown(3)).toBe(SCANNER_COOLDOWN_TICKS[3]);
+  it('getArcherCooldown_returns_correct_values_per_level', () => {
+    expect(getArcherCooldown(1)).toBe(ARCHER_COOLDOWN_TICKS[1]);
+    expect(getArcherCooldown(2)).toBe(ARCHER_COOLDOWN_TICKS[2]);
+    expect(getArcherCooldown(3)).toBe(ARCHER_COOLDOWN_TICKS[3]);
   });
 });
 

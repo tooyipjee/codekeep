@@ -77,7 +77,7 @@ describe('persistence — edge cases', () => {
     const save = localStore.createNewGameSave('ProgressTest');
 
     expect(save.progression.achievements).toEqual([]);
-    expect(save.progression.totalProbesKilledByScanner).toBe(0);
+    expect(save.progression.totalRaidersKilledByArcher).toBe(0);
     expect(save.progression.totalRaidsWon).toBe(0);
     expect(save.progression.totalRaidsLost).toBe(0);
     expect(save.progression.currentWinStreak).toBe(0);
@@ -108,7 +108,7 @@ describe('persistence — edge cases', () => {
     const save = localStore.createNewGameSave('RoundTrip');
     save.progression.totalRaidsWon = 5;
     save.progression.achievements = ['first_structure', 'defense_win_5'];
-    save.progression.totalProbesKilledByScanner = 12;
+    save.progression.totalRaidersKilledByArcher = 12;
     save.progression.bestWinStreak = 3;
     localStore.saveGame(save);
 
@@ -116,7 +116,7 @@ describe('persistence — edge cases', () => {
     expect(loaded).not.toBeNull();
     expect(loaded!.progression.totalRaidsWon).toBe(5);
     expect(loaded!.progression.achievements).toEqual(['first_structure', 'defense_win_5']);
-    expect(loaded!.progression.totalProbesKilledByScanner).toBe(12);
+    expect(loaded!.progression.totalRaidersKilledByArcher).toBe(12);
     expect(loaded!.progression.bestWinStreak).toBe(3);
   });
 });

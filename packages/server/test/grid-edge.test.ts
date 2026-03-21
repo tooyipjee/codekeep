@@ -33,11 +33,11 @@ describe('grid — isInBounds', () => {
 describe('grid — getStructureAt', () => {
   it('returns_structure_at_position', () => {
     let keep = freshKeep();
-    keep = placeStructure(keep, { x: 5, y: 5 }, 'firewall').keep!;
+    keep = placeStructure(keep, { x: 5, y: 5 }, 'wall').keep!;
 
     const s = getStructureAt(keep.grid, { x: 5, y: 5 });
     expect(s).toBeDefined();
-    expect(s!.kind).toBe('firewall');
+    expect(s!.kind).toBe('wall');
   });
 
   it('returns_undefined_for_empty_cell', () => {
@@ -49,36 +49,36 @@ describe('grid — getStructureAt', () => {
 describe('grid — resource helpers', () => {
   it('addResources_sums_correctly', () => {
     const result = addResources(
-      { compute: 10, memory: 20, bandwidth: 30 },
-      { compute: 5, memory: 15, bandwidth: 25 },
+      { gold: 10, wood: 20, stone: 30 },
+      { gold: 5, wood: 15, stone: 25 },
     );
-    expect(result).toEqual({ compute: 15, memory: 35, bandwidth: 55 });
+    expect(result).toEqual({ gold: 15, wood: 35, stone: 55 });
   });
 
   it('subtractResources_subtracts_correctly', () => {
     const result = subtractResources(
-      { compute: 100, memory: 200, bandwidth: 300 },
-      { compute: 30, memory: 50, bandwidth: 70 },
+      { gold: 100, wood: 200, stone: 300 },
+      { gold: 30, wood: 50, stone: 70 },
     );
-    expect(result).toEqual({ compute: 70, memory: 150, bandwidth: 230 });
+    expect(result).toEqual({ gold: 70, wood: 150, stone: 230 });
   });
 });
 
 describe('grid — placement edge cases', () => {
   it('placement_insufficient_resources_shows_shortage_details', () => {
     const keep = freshKeep();
-    keep.resources = { compute: 0, memory: 0, bandwidth: 0 };
+    keep.resources = { gold: 0, wood: 0, stone: 0 };
 
-    const result = placeStructure(keep, { x: 5, y: 5 }, 'firewall');
+    const result = placeStructure(keep, { x: 5, y: 5 }, 'wall');
     expect(result.ok).toBe(false);
-    expect(result.reason).toMatch(/more compute|more bandwidth/i);
+    expect(result.reason).toMatch(/more gold|more stone/i);
   });
 
-  it('placement_of_scanner_structure_works', () => {
+  it('placement_of_archer_structure_works', () => {
     const keep = freshKeep();
-    const result = placeStructure(keep, { x: 3, y: 3 }, 'scanner');
+    const result = placeStructure(keep, { x: 3, y: 3 }, 'archerTower');
     expect(result.ok).toBe(true);
-    expect(result.keep!.grid.structures[0].kind).toBe('scanner');
+    expect(result.keep!.grid.structures[0].kind).toBe('archerTower');
   });
 
   it('upgrade_nonexistent_position_rejected', () => {
@@ -90,8 +90,8 @@ describe('grid — placement edge cases', () => {
 
   it('upgrade_insufficient_resources_shows_shortage', () => {
     let keep = freshKeep();
-    keep = placeStructure(keep, { x: 5, y: 5 }, 'firewall').keep!;
-    keep.resources = { compute: 0, memory: 0, bandwidth: 0 };
+    keep = placeStructure(keep, { x: 5, y: 5 }, 'wall').keep!;
+    keep.resources = { gold: 0, wood: 0, stone: 0 };
 
     const result = upgradeStructure(keep, { x: 5, y: 5 });
     expect(result.ok).toBe(false);
@@ -102,33 +102,33 @@ describe('grid — placement edge cases', () => {
 describe('grid — demolish refund for upgraded structures', () => {
   it('demolish_level2_refunds_50_percent_of_level1_plus_level2_costs', () => {
     let keep = freshKeep();
-    keep.resources = { compute: 9999, memory: 9999, bandwidth: 9999 };
+    keep.resources = { gold: 9999, wood: 9999, stone: 9999 };
 
-    keep = placeStructure(keep, { x: 5, y: 5 }, 'firewall').keep!;
+    keep = placeStructure(keep, { x: 5, y: 5 }, 'wall').keep!;
     keep = upgradeStructure(keep, { x: 5, y: 5 }).keep!;
 
     const beforeDemolish = { ...keep.resources };
     const result = demolishStructure(keep, { x: 5, y: 5 });
     expect(result.ok).toBe(true);
 
-    const level1Cost = STRUCTURE_COSTS.firewall[1];
-    const level2Cost = STRUCTURE_COSTS.firewall[2];
+    const level1Cost = STRUCTURE_COSTS.wall[1];
+    const level2Cost = STRUCTURE_COSTS.wall[2];
     const expectedRefund = {
-      compute: Math.floor((level1Cost.compute + level2Cost.compute) * 0.5),
-      memory: Math.floor((level1Cost.memory + level2Cost.memory) * 0.5),
-      bandwidth: Math.floor((level1Cost.bandwidth + level2Cost.bandwidth) * 0.5),
+      gold: Math.floor((level1Cost.gold + level2Cost.gold) * 0.5),
+      wood: Math.floor((level1Cost.wood + level2Cost.wood) * 0.5),
+      stone: Math.floor((level1Cost.stone + level2Cost.stone) * 0.5),
     };
 
-    expect(result.keep!.resources.compute).toBe(beforeDemolish.compute + expectedRefund.compute);
-    expect(result.keep!.resources.memory).toBe(beforeDemolish.memory + expectedRefund.memory);
-    expect(result.keep!.resources.bandwidth).toBe(beforeDemolish.bandwidth + expectedRefund.bandwidth);
+    expect(result.keep!.resources.gold).toBe(beforeDemolish.gold + expectedRefund.gold);
+    expect(result.keep!.resources.wood).toBe(beforeDemolish.wood + expectedRefund.wood);
+    expect(result.keep!.resources.stone).toBe(beforeDemolish.stone + expectedRefund.stone);
   });
 
   it('demolish_level3_refunds_50_percent_of_all_three_level_costs', () => {
     let keep = freshKeep();
-    keep.resources = { compute: 9999, memory: 9999, bandwidth: 9999 };
+    keep.resources = { gold: 9999, wood: 9999, stone: 9999 };
 
-    keep = placeStructure(keep, { x: 3, y: 3 }, 'honeypot').keep!;
+    keep = placeStructure(keep, { x: 3, y: 3 }, 'trap').keep!;
     keep = upgradeStructure(keep, { x: 3, y: 3 }).keep!;
     keep = upgradeStructure(keep, { x: 3, y: 3 }).keep!;
 
@@ -139,33 +139,33 @@ describe('grid — demolish refund for upgraded structures', () => {
     const result = demolishStructure(keep, { x: 3, y: 3 });
     expect(result.ok).toBe(true);
 
-    const l1 = STRUCTURE_COSTS.honeypot[1];
-    const l2 = STRUCTURE_COSTS.honeypot[2];
-    const l3 = STRUCTURE_COSTS.honeypot[3];
+    const l1 = STRUCTURE_COSTS.trap[1];
+    const l2 = STRUCTURE_COSTS.trap[2];
+    const l3 = STRUCTURE_COSTS.trap[3];
     const expectedRefund = {
-      compute: Math.floor((l1.compute + l2.compute + l3.compute) * 0.5),
-      memory: Math.floor((l1.memory + l2.memory + l3.memory) * 0.5),
-      bandwidth: Math.floor((l1.bandwidth + l2.bandwidth + l3.bandwidth) * 0.5),
+      gold: Math.floor((l1.gold + l2.gold + l3.gold) * 0.5),
+      wood: Math.floor((l1.wood + l2.wood + l3.wood) * 0.5),
+      stone: Math.floor((l1.stone + l2.stone + l3.stone) * 0.5),
     };
 
-    expect(result.keep!.resources.compute).toBe(beforeDemolish.compute + expectedRefund.compute);
-    expect(result.keep!.resources.memory).toBe(beforeDemolish.memory + expectedRefund.memory);
-    expect(result.keep!.resources.bandwidth).toBe(beforeDemolish.bandwidth + expectedRefund.bandwidth);
+    expect(result.keep!.resources.gold).toBe(beforeDemolish.gold + expectedRefund.gold);
+    expect(result.keep!.resources.wood).toBe(beforeDemolish.wood + expectedRefund.wood);
+    expect(result.keep!.resources.stone).toBe(beforeDemolish.stone + expectedRefund.stone);
   });
 
-  it('demolish_scanner_structure_refunds_correctly', () => {
+  it('demolish_archer_structure_refunds_correctly', () => {
     let keep = freshKeep();
-    keep.resources = { compute: 9999, memory: 9999, bandwidth: 9999 };
+    keep.resources = { gold: 9999, wood: 9999, stone: 9999 };
 
-    keep = placeStructure(keep, { x: 7, y: 7 }, 'scanner').keep!;
+    keep = placeStructure(keep, { x: 7, y: 7 }, 'archerTower').keep!;
 
     const beforeDemolish = { ...keep.resources };
     const result = demolishStructure(keep, { x: 7, y: 7 });
     expect(result.ok).toBe(true);
 
-    const cost = STRUCTURE_COSTS.scanner[1];
-    expect(result.keep!.resources.compute).toBe(
-      beforeDemolish.compute + Math.floor(cost.compute * 0.5),
+    const cost = STRUCTURE_COSTS.archerTower[1];
+    expect(result.keep!.resources.gold).toBe(
+      beforeDemolish.gold + Math.floor(cost.gold * 0.5),
     );
   });
 });
@@ -173,11 +173,11 @@ describe('grid — demolish refund for upgraded structures', () => {
 describe('grid — all structure kinds placeable', () => {
   it('can_place_every_structure_kind', () => {
     const kinds = [
-      'firewall', 'honeypot', 'dataVault', 'encryptionNode', 'relayTower', 'scanner',
+      'wall', 'trap', 'treasury', 'ward', 'watchtower', 'archerTower',
     ] as const;
 
     let keep = freshKeep();
-    keep.resources = { compute: 9999, memory: 9999, bandwidth: 9999 };
+    keep.resources = { gold: 9999, wood: 9999, stone: 9999 };
 
     for (let i = 0; i < kinds.length; i++) {
       const result = placeStructure(keep, { x: i, y: 0 }, kinds[i]);

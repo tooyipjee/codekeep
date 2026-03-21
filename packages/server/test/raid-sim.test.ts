@@ -33,9 +33,9 @@ describe('raid-sim — determinism', () => {
       width: 16,
       height: 16,
       structures: [
-        makeStructure('dataVault', 8, 8),
-        makeStructure('firewall', 7, 8),
-        makeStructure('honeypot', 6, 8),
+        makeStructure('treasury', 8, 8),
+        makeStructure('wall', 7, 8),
+        makeStructure('trap', 6, 8),
       ],
     };
 
@@ -74,59 +74,59 @@ describe('raid-sim — edge cases', () => {
 });
 
 describe('raid-sim — structure interactions', () => {
-  it('raid_firewall_blocks_probes', () => {
-    const structures = [makeStructure('dataVault', 8, 12)];
+  it('raid_wall_blocks_raiders', () => {
+    const structures = [makeStructure('treasury', 8, 12)];
     for (let x = 0; x < 16; x++) {
-      structures.push(makeStructure('firewall', x, 1, 1, `fw-${x}-1`));
+      structures.push(makeStructure('wall', x, 1, 1, `fw-${x}-1`));
     }
     const grid: KeepGridState = { width: 16, height: 16, structures };
 
     const config: RaidConfig = { probeCount: 10, keepGrid: grid, seed: 'fw-wall' };
     const replay = simulateRaid(config);
 
-    const fwDamagedEvents = replay.events.filter((e) => e.type === 'firewall_damaged');
+    const fwDamagedEvents = replay.events.filter((e) => e.type === 'wall_damaged');
     expect(fwDamagedEvents.length).toBeGreaterThan(0);
   });
 
-  it('raid_honeypot_stuns_probes', () => {
+  it('raid_trap_stuns_raiders', () => {
     const grid: KeepGridState = {
       width: 16,
       height: 16,
       structures: [
-        makeStructure('dataVault', 8, 8),
-        makeStructure('honeypot', 4, 0),
-        makeStructure('honeypot', 8, 0),
-        makeStructure('honeypot', 12, 0),
-        makeStructure('honeypot', 4, 15),
-        makeStructure('honeypot', 8, 15),
-        makeStructure('honeypot', 0, 4),
-        makeStructure('honeypot', 15, 4),
+        makeStructure('treasury', 8, 8),
+        makeStructure('trap', 4, 0),
+        makeStructure('trap', 8, 0),
+        makeStructure('trap', 12, 0),
+        makeStructure('trap', 4, 15),
+        makeStructure('trap', 8, 15),
+        makeStructure('trap', 0, 4),
+        makeStructure('trap', 15, 4),
       ],
     };
 
     const config: RaidConfig = { probeCount: 6, keepGrid: grid, seed: 'hp-stun' };
     const replay = simulateRaid(config);
 
-    const stunEvents = replay.events.filter((e) => e.type === 'probe_stunned');
+    const stunEvents = replay.events.filter((e) => e.type === 'raider_stunned');
     expect(stunEvents.length).toBeGreaterThan(0);
   });
 
-  it('raid_vault_breach_takes_loot', () => {
+  it('raid_treasury_breach_takes_loot', () => {
     const grid: KeepGridState = {
       width: 16,
       height: 16,
-      structures: [makeStructure('dataVault', 0, 0)],
+      structures: [makeStructure('treasury', 0, 0)],
     };
 
     const config: RaidConfig = { probeCount: 4, keepGrid: grid, seed: 'loot-test' };
     const replay = simulateRaid(config);
 
-    const breachEvents = replay.events.filter((e) => e.type === 'vault_breach');
+    const breachEvents = replay.events.filter((e) => e.type === 'treasury_breach');
     expect(breachEvents.length).toBeGreaterThan(0);
 
     for (const e of breachEvents) {
-      if (e.type === 'vault_breach') {
-        expect(e.lootTaken.memory).toBeGreaterThan(0);
+      if (e.type === 'treasury_breach') {
+        expect(e.lootTaken.wood).toBeGreaterThan(0);
       }
     }
   });
@@ -136,8 +136,8 @@ describe('raid-sim — structure interactions', () => {
       width: 16,
       height: 16,
       structures: [
-        makeStructure('firewall', 3, 3),
-        makeStructure('honeypot', 10, 10),
+        makeStructure('wall', 3, 3),
+        makeStructure('trap', 10, 10),
       ],
     };
 

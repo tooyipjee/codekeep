@@ -1,4 +1,22 @@
-import type { StructureKind, UpgradeLevel, Resources, StructureStats, FragmentType } from './types.js';
+import type { StructureKind, UpgradeLevel, Resources, StructureStats, FragmentType, ResourceId } from './types.js';
+
+export const RESOURCE_ICONS: Record<ResourceId, string> = {
+  gold: '●',
+  wood: '♣',
+  stone: '■',
+};
+
+export const RESOURCE_COLORS: Record<ResourceId, string> = {
+  gold: 'yellow',
+  wood: 'green',
+  stone: 'white',
+};
+
+export const RESOURCE_NAMES: Record<ResourceId, string> = {
+  gold: 'Gold',
+  wood: 'Wood',
+  stone: 'Stone',
+};
 
 export const GRID_SIZE = 16;
 export const TICK_RATE_HZ = 8;

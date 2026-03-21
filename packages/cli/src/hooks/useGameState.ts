@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { GameSave, GridCoord, StructureKind, RaidReplay, Resources, KeepGridState, ProbeType, DataFragment } from '@codekeep/shared';
-import { GRID_SIZE, ALL_STRUCTURE_KINDS, BACKGROUND_RAID_INTERVAL_MS, BACKGROUND_RAID_MAX, FAUCET_BASE_USES, FAUCET_DIMINISH_FACTOR, ACHIEVEMENTS, FRAGMENT_SPAWN_INTERVAL_MS, KINGDOM_EVENT_NAMES } from '@codekeep/shared';
+import { GRID_SIZE, ALL_STRUCTURE_KINDS, BACKGROUND_RAID_INTERVAL_MS, BACKGROUND_RAID_MAX, FAUCET_BASE_USES, FAUCET_DIMINISH_FACTOR, ACHIEVEMENTS, FRAGMENT_SPAWN_INTERVAL_MS, KINGDOM_EVENT_NAMES, RESOURCE_ICONS } from '@codekeep/shared';
 import {
   loadGame,
   saveGame,
@@ -632,7 +632,7 @@ export function useGameState(forceTutorial: boolean) {
       };
 
       if (won) {
-        showMessage(`Defense WIN! +${defenseBonus.gold}G +${defenseBonus.wood}W +${defenseBonus.stone}S  [v] view`);
+        showMessage(`Defense WIN! +${defenseBonus.gold}${RESOURCE_ICONS.gold} +${defenseBonus.wood}${RESOURCE_ICONS.wood} +${defenseBonus.stone}${RESOURCE_ICONS.stone}  [v] view`);
       } else {
         const total = lootLost.gold + lootLost.wood + lootLost.stone;
         showMessage(`Defense BREACH! Lost ${total} res  [v] view`);
@@ -666,9 +666,9 @@ export function useGameState(forceTutorial: boolean) {
     };
     persist(updated);
     const parts: string[] = [];
-    if (y.gold > 0) parts.push(`+${y.gold}G`);
-    if (y.wood > 0) parts.push(`+${y.wood}W`);
-    if (y.stone > 0) parts.push(`+${y.stone}S`);
+    if (y.gold > 0) parts.push(`+${y.gold}${RESOURCE_ICONS.gold}`);
+    if (y.wood > 0) parts.push(`+${y.wood}${RESOURCE_ICONS.wood}`);
+    if (y.stone > 0) parts.push(`+${y.stone}${RESOURCE_ICONS.stone}`);
     const typeName = result.collected[0]?.type.replace('_', ' ') ?? 'fragment';
     const multi = result.collected.length > 1 ? ` (${result.collected.length}x)` : '';
     showMessage(`${parts.join(' ')} ${typeName}${multi}`);
@@ -724,7 +724,7 @@ export function useGameState(forceTutorial: boolean) {
     const updatedKeep = grantCodingEventResources(gameSave.keep, { ...event, grants });
     persist({ ...gameSave, keep: updatedKeep });
     const dimNote = faucetUsesRef.current > FAUCET_BASE_USES ? ' (diminished)' : '';
-    showMessage(`+${grants.gold}G +${grants.wood}W +${grants.stone}S (${KINGDOM_EVENT_NAMES[event.type] ?? event.type})${dimNote}`);
+    showMessage(`+${grants.gold}${RESOURCE_ICONS.gold} +${grants.wood}${RESOURCE_ICONS.wood} +${grants.stone}${RESOURCE_ICONS.stone} (${KINGDOM_EVENT_NAMES[event.type] ?? event.type})${dimNote}`);
   }, [gameSave, persist, showMessage]);
 
   const jumpToCoord = useCallback((x: number, y: number) => {

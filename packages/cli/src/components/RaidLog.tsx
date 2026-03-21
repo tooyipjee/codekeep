@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { GameSave, RaidRecord, Resources } from '@codekeep/shared';
-import { ACHIEVEMENTS } from '@codekeep/shared';
+import { ACHIEVEMENTS, RESOURCE_ICONS } from '@codekeep/shared';
 
 interface RaidLogProps {
   gameSave: GameSave;
@@ -11,18 +11,18 @@ interface RaidLogProps {
 
 function formatGain(r: Resources): string {
   const parts: string[] = [];
-  if (r.gold > 0) parts.push(`+${r.gold}G`);
-  if (r.wood > 0) parts.push(`+${r.wood}W`);
-  if (r.stone > 0) parts.push(`+${r.stone}S`);
-  return parts.join('');
+  if (r.gold > 0) parts.push(`+${r.gold}${RESOURCE_ICONS.gold}`);
+  if (r.wood > 0) parts.push(`+${r.wood}${RESOURCE_ICONS.wood}`);
+  if (r.stone > 0) parts.push(`+${r.stone}${RESOURCE_ICONS.stone}`);
+  return parts.join(' ');
 }
 
 function formatLoss(r: Resources): string {
   const parts: string[] = [];
-  if (r.wood > 0) parts.push(`-${r.wood}W`);
-  if (r.gold > 0) parts.push(`-${r.gold}G`);
-  if (r.stone > 0) parts.push(`-${r.stone}S`);
-  return parts.join('');
+  if (r.gold > 0) parts.push(`-${r.gold}${RESOURCE_ICONS.gold}`);
+  if (r.wood > 0) parts.push(`-${r.wood}${RESOURCE_ICONS.wood}`);
+  if (r.stone > 0) parts.push(`-${r.stone}${RESOURCE_ICONS.stone}`);
+  return parts.join(' ');
 }
 
 export function RaidLog({ gameSave, onBack, onWatchReplay }: RaidLogProps) {

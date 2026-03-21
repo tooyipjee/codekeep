@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import type { GameSave } from '@codekeep/shared';
 import { loadGame, saveGame, createNewGameSave, deleteSaveFile, simulateRaid } from '@codekeep/server';
+import { RESOURCE_ICONS } from '@codekeep/shared';
 import { KeepGrid } from './components/KeepGrid.js';
 import { HUD } from './components/HUD.js';
 import { Help } from './components/Help.js';
@@ -362,7 +363,7 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
       {offlineReport && (
         <Box flexDirection="column">
           {(offlineReport.resources.gold > 0 || offlineReport.resources.wood > 0 || offlineReport.resources.stone > 0) && (
-            <Text color="green">Passive income: +{offlineReport.resources.gold}G +{offlineReport.resources.wood}W +{offlineReport.resources.stone}S</Text>
+            <Text color="green">Passive income: +{offlineReport.resources.gold}{RESOURCE_ICONS.gold} +{offlineReport.resources.wood}{RESOURCE_ICONS.wood} +{offlineReport.resources.stone}{RESOURCE_ICONS.stone}</Text>
           )}
           {offlineReport.raids.length > 0 && (
             <Text color="yellow">Background raids: {offlineReport.raids.filter(r => r.won).length}W / {offlineReport.raids.filter(r => !r.won).length}L</Text>

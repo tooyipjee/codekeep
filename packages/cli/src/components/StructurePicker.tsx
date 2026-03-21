@@ -6,7 +6,9 @@ import {
   STRUCTURE_NAMES,
   STRUCTURE_SYMBOLS,
   STRUCTURE_COSTS,
+  RESOURCE_ICONS,
 } from '@codekeep/shared';
+import type { Resources } from '@codekeep/shared';
 
 interface StructurePickerProps {
   selected: StructureKind;
@@ -21,6 +23,14 @@ const COLORS: Record<StructureKind, string> = {
   archerTower: 'redBright',
 };
 
+function formatCost(cost: Resources): string {
+  const parts: string[] = [];
+  if (cost.gold > 0) parts.push(`${RESOURCE_ICONS.gold}${cost.gold}`);
+  if (cost.wood > 0) parts.push(`${RESOURCE_ICONS.wood}${cost.wood}`);
+  if (cost.stone > 0) parts.push(`${RESOURCE_ICONS.stone}${cost.stone}`);
+  return parts.join(' ');
+}
+
 export function StructurePicker({ selected }: StructurePickerProps) {
   return (
     <Box flexDirection="column">
@@ -28,7 +38,6 @@ export function StructurePicker({ selected }: StructurePickerProps) {
       {ALL_STRUCTURE_KINDS.map((kind, idx) => {
         const isSelected = kind === selected;
         const cost = STRUCTURE_COSTS[kind][1];
-        const costStr = `G${cost.gold} W${cost.wood} S${cost.stone}`;
 
         return (
           <Box key={kind}>
@@ -40,7 +49,7 @@ export function StructurePicker({ selected }: StructurePickerProps) {
               {isSelected ? '▸' : ' '} {idx + 1} {STRUCTURE_SYMBOLS[kind]} {STRUCTURE_NAMES[kind]}
             </Text>
             {isSelected && (
-              <Text dimColor> {costStr}</Text>
+              <Text dimColor> {formatCost(cost)}</Text>
             )}
           </Box>
         );

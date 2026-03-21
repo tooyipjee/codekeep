@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { RaidReplay, KeepGridState, GridCoord, RaidTickEvent, Resources } from '@codekeep/shared';
-import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL } from '@codekeep/shared';
+import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL, RESOURCE_ICONS } from '@codekeep/shared';
 
 interface RaidSummary {
   won: boolean;
@@ -37,9 +37,9 @@ interface RaiderState {
 
 function formatLootLine(loot: Resources, sign: '+' | '-'): string {
   const parts: string[] = [];
-  if (loot.gold > 0) parts.push(`${sign}${loot.gold}G`);
-  if (loot.wood > 0) parts.push(`${sign}${loot.wood}W`);
-  if (loot.stone > 0) parts.push(`${sign}${loot.stone}S`);
+  if (loot.gold > 0) parts.push(`${sign}${loot.gold}${RESOURCE_ICONS.gold}`);
+  if (loot.wood > 0) parts.push(`${sign}${loot.wood}${RESOURCE_ICONS.wood}`);
+  if (loot.stone > 0) parts.push(`${sign}${loot.stone}${RESOURCE_ICONS.stone}`);
   return parts.join(' ');
 }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { RAIDER_TYPES } from '@codekeep/shared';
+import { RAIDER_TYPES, RESOURCE_ICONS } from '@codekeep/shared';
 
 export function Help() {
   const R = RAIDER_TYPES;
@@ -44,6 +44,11 @@ export function Help() {
       <Text>  <Text color="cyan">4 @</Text> Ward          Reduces loot taken from nearby treasuries</Text>
       <Text>  <Text color="green">5 ^</Text> Watchtower  Extends ward range</Text>
       <Text>  <Text color="redBright">6 !</Text> Archer Tower  Fires at raiders in range</Text>
+      <Text> </Text>
+      <Text bold>Resources</Text>
+      <Text>  <Text color="yellow">{RESOURCE_ICONS.gold}</Text> Gold      Earned from events, foraging, and raids</Text>
+      <Text>  <Text color="green">{RESOURCE_ICONS.wood}</Text> Wood      Used to build treasuries and wards</Text>
+      <Text>  <Text color="white">{RESOURCE_ICONS.stone}</Text> Stone     Used to build walls and watchtowers</Text>
       <Text> </Text>
       <Text bold>Raider types</Text>
       <Text>  Raider  HP {R.raider.hp}, dmg {R.raider.damage}, speed {R.raider.speed}</Text>

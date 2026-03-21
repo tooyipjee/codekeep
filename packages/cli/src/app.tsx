@@ -345,8 +345,8 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
     <Box flexDirection="column">
       {offlineReport && (
         <Box flexDirection="column">
-          {(offlineReport.resources.compute > 0 || offlineReport.resources.memory > 0 || offlineReport.resources.bandwidth > 0) && (
-            <Text color="green">Passive income: +{offlineReport.resources.compute}C +{offlineReport.resources.memory}M +{offlineReport.resources.bandwidth}B</Text>
+          {(offlineReport.resources.gold > 0 || offlineReport.resources.wood > 0 || offlineReport.resources.stone > 0) && (
+            <Text color="green">Passive income: +{offlineReport.resources.gold}G +{offlineReport.resources.wood}W +{offlineReport.resources.stone}S</Text>
           )}
           {offlineReport.raids.length > 0 && (
             <Text color="yellow">Background raids: {offlineReport.raids.filter(r => r.won).length}W / {offlineReport.raids.filter(r => !r.won).length}L</Text>

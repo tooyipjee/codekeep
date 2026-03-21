@@ -13,12 +13,12 @@ interface StructurePickerProps {
 }
 
 const COLORS: Record<StructureKind, string> = {
-  firewall: 'white',
-  honeypot: 'magenta',
-  dataVault: 'yellow',
-  encryptionNode: 'cyan',
-  relayTower: 'green',
-  scanner: 'redBright',
+  wall: 'white',
+  trap: 'magenta',
+  treasury: 'yellow',
+  ward: 'cyan',
+  watchtower: 'green',
+  archerTower: 'redBright',
 };
 
 export function StructurePicker({ selected }: StructurePickerProps) {
@@ -28,7 +28,7 @@ export function StructurePicker({ selected }: StructurePickerProps) {
       {ALL_STRUCTURE_KINDS.map((kind, idx) => {
         const isSelected = kind === selected;
         const cost = STRUCTURE_COSTS[kind][1];
-        const costStr = `C${cost.compute} M${cost.memory} B${cost.bandwidth}`;
+        const costStr = `G${cost.gold} W${cost.wood} S${cost.stone}`;
 
         return (
           <Box key={kind}>

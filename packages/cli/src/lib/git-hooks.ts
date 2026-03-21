@@ -28,7 +28,7 @@ function hookScript(): string {
     `EVENTS_FILE="${eventsFile}"`,
     'mkdir -p "$EVENTS_DIR"',
     `TIMESTAMP=$(date +%s)000`,
-    `printf '{"type":"git_commit","timestamp":%s,"grants":{"compute":${grants.compute},"memory":${grants.memory},"bandwidth":${grants.bandwidth}}}\\n' "$TIMESTAMP" >> "$EVENTS_FILE"`,
+    `printf '{"type":"git_commit","timestamp":%s,"grants":{"gold":${grants.gold},"wood":${grants.wood},"stone":${grants.stone}}}\\n' "$TIMESTAMP" >> "$EVENTS_FILE"`,
     '',
   ].join('\n');
 }

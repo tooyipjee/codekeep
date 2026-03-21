@@ -1,14 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { GameSave, GridCoord, PlacedStructure } from '@codekeep/shared';
-import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL, STARTING_RESOURCES } from '@codekeep/shared';
+import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL } from '@codekeep/shared';
 
 interface TutorialProps {
   gameSave: GameSave;
   onComplete: () => void;
 }
 
-type Step = 'welcome' | 'move' | 'place_firewall' | 'place_honeypot' | 'raid_explain' | 'done';
+type Step = 'welcome' | 'move' | 'place_wall' | 'place_trap' | 'raid_explain' | 'done';
 
 export function Tutorial({ gameSave, onComplete }: TutorialProps) {
   const [step, setStep] = useState<Step>('welcome');
@@ -18,9 +18,9 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
   const advance = useCallback(() => {
     switch (step) {
       case 'welcome': setStep('move'); break;
-      case 'move': setStep('place_firewall'); break;
-      case 'place_firewall': break;
-      case 'place_honeypot': break;
+      case 'move': setStep('place_wall'); break;
+      case 'place_wall': break;
+      case 'place_trap': break;
       case 'raid_explain': setStep('done'); break;
       case 'done': onComplete(); break;
     }
@@ -34,7 +34,6 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
       return;
     }
 
-    // Interactive steps: place_firewall and place_honeypot
     if (input === 'h' || input === 'a' || key.leftArrow) setCursor(c => ({ ...c, x: Math.max(0, c.x - 1) }));
     else if (input === 'l' || input === 'd' || key.rightArrow) setCursor(c => ({ ...c, x: Math.min(GRID_SIZE - 1, c.x + 1) }));
     else if (input === 'k' || input === 'w' || key.upArrow) setCursor(c => ({ ...c, y: Math.max(0, c.y - 1) }));
@@ -43,19 +42,19 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
       const occupied = placed.some(s => s.pos.x === cursor.x && s.pos.y === cursor.y);
       if (occupied) return;
 
-      const kind = step === 'place_firewall' ? 'firewall' : 'honeypot';
+      const kind = step === 'place_wall' ? 'wall' : 'trap';
       const newStruct: PlacedStructure = {
         id: `tut-${kind}-${cursor.x}-${cursor.y}`,
-        kind: kind as any,
+        kind,
         level: 1,
         pos: { ...cursor },
         placedAtUnixMs: Date.now(),
       };
       setPlaced(prev => [...prev, newStruct]);
 
-      if (step === 'place_firewall') {
-        setStep('place_honeypot');
-      } else if (step === 'place_honeypot') {
+      if (step === 'place_wall') {
+        setStep('place_trap');
+      } else if (step === 'place_trap') {
         setStep('raid_explain');
       }
     }
@@ -77,7 +76,7 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
         let color: string | undefined;
         if (struct) {
           char = STRUCTURE_SYMBOLS[struct.kind];
-          color = struct.kind === 'firewall' ? 'white' : 'magenta';
+          color = struct.kind === 'wall' ? 'white' : 'magenta';
         }
         if (isCursor) {
           cells.push(<Text key={x} backgroundColor="white" color="black" bold>{char + ' '}</Text>);
@@ -101,11 +100,11 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
         <>
           <Text>Welcome to <Text bold>CodeKeep</Text>, {gameSave.player.displayName}!</Text>
           <Text> </Text>
-          <Text>Build an ASCII fortress. Defend your data vaults from raiders.</Text>
-          <Text>Your coding activity (git commits) generates resources.</Text>
+          <Text>Build an ASCII fortress. Defend your treasuries from raiding parties.</Text>
+          <Text>Your realm earns gold, wood, and stone over time (and from git activity if you hook it up).</Text>
           <Text> </Text>
-          <Text>Place <Text color="white" bold>#</Text> Firewalls to block, <Text color="magenta" bold>%</Text> Honeypots to stun,</Text>
-          <Text><Text color="redBright" bold>!</Text> Scanners to kill, and protect your <Text color="yellow" bold>$</Text> Data Vaults.</Text>
+          <Text>Place <Text color="white" bold>#</Text> Stone Walls to block paths, <Text color="magenta" bold>%</Text> Bear Traps to stun,</Text>
+          <Text><Text color="redBright" bold>!</Text> Archer Towers to shoot raiders, and guard your <Text color="yellow" bold>$</Text> Treasuries.</Text>
           <Text> </Text>
           <Text dimColor>Press Enter to try it out, s to skip</Text>
         </>
@@ -122,9 +121,9 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
         </>
       )}
 
-      {step === 'place_firewall' && (
+      {step === 'place_wall' && (
         <>
-          <Text bold>Step 2: Place a Firewall</Text>
+          <Text bold>Step 2: Place a Stone Wall</Text>
           <Text>Move to any empty cell and press <Text bold>Enter</Text> or <Text bold>e</Text>.</Text>
           <Text> </Text>
           {renderMiniGrid()}
@@ -133,10 +132,10 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
         </>
       )}
 
-      {step === 'place_honeypot' && (
+      {step === 'place_trap' && (
         <>
-          <Text bold>Step 3: Place a Honeypot</Text>
-          <Text>Now place a <Text color="magenta" bold>% Honeypot</Text> to stun raiders!</Text>
+          <Text bold>Step 3: Place a Bear Trap</Text>
+          <Text>Now place a <Text color="magenta" bold>% Bear Trap</Text> to stun the next raider who steps on it!</Text>
           <Text> </Text>
           {renderMiniGrid()}
           <Text> </Text>
@@ -148,13 +147,13 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
         <>
           <Text bold color="green">Nice work! Your first defenses are placed.</Text>
           <Text> </Text>
-          <Text>In the real game:</Text>
-          <Text>  <Text bold>r</Text> — Quick defend (instant result from keep screen)</Text>
-          <Text>  <Text bold>Defend Keep</Text> — Watch NPCs attack YOUR grid in real-time</Text>
-          <Text>  <Text bold>Attack NPC</Text> — Raid NPC keeps to steal resources</Text>
+          <Text>In the full game:</Text>
+          <Text>  <Text bold>r</Text> — Quick defend (instant result from the keep screen)</Text>
+          <Text>  <Text bold>Defend Keep</Text> — Watch raiders assault YOUR grid in real time</Text>
+          <Text>  <Text bold>Attack NPC</Text> — Raid NPC keeps to seize supplies</Text>
           <Text> </Text>
-          <Text>Your structures generate <Text color="green">passive resources</Text> over time.</Text>
-          <Text>NPCs will raid you <Text color="red">while you're away</Text> — build strong!</Text>
+          <Text>Your structures earn <Text color="green">passive resources</Text> over time.</Text>
+          <Text>Raiders will strike <Text color="red">while you are away</Text> — fortify well!</Text>
           <Text> </Text>
           <Text dimColor>Press Enter to continue</Text>
         </>
@@ -162,13 +161,13 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
 
       {step === 'done' && (
         <>
-          <Text bold color="yellow">You're ready! Go build your keep.</Text>
+          <Text bold color="yellow">You are ready! Go build your keep.</Text>
           <Text> </Text>
           <Text>Tips:</Text>
           <Text>  • Press <Text bold>?</Text> anytime for full help</Text>
           <Text>  • Use <Text bold>1-6</Text> to quickly select structures</Text>
           <Text>  • Press <Text bold>Tab</Text> to jump between placed structures</Text>
-          <Text>  • Press <Text bold>f</Text> for bonus resources (or install git hooks!)</Text>
+          <Text>  • Press <Text bold>f</Text> for a kingdom boon (or install git hooks)</Text>
           <Text> </Text>
           <Text dimColor>Press Enter to start playing</Text>
         </>

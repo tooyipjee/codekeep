@@ -1,12 +1,28 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import type { GameSave, RaidRecord } from '@codekeep/shared';
+import type { GameSave, RaidRecord, Resources } from '@codekeep/shared';
 import { ACHIEVEMENTS } from '@codekeep/shared';
 
 interface RaidLogProps {
   gameSave: GameSave;
   onBack: () => void;
   onWatchReplay?: (record: RaidRecord) => void;
+}
+
+function formatGain(r: Resources): string {
+  const parts: string[] = [];
+  if (r.gold > 0) parts.push(`+${r.gold}G`);
+  if (r.wood > 0) parts.push(`+${r.wood}W`);
+  if (r.stone > 0) parts.push(`+${r.stone}S`);
+  return parts.join('');
+}
+
+function formatLoss(r: Resources): string {
+  const parts: string[] = [];
+  if (r.wood > 0) parts.push(`-${r.wood}W`);
+  if (r.gold > 0) parts.push(`-${r.gold}G`);
+  if (r.stone > 0) parts.push(`-${r.stone}S`);
+  return parts.join('');
 }
 
 export function RaidLog({ gameSave, onBack, onWatchReplay }: RaidLogProps) {
@@ -58,9 +74,11 @@ export function RaidLog({ gameSave, onBack, onWatchReplay }: RaidLogProps) {
                 : (isDefense ? '✗' : '✓');
               const color = (isDefense ? r.outcome === 'defense_win' : r.outcome !== 'defense_win') ? 'green' : 'red';
               const type = isDefense ? 'DEF' : 'ATK';
-              const lootStr = r.lootLost.memory > 0 ? ` -${r.lootLost.memory}M` : '';
-              const gainStr = r.lootGained.compute + r.lootGained.memory + r.lootGained.bandwidth > 0
-                ? ` +${r.lootGained.compute}C+${r.lootGained.memory}M+${r.lootGained.bandwidth}B`
+              const lootStr = r.lootLost.gold + r.lootLost.wood + r.lootLost.stone > 0
+                ? ` ${formatLoss(r.lootLost)}`
+                : '';
+              const gainStr = r.lootGained.gold + r.lootGained.wood + r.lootGained.stone > 0
+                ? ` ${formatGain(r.lootGained)}`
                 : '';
               const sel = i === selected ? '>' : ' ';
               return (

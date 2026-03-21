@@ -12,29 +12,26 @@ interface KeepGridProps {
 }
 
 const STRUCTURE_COLORS: Record<StructureKind, string> = {
-  firewall: 'white',
-  honeypot: 'magenta',
-  dataVault: 'yellow',
-  encryptionNode: 'cyan',
-  relayTower: 'green',
-  scanner: 'redBright',
+  wall: 'white',
+  trap: 'magenta',
+  treasury: 'yellow',
+  ward: 'cyan',
+  watchtower: 'green',
+  archerTower: 'redBright',
 };
 
 const BRIGHT_COLORS: Record<StructureKind, string> = {
-  firewall: 'whiteBright',
-  honeypot: 'magentaBright',
-  dataVault: 'yellowBright',
-  encryptionNode: 'cyanBright',
-  relayTower: 'greenBright',
-  scanner: 'redBright',
+  wall: 'whiteBright',
+  trap: 'magentaBright',
+  treasury: 'yellowBright',
+  ward: 'cyanBright',
+  watchtower: 'greenBright',
+  archerTower: 'redBright',
 };
 
-const FRAGMENT_COLORS: Record<string, string> = {
-  compute_shard: 'cyan',
-  memory_bit: 'yellow',
-  bandwidth_packet: 'green',
-  data_bundle: 'whiteBright',
-};
+const FRAGMENT_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(FRAGMENT_TYPES).map(([k, v]) => [k, v.color]),
+);
 
 export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [] }: KeepGridProps) {
   const h = asciiMode ? '-' : '─';

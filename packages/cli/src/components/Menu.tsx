@@ -46,8 +46,8 @@ export function Menu({ gameSave, onKeep, onAttack, onDefend, onFriendRaid, onRai
   const p = gameSave.progression;
   const totalRaids = p.totalRaidsWon + p.totalRaidsLost;
   const keepAgeDays = Math.max(1, Math.floor((Date.now() - gameSave.keep.createdAtUnixMs) / 86400000));
-  const vaultCount = gameSave.keep.grid.structures.filter((s) => s.kind === 'dataVault').length;
-  const scannerCount = gameSave.keep.grid.structures.filter((s) => s.kind === 'scanner').length;
+  const treasuryCount = gameSave.keep.grid.structures.filter((s) => s.kind === 'treasury').length;
+  const archerCount = gameSave.keep.grid.structures.filter((s) => s.kind === 'archerTower').length;
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -62,7 +62,7 @@ export function Menu({ gameSave, onKeep, onAttack, onDefend, onFriendRaid, onRai
       </Text>
       <Text> </Text>
       <Text dimColor>  {gameSave.player.displayName}'s Keep — {keepAgeDays}d old</Text>
-      <Text dimColor>  {structCount} structures ({vaultCount}$ {scannerCount}!) · Raids {p.totalRaidsWon}W / {p.totalRaidsLost}L · Streak {p.currentWinStreak} (best {p.bestWinStreak})</Text>
+      <Text dimColor>  {structCount} structures ({treasuryCount}$ {archerCount}!) · Raids {p.totalRaidsWon}W / {p.totalRaidsLost}L · Streak {p.currentWinStreak} (best {p.bestWinStreak})</Text>
       <Text dimColor>  Difficulty: Lv.{totalRaids <= 2 ? 1 : totalRaids <= 5 ? 2 : totalRaids <= 9 ? 3 : totalRaids <= 14 ? 4 : 5}</Text>
       <Text dimColor>  Achievements: {gameSave.progression.achievements?.length || 0}/{10}</Text>
       <Text> </Text>

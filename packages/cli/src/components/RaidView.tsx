@@ -9,10 +9,10 @@ interface RaidSummary {
   outcome: string;
   lootGained: Resources;
   lootLost: Resources;
-  probesKilled: number;
-  probesTotal: number;
-  firewallsDestroyed: number;
-  scannersActive: number;
+  raidersKilled: number;
+  raidersTotal: number;
+  wallsDestroyed: number;
+  archersActive: number;
   difficulty: number;
 }
 
@@ -28,20 +28,28 @@ interface RaidViewProps {
 
 type SpeedMultiplier = 1 | 2 | 4 | 8;
 
-interface ProbeState {
+interface RaiderState {
   id: number;
   pos: GridCoord;
   alive: boolean;
   stunned: boolean;
 }
 
+function formatLootLine(loot: Resources, sign: '+' | '-'): string {
+  const parts: string[] = [];
+  if (loot.gold > 0) parts.push(`${sign}${loot.gold}G`);
+  if (loot.wood > 0) parts.push(`${sign}${loot.wood}W`);
+  if (loot.stone > 0) parts.push(`${sign}${loot.stone}S`);
+  return parts.join(' ');
+}
+
 const STRUCTURE_COLORS: Record<string, string> = {
-  firewall: 'white',
-  honeypot: 'magenta',
-  dataVault: 'yellow',
-  encryptionNode: 'cyan',
-  relayTower: 'green',
-  scanner: 'redBright',
+  wall: 'white',
+  trap: 'magenta',
+  treasury: 'yellow',
+  ward: 'cyan',
+  watchtower: 'green',
+  archerTower: 'redBright',
 };
 
 export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, onSpeedChange, onDone }: RaidViewProps) {
@@ -53,7 +61,7 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
     onSpeedChange?.(s);
   }, [onSpeedChange]);
   const [paused, setPaused] = useState(false);
-  const [probes, setProbes] = useState<Map<number, ProbeState>>(new Map());
+  const [raiders, setRaiders] = useState<Map<number, RaiderState>>(new Map());
   const [logs, setLogs] = useState<string[]>([]);
   const [outcome, setOutcome] = useState<string | null>(null);
   const lastProcessedTickRef = useRef(0);
@@ -99,87 +107,116 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
     const eventsInRange = replay.events.filter(
       (e) => e.t > lastProcessedTickRef.current && e.t <= currentTick,
     );
-    const newProbes = new Map(probes);
     const newLogs: string[] = [];
+
+    setRaiders((prev) => {
+      const newRaiders = new Map(prev);
+      for (const event of eventsInRange) {
+        switch (event.type) {
+          case 'raider_spawn':
+            newRaiders.set(event.probeId, {
+              id: event.probeId,
+              pos: { ...event.pos },
+              alive: true,
+              stunned: false,
+            });
+            break;
+          case 'raider_move': {
+            const p = newRaiders.get(event.probeId);
+            if (p) {
+              p.pos = { ...event.to };
+              p.stunned = false;
+            }
+            break;
+          }
+          case 'raider_stunned': {
+            const p = newRaiders.get(event.probeId);
+            if (p) p.stunned = true;
+            break;
+          }
+          case 'raider_destroyed': {
+            const p = newRaiders.get(event.probeId);
+            if (p) p.alive = false;
+            break;
+          }
+          default:
+            break;
+        }
+      }
+      return newRaiders;
+    });
 
     for (const event of eventsInRange) {
       switch (event.type) {
-        case 'probe_spawn':
-          newProbes.set(event.probeId, {
-            id: event.probeId,
-            pos: { ...event.pos },
-            alive: true,
-            stunned: false,
-          });
-          newLogs.push(`Probe ${event.probeId} spawns from ${event.edge}`);
+        case 'raider_spawn':
+          newLogs.push(`Raider ${event.probeId} enters from ${event.edge}`);
           break;
-        case 'probe_move': {
-          const p = newProbes.get(event.probeId);
-          if (p) {
-            p.pos = { ...event.to };
-            p.stunned = false;
-          }
+        case 'raider_stunned':
+          newLogs.push(`Raider ${event.probeId} STUNNED ${event.stunTicks}t`);
           break;
-        }
-        case 'probe_stunned': {
-          const p = newProbes.get(event.probeId);
-          if (p) p.stunned = true;
-          newLogs.push(`Probe ${event.probeId} STUNNED ${event.stunTicks}t`);
-          break;
-        }
-        case 'firewall_damaged':
+        case 'wall_damaged':
           newLogs.push(
             event.destroyed
-              ? `Firewall DESTROYED!`
-              : `Firewall hit (${event.hpRemaining} HP)`,
+              ? `Wall DESTROYED!`
+              : `Wall hit (${event.hpRemaining} HP)`,
           );
           break;
-        case 'scanner_hit':
-          newLogs.push(
-            event.hpRemaining <= 0
-              ? `Scanner KILLED probe ${event.probeId}!`
-              : `Scanner hit probe ${event.probeId} (-${event.damage}, ${event.hpRemaining} HP)`,
+        case 'arrow_hit':
+          if (event.hpRemaining <= 0) {
+            newLogs.push(`Archer slew raider ${event.probeId}!`);
+          } else {
+            newLogs.push(
+              `Arrow hit raider ${event.probeId} (-${event.damage}, ${event.hpRemaining} HP)`,
+            );
+          }
+          break;
+        case 'treasury_breach': {
+          const loot = formatLootLine(event.lootTaken, '');
+          const verb = raidType === 'attack' ? 'Looted' : 'Lost';
+          newLogs.push(`TREASURY BREACHED! ${verb} ${loot}`);
+          break;
+        }
+        case 'raider_destroyed': {
+          const killByArrow = eventsInRange.some(
+            (e): e is Extract<RaidTickEvent, { type: 'arrow_hit' }> =>
+              e.type === 'arrow_hit' && e.probeId === event.probeId && e.hpRemaining <= 0 && e.t === event.t,
           );
-          break;
-        case 'vault_breach':
-          newLogs.push(`VAULT BREACHED! ${raidType === 'attack' ? 'Gained' : 'Lost'} ${event.lootTaken.memory}M`);
-          break;
-        case 'probe_destroyed': {
-          const p = newProbes.get(event.probeId);
-          if (p) p.alive = false;
-          newLogs.push(`Probe ${event.probeId} eliminated`);
+          if (!killByArrow) {
+            newLogs.push(`Raider ${event.probeId} eliminated`);
+          }
           break;
         }
         case 'raid_end': {
           const outcomeText =
             event.outcome === 'defense_win'
-              ? (raidType === 'defend' ? 'DEFENSE VICTORY!' : 'ATTACK FAILED — Defenses held')
+              ? (raidType === 'defend' ? 'DEFENSE VICTORY!' : 'ATTACK FAILED — The keep held')
               : event.outcome === 'partial_breach'
-              ? (raidType === 'defend' ? 'PARTIAL BREACH — Some resources lost' : 'PARTIAL SUCCESS — Some loot gained')
+              ? (raidType === 'defend' ? 'PARTIAL BREACH — Some supplies lost' : 'PARTIAL SUCCESS — Some loot gained')
               : (raidType === 'defend' ? 'FULL BREACH — Major losses!' : 'FULL SUCCESS — Major loot!');
           setOutcome(outcomeText);
           newLogs.push(outcomeText);
           break;
         }
+        default:
+          break;
       }
     }
 
     lastProcessedTickRef.current = currentTick;
-    setProbes(newProbes);
     if (newLogs.length > 0) {
       setLogs((prev) => [...prev.slice(-8), ...newLogs]);
     }
-  }, [currentTick]);
+  }, [currentTick, raidType, replay]);
 
   const structureMap = new Map<string, typeof keepGrid.structures[number]>();
   for (const s of keepGrid.structures) {
     structureMap.set(`${s.pos.x},${s.pos.y}`, s);
   }
 
-  const probeMap = new Map<string, ProbeState>();
-  for (const [, p] of probes) {
+  const raiderMap = new Map<string, RaiderState>();
+  for (const [, p] of raiders) {
     if (p.alive) {
-      probeMap.set(`${p.pos.x},${p.pos.y}`, p);
+      raiderMap.set(`${p.pos.x},${p.pos.y}`, p);
     }
   }
 
@@ -188,13 +225,13 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
     const cells: React.ReactNode[] = [];
     for (let x = 0; x < GRID_SIZE; x++) {
       const key = `${x},${y}`;
-      const probe = probeMap.get(key);
+      const raider = raiderMap.get(key);
       const structure = structureMap.get(key);
 
-      if (probe) {
+      if (raider) {
         cells.push(
-          <Text key={x} color={probe.stunned ? 'cyan' : 'red'} bold>
-            {probe.stunned ? '◊ ' : '● '}
+          <Text key={x} color={raider.stunned ? 'cyan' : 'red'} bold>
+            {raider.stunned ? '◊ ' : '● '}
           </Text>,
         );
       } else if (structure) {
@@ -253,13 +290,13 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
           {summary && (
             <Box flexDirection="column" marginTop={1}>
               <Text bold>═══ Raid Summary ═══</Text>
-              <Text>Difficulty: Lv.{summary.difficulty}  Probes: {summary.probesKilled}/{summary.probesTotal} killed</Text>
-              <Text>Firewalls destroyed: {summary.firewallsDestroyed}  Scanners active: {summary.scannersActive}</Text>
-              {summary.lootGained.compute + summary.lootGained.memory + summary.lootGained.bandwidth > 0 && (
-                <Text color="green">Resources gained: +{summary.lootGained.compute}C +{summary.lootGained.memory}M +{summary.lootGained.bandwidth}B</Text>
+              <Text>Difficulty: Lv.{summary.difficulty}  Raiders: {summary.raidersKilled}/{summary.raidersTotal} slain</Text>
+              <Text>Walls destroyed: {summary.wallsDestroyed}  Archer towers: {summary.archersActive}</Text>
+              {summary.lootGained.gold + summary.lootGained.wood + summary.lootGained.stone > 0 && (
+                <Text color="green">Resources gained: {formatLootLine(summary.lootGained, '+')}</Text>
               )}
-              {summary.lootLost.compute + summary.lootLost.memory + summary.lootLost.bandwidth > 0 && (
-                <Text color="red">Resources lost: -{summary.lootLost.compute}C -{summary.lootLost.memory}M -{summary.lootLost.bandwidth}B</Text>
+              {summary.lootLost.gold + summary.lootLost.wood + summary.lootLost.stone > 0 && (
+                <Text color="red">Resources lost: {formatLootLine(summary.lootLost, '-')}</Text>
               )}
             </Box>
           )}

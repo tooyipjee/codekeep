@@ -13,12 +13,12 @@ interface HUDProps {
 }
 
 const COMPACT_NAMES: Record<StructureKind, string> = {
-  firewall: 'FW',
-  honeypot: 'HP',
-  dataVault: 'DV',
-  encryptionNode: 'EN',
-  relayTower: 'RT',
-  scanner: 'SC',
+  wall: 'WL',
+  trap: 'TR',
+  treasury: 'TY',
+  ward: 'WD',
+  watchtower: 'WT',
+  archerTower: 'AT',
 };
 
 export function HUD({ resources, selectedStructure, message, compact, structureAtCursor, fragmentCount = 0 }: HUDProps) {
@@ -29,11 +29,11 @@ export function HUD({ resources, selectedStructure, message, compact, structureA
         <Text>
           <Text bold color="yellow">{'◆'}</Text>
           <Text dimColor>{' │ '}</Text>
-          <Text color="red">C:{resources.compute}</Text>
+          <Text color="yellow">G:{resources.gold}</Text>
           <Text> </Text>
-          <Text color="blue">M:{resources.memory}</Text>
+          <Text color="green">W:{resources.wood}</Text>
           <Text> </Text>
-          <Text color="green">B:{resources.bandwidth}</Text>
+          <Text color="white">S:{resources.stone}</Text>
           <Text dimColor>{' │ '}</Text>
           <Text bold>{name}</Text>
           {message ? <Text dimColor>{' │ '}</Text> : null}
@@ -48,9 +48,9 @@ export function HUD({ resources, selectedStructure, message, compact, structureA
       <Box flexDirection="row" gap={1}>
         <Text bold color="yellow">{'◆ CodeKeep'}</Text>
         <Text dimColor>{'│'}</Text>
-        <Text color="red">C:{resources.compute}</Text>
-        <Text color="blue">M:{resources.memory}</Text>
-        <Text color="green">B:{resources.bandwidth}</Text>
+        <Text color="yellow">G:{resources.gold}</Text>
+        <Text color="green">W:{resources.wood}</Text>
+        <Text color="white">S:{resources.stone}</Text>
         <Text dimColor>{'│'}</Text>
         <Text>Sel: <Text bold>{STRUCTURE_NAMES[selectedStructure]}</Text></Text>
         {fragmentCount > 0 && (
@@ -68,7 +68,7 @@ export function HUD({ resources, selectedStructure, message, compact, structureA
           {STRUCTURE_NAMES[structureAtCursor.kind]} Lv.{structureAtCursor.level}
           {structureAtCursor.level < 3 ? (() => {
             const nextCost = STRUCTURE_COSTS[structureAtCursor.kind][(structureAtCursor.level + 1) as 1 | 2 | 3];
-            return ` → Lv.${structureAtCursor.level + 1}: C${nextCost.compute} M${nextCost.memory} B${nextCost.bandwidth}`;
+            return ` → Lv.${structureAtCursor.level + 1}: G${nextCost.gold} W${nextCost.wood} S${nextCost.stone}`;
           })() : ' (MAX)'}
         </Text>
       )}

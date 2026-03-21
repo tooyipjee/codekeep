@@ -1,7 +1,9 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { RAIDER_TYPES } from '@codekeep/shared';
 
 export function Help() {
+  const R = RAIDER_TYPES;
   return (
     <Box flexDirection="column" padding={1}>
       <Text bold color="yellow">{'◆ CodeKeep — Help'}</Text>
@@ -20,34 +22,33 @@ export function Help() {
       <Text>  x                           Demolish structure (50% refund)</Text>
       <Text> </Text>
       <Text bold>Foraging</Text>
-      <Text>  c                           Collect data fragment at cursor</Text>
-      <Text>  {'                             (~ symbols on the grid)'}</Text>
-      <Text>  {'  Scanners boost spawn rate, vaults boost yield'}</Text>
-      <Text>  {'  Relays auto-collect nearby fragments'}</Text>
+      <Text>  c                           Collect forage at cursor (~ on the grid)</Text>
+      <Text>  {'  Archer towers improve spawn rate; treasuries improve yield'}</Text>
+      <Text>  {'  Watchtowers auto-gather nearby forage'}</Text>
       <Text> </Text>
       <Text bold>Combat</Text>
       <Text>  r                           Quick defend (instant result)</Text>
       <Text>  v                           View last quick-defend replay</Text>
-      <Text>  Defend Keep (menu)          Watch NPCs attack your grid</Text>
-      <Text>  Attack NPC (menu)           Raid NPC keep for resources</Text>
+      <Text>  Defend Keep (menu)          Watch raiders assault your grid</Text>
+      <Text>  Attack NPC (menu)           Raid an NPC keep for loot</Text>
       <Text> </Text>
       <Text bold>Other</Text>
-      <Text>  f                           Simulate coding event (+resources)</Text>
+      <Text>  f                           Kingdom boon (+resources, sim)</Text>
       <Text>  ?                           Toggle this help</Text>
       <Text>  q                           Save and quit</Text>
       <Text> </Text>
       <Text bold>Structures</Text>
-      <Text>  <Text color="white">1 #</Text> Firewall     Blocks probe movement, has HP</Text>
-      <Text>  <Text color="magenta">2 %</Text> Honeypot     Stuns probes that walk over it</Text>
-      <Text>  <Text color="yellow">3 $</Text> Data Vault   Stores resources (raid target)</Text>
-      <Text>  <Text color="cyan">4 @</Text> Encryption   Reduces loot from nearby vaults</Text>
-      <Text>  <Text color="green">5 ^</Text> Relay Tower  Extends encryption range</Text>
-      <Text>  <Text color="redBright">6 !</Text> Scanner      Deals damage to probes in range</Text>
+      <Text>  <Text color="white">1 #</Text> Stone Wall    Blocks raiders, has HP</Text>
+      <Text>  <Text color="magenta">2 %</Text> Bear Trap     Stuns raiders that step on it</Text>
+      <Text>  <Text color="yellow">3 $</Text> Treasury      Stores supplies (raid target)</Text>
+      <Text>  <Text color="cyan">4 @</Text> Ward          Reduces loot taken from nearby treasuries</Text>
+      <Text>  <Text color="green">5 ^</Text> Watchtower  Extends ward range</Text>
+      <Text>  <Text color="redBright">6 !</Text> Archer Tower  Fires at raiders in range</Text>
       <Text> </Text>
-      <Text bold>Probe Types</Text>
-      <Text>  Standard  HP 30, dmg 8, speed 1</Text>
-      <Text>  Scout     HP 14, dmg 4, speed 2 (moves twice per tick)</Text>
-      <Text>  Brute     HP 55, dmg 14, speed 1</Text>
+      <Text bold>Raider types</Text>
+      <Text>  Raider  HP {R.raider.hp}, dmg {R.raider.damage}, speed {R.raider.speed}</Text>
+      <Text>  Scout   HP {R.scout.hp}, dmg {R.scout.damage}, speed {R.scout.speed} (moves twice per tick)</Text>
+      <Text>  Brute   HP {R.brute.hp}, dmg {R.brute.damage}, speed {R.brute.speed}</Text>
       <Text> </Text>
       <Text dimColor>Press any key to close</Text>
     </Box>

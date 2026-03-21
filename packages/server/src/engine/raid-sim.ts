@@ -18,6 +18,7 @@ import {
   getWallHp,
   getArcherTowerHp,
   getWatchtowerHp,
+  getVaultHp,
   getTrapStunTicks,
   getTrapCooldown,
   getEffectiveMitigation,
@@ -201,6 +202,7 @@ function getStructureHp(kind: StructureKind, level: UpgradeLevel): number {
     case 'wall': return getWallHp(level);
     case 'archerTower': return getArcherTowerHp(level);
     case 'watchtower': return getWatchtowerHp(level);
+    case 'vault': return getVaultHp(level);
     default: return 0;
   }
 }
@@ -316,7 +318,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
   const rng = mulberry32(hashSeed(config.seed));
   const { keepGrid } = config;
 
-  const solidKinds: StructureKind[] = ['wall', 'archerTower', 'watchtower'];
+  const solidKinds: StructureKind[] = ['wall', 'archerTower', 'watchtower', 'vault'];
   const solids: SolidStructure[] = keepGrid.structures
     .filter((s) => solidKinds.includes(s.kind))
     .sort((a, b) => a.id.localeCompare(b.id))

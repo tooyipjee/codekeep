@@ -4,38 +4,50 @@ import type { GameSave } from '@codekeep/shared';
 
 interface MenuProps {
   gameSave: GameSave;
+  onlineMode?: boolean;
   onKeep: () => void;
   onAttack: () => void;
   onDefend: () => void;
   onFriendRaid: () => void;
+  onPvp?: () => void;
   onRaidLog: () => void;
   onSettings: () => void;
   onQuit: () => void;
 }
 
-const MENU_ITEMS = [
-  { key: 'keep', label: 'Build Keep', desc: 'Place and upgrade structures' },
-  { key: 'defend', label: 'Defend Keep', desc: 'Watch NPCs attack YOUR defenses' },
-  { key: 'attack', label: 'Attack NPC', desc: 'Raid an NPC keep for resources' },
-  { key: 'friendRaid', label: 'Raid Rival Keep', desc: 'Plunder a rival lord\'s fortress' },
-  { key: 'raidLog', label: 'Raid Log', desc: 'View recent raid history' },
-  { key: 'settings', label: 'Settings', desc: 'Game options and reset' },
-  { key: 'quit', label: 'Rest for the Night', desc: 'Save and exit' },
-] as const;
+function getMenuItems(online: boolean) {
+  const items = [
+    { key: 'keep', label: 'Build Keep', desc: 'Place and upgrade structures' },
+    { key: 'defend', label: 'Defend Keep', desc: 'Watch NPCs attack YOUR defenses' },
+    { key: 'attack', label: 'Attack NPC', desc: 'Raid an NPC keep for resources' },
+  ];
+  if (online) {
+    items.push({ key: 'pvp', label: '⚔ PvP Arena', desc: 'Fight real players for trophies' });
+  }
+  items.push(
+    { key: 'friendRaid', label: 'Raid Rival Keep', desc: "Plunder a rival lord's fortress" },
+    { key: 'raidLog', label: 'Raid Log', desc: 'View recent raid history' },
+    { key: 'settings', label: 'Settings', desc: 'Game options and reset' },
+    { key: 'quit', label: 'Rest for the Night', desc: 'Save and exit' },
+  );
+  return items;
+}
 
-export function Menu({ gameSave, onKeep, onAttack, onDefend, onFriendRaid, onRaidLog, onSettings, onQuit }: MenuProps) {
+export function Menu({ gameSave, onlineMode, onKeep, onAttack, onDefend, onFriendRaid, onPvp, onRaidLog, onSettings, onQuit }: MenuProps) {
+  const menuItems = getMenuItems(!!onlineMode);
   const [selected, setSelected] = useState(0);
 
   useInput((input, key) => {
     if (input === 'k' || input === 'w' || key.upArrow) {
       setSelected((s) => Math.max(0, s - 1));
     } else if (input === 'j' || input === 's' || key.downArrow) {
-      setSelected((s) => Math.min(MENU_ITEMS.length - 1, s + 1));
+      setSelected((s) => Math.min(menuItems.length - 1, s + 1));
     } else if (key.return) {
-      const item = MENU_ITEMS[selected];
+      const item = menuItems[selected];
       if (item.key === 'keep') onKeep();
       else if (item.key === 'defend') onDefend();
       else if (item.key === 'attack') onAttack();
+      else if (item.key === 'pvp') onPvp?.();
       else if (item.key === 'friendRaid') onFriendRaid();
       else if (item.key === 'raidLog') onRaidLog();
       else if (item.key === 'settings') onSettings();
@@ -70,7 +82,7 @@ export function Menu({ gameSave, onKeep, onAttack, onDefend, onFriendRaid, onRai
       <Text dimColor>  Achievements: {gameSave.progression.achievements?.length || 0}/{10}</Text>
       <Text> </Text>
 
-      {MENU_ITEMS.map((item, i) => (
+      {menuItems.map((item, i) => (
         <Box key={item.key}>
           <Text color={i === selected ? 'yellow' : undefined} bold={i === selected}>
             {i === selected ? ' ▸ ' : '   '}

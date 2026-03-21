@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { RaidReplay, KeepGridState, GridCoord, RaidTickEvent, Resources, ProbeType, PlacedStructure, StructureKind } from '@codekeep/shared';
-import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL, RESOURCE_ICONS, RAIDER_TYPES, WALL_HP, ARCHER_TOWER_HP, WATCHTOWER_HP, STRUCTURE_NAMES } from '@codekeep/shared';
+import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL, RESOURCE_ICONS, RAIDER_TYPES, WALL_HP, ARCHER_TOWER_HP, WATCHTOWER_HP, VAULT_HP, STRUCTURE_NAMES } from '@codekeep/shared';
 
 interface RaidSummary {
   won: boolean;
@@ -114,6 +114,7 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
       wall: WALL_HP,
       archerTower: ARCHER_TOWER_HP,
       watchtower: WATCHTOWER_HP,
+      vault: VAULT_HP,
     };
     for (const s of keepGrid.structures) {
       const hp = hpMap[s.kind];

@@ -1,4 +1,4 @@
-import type { StructureKind, UpgradeLevel, Resources, StructureStats, FragmentType, ResourceId } from './types.js';
+import type { StructureKind, UpgradeLevel, Resources, StructureStats, FragmentType, ResourceId, League, RaidOutcome, ProbeType } from './types.js';
 
 export const RESOURCE_ICONS: Record<ResourceId, string> = {
   gold: '●',
@@ -42,6 +42,7 @@ export const STRUCTURE_SYMBOLS: Record<StructureKind, string> = {
   ward: '@',
   watchtower: '^',
   archerTower: '!',
+  vault: '&',
 };
 
 export const STRUCTURE_NAMES: Record<StructureKind, string> = {
@@ -51,6 +52,7 @@ export const STRUCTURE_NAMES: Record<StructureKind, string> = {
   ward: 'Ward',
   watchtower: 'Watchtower',
   archerTower: 'Archer Tower',
+  vault: 'Vault',
 };
 
 export const EMPTY_CELL_SYMBOL = '·';
@@ -85,6 +87,11 @@ export const STRUCTURE_COSTS: Record<StructureKind, Record<UpgradeLevel, Resourc
     1: { gold: 14, wood: 6, stone: 8 },
     2: { gold: 16, wood: 8, stone: 10 },
     3: { gold: 20, wood: 12, stone: 14 },
+  },
+  vault: {
+    1: { gold: 20, wood: 20, stone: 15 },
+    2: { gold: 35, wood: 35, stone: 25 },
+    3: { gold: 55, wood: 55, stone: 40 },
   },
 };
 
@@ -177,4 +184,79 @@ export const ALL_STRUCTURE_KINDS: StructureKind[] = [
   'ward',
   'watchtower',
   'archerTower',
+  'vault',
 ];
+
+export const VAULT_HP: Record<UpgradeLevel, number> = { 1: 60, 2: 90, 3: 130 };
+export const VAULT_PROTECTION: Record<UpgradeLevel, Resources> = {
+  1: { gold: 50, wood: 30, stone: 20 },
+  2: { gold: 100, wood: 60, stone: 40 },
+  3: { gold: 180, wood: 110, stone: 75 },
+};
+export const VAULT_MAX_COUNT = 1;
+
+export const PVP_LOOT_CAP_PERCENT = 0.30;
+
+export const TROPHY_CONFIG = {
+  startingTrophies: 0,
+  attackFullBreach: 30,
+  attackPartialBreach: 15,
+  attackDefenseWin: -10,
+  defendDefenseWin: 20,
+  defendPartialBreach: -5,
+  defendFullBreach: -15,
+  minTrophies: 0,
+  revengeBonus: 1.5,
+} as const;
+
+export const LEAGUE_BRACKETS: { name: League; min: number; max: number }[] = [
+  { name: 'copper', min: 0, max: 199 },
+  { name: 'iron', min: 200, max: 499 },
+  { name: 'silver', min: 500, max: 999 },
+  { name: 'gold', min: 1000, max: 1999 },
+  { name: 'diamond', min: 2000, max: Infinity },
+];
+
+export const SHIELD_DURATION_MS: Record<RaidOutcome, number> = {
+  defense_win: 2 * 60 * 60 * 1000,
+  partial_breach: 4 * 60 * 60 * 1000,
+  full_breach: 8 * 60 * 60 * 1000,
+};
+
+export const WARCAMP_TRAIN_COST: Record<ProbeType, Resources> = {
+  raider: { gold: 8, wood: 4, stone: 2 },
+  scout: { gold: 6, wood: 6, stone: 0 },
+  brute: { gold: 15, wood: 8, stone: 8 },
+};
+
+export const WARCAMP_TRAIN_TIME_MS: Record<ProbeType, number> = {
+  raider: 2 * 60 * 1000,
+  scout: 2 * 60 * 1000,
+  brute: 5 * 60 * 1000,
+};
+
+export const WARCAMP_BASE_SLOTS = 3;
+export const WARCAMP_MAX_SLOTS = 8;
+
+export const MATCHMAKING_TROPHY_RANGE = 200;
+export const MATCHMAKING_WIDEN_INTERVAL_MS = 5000;
+export const MATCHMAKING_WIDEN_AMOUNT = 50;
+export const ATTACKER_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+export const REVENGE_EXPIRY_MS = 48 * 60 * 60 * 1000;
+
+export const SEASON_DURATION_MS = 28 * 24 * 60 * 60 * 1000;
+export const SEASON_TROPHY_RESET_FACTOR = 0.6;
+
+export const SEASON_REWARDS: Record<League, Resources> = {
+  copper: { gold: 50, wood: 25, stone: 15 },
+  iron: { gold: 120, wood: 60, stone: 40 },
+  silver: { gold: 250, wood: 120, stone: 80 },
+  gold: { gold: 500, wood: 250, stone: 160 },
+  diamond: { gold: 800, wood: 400, stone: 260 },
+};
+
+export const DORMANT_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000;
+export const NEW_PLAYER_PROTECTION_MS = 48 * 60 * 60 * 1000;
+export const BATTERED_THRESHOLD = 3;
+export const BATTERED_SHIELD_MS = 12 * 60 * 60 * 1000;
+export const BATTERED_INCOME_MULTIPLIER = 1.5;

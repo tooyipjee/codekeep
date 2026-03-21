@@ -7,6 +7,7 @@ import {
   WALL_HP,
   ARCHER_TOWER_HP,
   WATCHTOWER_HP,
+  VAULT_HP,
   TRAP_STUN_TICKS,
   TRAP_COOLDOWN_TICKS,
   TREASURY_CAPACITY,
@@ -27,6 +28,10 @@ export function getArcherTowerHp(level: UpgradeLevel): number {
 
 export function getWatchtowerHp(level: UpgradeLevel): number {
   return WATCHTOWER_HP[level];
+}
+
+export function getVaultHp(level: UpgradeLevel): number {
+  return VAULT_HP[level];
 }
 
 export function getTrapStunTicks(level: UpgradeLevel): number {

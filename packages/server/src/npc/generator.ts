@@ -6,6 +6,7 @@ import {
   type GridCoord,
   GRID_SIZE,
   STARTING_RESOURCES,
+  VAULT_MAX_COUNT,
 } from '@codekeep/shared';
 import { mulberry32, hashSeed } from '../engine/raid-sim.js';
 
@@ -79,6 +80,13 @@ export function generateNpcKeep(seed: string, difficulty: number): Keep {
     const pos = findFreeNearStructures(rng, occupied, structures);
     if (!pos) break;
     structures.push(makeStructure('archerTower', pos, randomLevel(rng, diff.maxUpgradeLevel)));
+    occupied.add(`${pos.x},${pos.y}`);
+  }
+
+  for (let i = 0; i < VAULT_MAX_COUNT; i++) {
+    const pos = findFreeInnerPos(rng, occupied);
+    if (!pos) break;
+    structures.push(makeStructure('vault', pos, randomLevel(rng, diff.maxUpgradeLevel)));
     occupied.add(`${pos.x},${pos.y}`);
   }
 

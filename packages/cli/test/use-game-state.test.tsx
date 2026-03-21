@@ -161,7 +161,7 @@ describe('useGameState hook', () => {
     }
     const { lastFrame } = render(<Comp />);
     await delay(200);
-    expect(lastFrame()).toContain('archerTower');
+    expect(lastFrame()).toContain('vault');
   });
 
   it('selectStructure sets index', async () => {

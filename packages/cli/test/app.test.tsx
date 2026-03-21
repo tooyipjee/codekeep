@@ -270,9 +270,9 @@ describe('App component', () => {
     const { stdin, lastFrame } = render(
       <App asciiMode={false} compact={false} forceTutorial={false} autoResume={false} />,
     );
-    await delay(400);
-    await sendKeys(stdin, ['j', 'j', '\r']);
     await delay(500);
+    await sendKeys(stdin, ['j', 'j', '\r']);
+    await delay(800);
     expect(lastFrame()).toContain('ATTACKING');
   });
 
@@ -280,9 +280,9 @@ describe('App component', () => {
     const { stdin, lastFrame } = render(
       <App asciiMode={false} compact={false} forceTutorial={false} autoResume={false} />,
     );
-    await delay(400);
+    await delay(500);
     await sendKeys(stdin, ['j', 'j', 'j', '\r']);
-    await delay(400);
+    await delay(600);
     expect(lastFrame()).toContain('Rival Keeps');
   });
 
@@ -400,12 +400,12 @@ describe('App component', () => {
     const { stdin, lastFrame } = render(
       <App asciiMode={false} compact={false} forceTutorial={false} autoResume={false} />,
     );
-    await delay(400);
+    await delay(500);
     await sendKeys(stdin, ['j', 'j', 'j', 'j', 'j', '\r']);
-    await delay(400);
+    await delay(600);
     expect(lastFrame()).toContain('ASCII Mode');
     stdin.write('\x1B');
-    await delay(400);
+    await delay(500);
     expect(lastFrame()).toContain('Build Keep');
   });
 

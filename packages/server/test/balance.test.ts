@@ -47,6 +47,9 @@ function createBalancedKeep(): KeepGridState {
 
     // Archer tower covering the southern approach
     makeStructure('archerTower', 8, 11, 1),
+
+    // Vault protecting resources
+    makeStructure('vault', 9, 10, 1),
   ];
 
   return { width: 16, height: 16, structures };

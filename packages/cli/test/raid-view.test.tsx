@@ -164,9 +164,9 @@ describe('RaidView component', () => {
     const { stdin, lastFrame } = render(
       <RaidView replay={replay} keepGrid={emptyGrid} raidType="defend" onDone={vi.fn()} />,
     );
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 800));
     stdin.write('p');
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 800));
     const frame = lastFrame();
     expect(frame).toContain('PAUSED');
   });

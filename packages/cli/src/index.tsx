@@ -15,8 +15,11 @@ program
   .option('--compact', 'Compact layout for narrow terminals')
   .option('--tutorial', 'Replay the tutorial')
   .option('--resume', 'Skip menu, jump straight to keep')
+  .option('--online <url>', 'Connect to a CodeKeep server for multiplayer')
+  .option('--server <url>', 'Alias for --online')
   .action((opts) => {
     const hasSave = !!loadGame();
+    const serverUrl = opts.online || opts.server || process.env.CODEKEEP_SERVER;
 
     const { waitUntilExit, unmount } = render(
       <App
@@ -24,6 +27,7 @@ program
         compact={opts.compact ?? false}
         forceTutorial={opts.tutorial ?? false}
         autoResume={(opts.resume ?? false) && hasSave}
+        serverUrl={serverUrl}
       />,
       {
         exitOnCtrlC: false,

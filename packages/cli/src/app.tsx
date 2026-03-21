@@ -14,8 +14,14 @@ import { FriendList } from './components/FriendList.js';
 import { RaidLog } from './components/RaidLog.js';
 import { Settings } from './components/Settings.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { PvpMenu } from './components/PvpMenu.js';
+import { WarCampView } from './components/WarCampView.js';
+import { LeaderboardView } from './components/LeaderboardView.js';
+import { AuthView } from './components/AuthView.js';
 import { useGameState } from './hooks/useGameState.js';
-import type { Keep, RaidReplay as RaidReplayType, KeepGridState, RaidRecord } from '@codekeep/shared';
+import { OnlineBackend } from './lib/online-backend.js';
+import type { MatchTarget, PvpProfile, LeaderboardEntry } from './lib/backend.js';
+import type { Keep, RaidReplay as RaidReplayType, KeepGridState, RaidRecord, ProbeType, WarCamp } from '@codekeep/shared';
 
 const MIN_COLS = 60;
 const MIN_ROWS = 18;
@@ -39,19 +45,20 @@ function useTerminalSize() {
   return size;
 }
 
-type Screen = 'menu' | 'keep' | 'raid' | 'friendList' | 'friendRaid' | 'tutorial' | 'raidLog' | 'settings';
+type Screen = 'menu' | 'keep' | 'raid' | 'friendList' | 'friendRaid' | 'tutorial' | 'raidLog' | 'settings' | 'pvp' | 'warcamp' | 'leaderboard' | 'auth';
 
 interface AppProps {
   asciiMode: boolean;
   compact: boolean;
   forceTutorial: boolean;
   autoResume: boolean;
+  serverUrl?: string;
 }
 
-function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoResume }: AppProps) {
+function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoResume, serverUrl }: AppProps) {
   const { exit } = useApp();
   const { columns, rows } = useTerminalSize();
-  const [screen, setScreen] = useState<Screen>(autoResume ? 'keep' : 'menu');
+  const [screen, setScreen] = useState<Screen>(serverUrl ? 'auth' : autoResume ? 'keep' : 'menu');
   const [asciiMode, setAsciiMode] = useState(initialAsciiMode);
   const [showHelp, setShowHelp] = useState(false);
   const [friendRaidReplay, setFriendRaidReplay] = useState<RaidReplayType | null>(null);
@@ -60,6 +67,18 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
   const [coordInput, setCoordInput] = useState('');
   const [raidReturnScreen, setRaidReturnScreen] = useState<Screen>('keep');
   const raidSpeedRef = useRef<1 | 2 | 4 | 8>(1);
+
+  // Online state
+  const onlineBackendRef = useRef(serverUrl ? new OnlineBackend(serverUrl) : null);
+  const [onlineMode, setOnlineMode] = useState(false);
+  const [pvpProfile, setPvpProfile] = useState<PvpProfile | null>(null);
+  const [matchTargets, setMatchTargets] = useState<MatchTarget[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
+  const [warCamp, setWarCamp] = useState<WarCamp>({ slots: [], maxSlots: 3 });
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
 
   const isCompact = compact || columns < 80 || rows < 24;
   const tooSmall = columns < MIN_COLS || rows < MIN_ROWS;
@@ -104,6 +123,77 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
     deleteSaveFile();
     exit();
   }, [exit]);
+
+  const handleAuth = useCallback(async (type: 'login' | 'register', value: string) => {
+    const backend = onlineBackendRef.current;
+    if (!backend) return;
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      if (type === 'login') {
+        await backend.login(value);
+      } else {
+        await backend.register(value);
+      }
+      setOnlineMode(true);
+      setScreen('menu');
+      backend.getPvpProfile?.().then((p) => setPvpProfile(p));
+      backend.registerForMatchmaking?.();
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Connection failed');
+    } finally {
+      setAuthLoading(false);
+    }
+  }, []);
+
+  const handleSearchMatch = useCallback(async () => {
+    const backend = onlineBackendRef.current;
+    if (!backend?.findMatch) return;
+    setIsSearching(true);
+    try {
+      const targets = await backend.findMatch();
+      setMatchTargets(targets);
+    } catch {
+      setMatchTargets([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const handlePvpAttack = useCallback(async (target: MatchTarget, probeTypes: ProbeType[]) => {
+    const backend = onlineBackendRef.current;
+    if (!backend?.launchPvpRaid || !gameSave) return;
+    try {
+      const result = await backend.launchPvpRaid(target.playerId, probeTypes);
+      const watched = watchRaidRecord({
+        replay: result.replay,
+        attackerId: gameSave.player.id,
+        defenderKeepId: target.playerId,
+        defenderGrid: target.grid,
+      });
+      if (watched) {
+        setRaidReturnScreen('pvp');
+        setScreen('raid');
+      }
+      setPvpProfile((prev) => prev ? { ...prev, trophies: result.newTrophies, league: result.newLeague } : prev);
+    } catch {
+      // Failed to launch raid
+    }
+  }, [gameSave, watchRaidRecord]);
+
+  const handleLoadLeaderboard = useCallback(async () => {
+    const backend = onlineBackendRef.current;
+    if (!backend?.getLeaderboard) return;
+    setIsLoadingLeaderboard(true);
+    try {
+      const entries = await backend.getLeaderboard();
+      setLeaderboard(entries);
+    } catch {
+      setLeaderboard([]);
+    } finally {
+      setIsLoadingLeaderboard(false);
+    }
+  }, []);
 
   useInput((input, key) => {
     if (showHelp) {
@@ -167,7 +257,8 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
       return;
     }
 
-    if (screen === 'friendList' || screen === 'raidLog' || screen === 'settings') {
+    if (screen === 'friendList' || screen === 'raidLog' || screen === 'settings'
+        || screen === 'pvp' || screen === 'warcamp' || screen === 'leaderboard' || screen === 'auth') {
       return;
     }
 
@@ -253,10 +344,26 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
     );
   }
 
+  if (screen === 'auth') {
+    return (
+      <AuthView
+        error={authError}
+        isLoading={authLoading}
+        onLogin={(key) => handleAuth('login', key)}
+        onRegister={(name) => handleAuth('register', name)}
+        onPlayOffline={() => {
+          setOnlineMode(false);
+          setScreen('menu');
+        }}
+      />
+    );
+  }
+
   if (screen === 'menu') {
     return (
       <Menu
         gameSave={gameSave}
+        onlineMode={onlineMode}
         onKeep={() => setScreen('keep')}
         onAttack={() => {
           startAttackRaid();
@@ -266,6 +373,7 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
           startDefendRaid();
           setScreen('raid');
         }}
+        onPvp={() => setScreen('pvp')}
         onFriendRaid={() => setScreen('friendList')}
         onRaidLog={() => setScreen('raidLog')}
         onSettings={() => setScreen('settings')}
@@ -297,6 +405,49 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
         onReplayTutorial={() => setScreen('tutorial')}
         asciiMode={asciiMode}
         onToggleAscii={() => setAsciiMode(a => !a)}
+      />
+    );
+  }
+
+  if (screen === 'pvp') {
+    return (
+      <PvpMenu
+        pvpProfile={pvpProfile}
+        targets={matchTargets}
+        isSearching={isSearching}
+        onSearch={handleSearchMatch}
+        onAttack={handlePvpAttack}
+        onWarCamp={() => setScreen('warcamp')}
+        onLeaderboard={() => {
+          handleLoadLeaderboard();
+          setScreen('leaderboard');
+        }}
+        onBack={() => setScreen('menu')}
+      />
+    );
+  }
+
+  if (screen === 'warcamp') {
+    return (
+      <WarCampView
+        warCamp={warCamp}
+        resources={gameSave.keep.resources}
+        onTrain={(slotId, type) => {
+          const backend = onlineBackendRef.current;
+          backend?.trainRaider?.(slotId, type).then((camp) => setWarCamp(camp));
+        }}
+        onBack={() => setScreen('pvp')}
+      />
+    );
+  }
+
+  if (screen === 'leaderboard') {
+    return (
+      <LeaderboardView
+        entries={leaderboard}
+        currentPlayerId={gameSave.player.id}
+        isLoading={isLoadingLeaderboard}
+        onBack={() => setScreen('pvp')}
       />
     );
   }

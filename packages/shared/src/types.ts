@@ -9,7 +9,8 @@ export type StructureKind =
   | 'treasury'
   | 'ward'
   | 'watchtower'
-  | 'archerTower';
+  | 'archerTower'
+  | 'vault';
 
 export type ProbeType = 'raider' | 'scout' | 'brute';
 
@@ -126,4 +127,72 @@ export interface DataFragment {
   type: FragmentType;
   pos: GridCoord;
   spawnedAtMs: number;
+}
+
+// === Multiplayer Types ===
+
+export type League = 'copper' | 'iron' | 'silver' | 'gold' | 'diamond';
+
+export interface WarCampSlot {
+  slotId: number;
+  raiderType: ProbeType | null;
+  readyAtMs: number | null;
+}
+
+export interface WarCamp {
+  slots: WarCampSlot[];
+  maxSlots: number;
+}
+
+export interface RevengeToken {
+  fromRaidId: string;
+  targetPlayerId: string;
+  expiresAtMs: number;
+  used: boolean;
+}
+
+export interface PvpState {
+  trophies: number;
+  league: League;
+  shieldExpiresAtMs: number | null;
+  seasonId: string;
+  seasonPeakTrophies: number;
+  rivalPlayerId: string | null;
+  revengeTokens: RevengeToken[];
+  warCamp: WarCamp;
+  lastMatchedAt: number | null;
+}
+
+export interface DailyBounty {
+  id: string;
+  type: 'raid' | 'defense' | 'build';
+  description: string;
+  reward: Resources;
+  completed: boolean;
+}
+
+export interface MatchResult {
+  matchId: string;
+  target: {
+    playerId: string;
+    displayName: string;
+    trophies: number;
+    grid: KeepGridState;
+  };
+  expiresAtMs: number;
+}
+
+export interface SeasonModifiers {
+  scoutHpMultiplier: number;
+  wallHpMultiplier: number;
+  lootCapPercent: number;
+  wardMitigationBonus: number;
+}
+
+export interface OnlineGameSave extends GameSave {
+  serverId?: string;
+  lastSyncVersion?: number;
+  onlineEnabled: boolean;
+  pvp?: PvpState;
+  bounties?: DailyBounty[];
 }

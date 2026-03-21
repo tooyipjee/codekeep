@@ -93,11 +93,11 @@ describe('constants — resources', () => {
 });
 
 describe('constants — structures', () => {
-  const kinds: StructureKind[] = ['wall', 'trap', 'treasury', 'ward', 'watchtower', 'archerTower'];
+  const kinds: StructureKind[] = ['wall', 'trap', 'treasury', 'ward', 'watchtower', 'archerTower', 'vault'];
   const levels: UpgradeLevel[] = [1, 2, 3];
 
-  it('ALL_STRUCTURE_KINDS contains all 6 types', () => {
-    expect(ALL_STRUCTURE_KINDS).toHaveLength(6);
+  it('ALL_STRUCTURE_KINDS contains all 7 types', () => {
+    expect(ALL_STRUCTURE_KINDS).toHaveLength(7);
     for (const kind of kinds) {
       expect(ALL_STRUCTURE_KINDS).toContain(kind);
     }

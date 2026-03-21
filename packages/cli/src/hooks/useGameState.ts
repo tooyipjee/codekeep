@@ -102,6 +102,23 @@ export interface OfflineReport {
   newAchievements: string[];
 }
 
+const ACHIEVEMENT_BONUSES: Record<string, Resources> = {
+  first_structure:  { gold: 20, wood: 0,  stone: 0 },
+  defense_win_5:    { gold: 25, wood: 15, stone: 15 },
+  win_streak_3:     { gold: 10, wood: 10, stone: 10 },
+  win_streak_5:     { gold: 30, wood: 30, stone: 30 },
+  all_types:        { gold: 15, wood: 15, stone: 15 },
+  max_level:        { gold: 20, wood: 0,  stone: 10 },
+  archer_kills_10:  { gold: 20, wood: 10, stone: 10 },
+  structures_20:    { gold: 10, wood: 10, stone: 10 },
+  raids_10:         { gold: 15, wood: 15, stone: 15 },
+  hoarder:          { gold: 25, wood: 0,  stone: 0 },
+};
+
+function getAchievementBonus(id: string): Resources | null {
+  return ACHIEVEMENT_BONUSES[id] ?? null;
+}
+
 function checkAchievements(save: GameSave): string[] {
   const p = save.progression;
   const earned = new Set(p.achievements);
@@ -303,12 +320,9 @@ export function useGameState(forceTutorial: boolean) {
 
       // Apply achievement bonuses
       for (const id of newAchievements) {
-        if (id === 'first_structure') {
-          save = { ...save, keep: { ...save.keep, resources: addResources(save.keep.resources, { gold: 20, wood: 0, stone: 0 }) } };
-        } else if (id === 'win_streak_3') {
-          save = { ...save, keep: { ...save.keep, resources: addResources(save.keep.resources, { gold: 10, wood: 10, stone: 10 }) } };
-        } else if (id === 'win_streak_5') {
-          save = { ...save, keep: { ...save.keep, resources: addResources(save.keep.resources, { gold: 30, wood: 30, stone: 30 }) } };
+        const bonus = getAchievementBonus(id);
+        if (bonus) {
+          save = { ...save, keep: { ...save.keep, resources: addResources(save.keep.resources, bonus) } };
         }
       }
     }
@@ -370,12 +384,9 @@ export function useGameState(forceTutorial: boolean) {
         progression: { ...updated.progression, achievements: [...updated.progression.achievements, ...newAch] },
       };
       for (const id of newAch) {
-        if (id === 'first_structure') {
-          updated = { ...updated, keep: { ...updated.keep, resources: addResources(updated.keep.resources, { gold: 20, wood: 0, stone: 0 }) } };
-        } else if (id === 'win_streak_3') {
-          updated = { ...updated, keep: { ...updated.keep, resources: addResources(updated.keep.resources, { gold: 10, wood: 10, stone: 10 }) } };
-        } else if (id === 'win_streak_5') {
-          updated = { ...updated, keep: { ...updated.keep, resources: addResources(updated.keep.resources, { gold: 30, wood: 30, stone: 30 }) } };
+        const bonus = getAchievementBonus(id);
+        if (bonus) {
+          updated = { ...updated, keep: { ...updated.keep, resources: addResources(updated.keep.resources, bonus) } };
         }
       }
     }

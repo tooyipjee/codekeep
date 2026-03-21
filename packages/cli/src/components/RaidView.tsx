@@ -149,10 +149,10 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
     for (const event of eventsInRange) {
       switch (event.type) {
         case 'raider_spawn':
-          newLogs.push(`Raider ${event.probeId} enters from ${event.edge}`);
+          newLogs.push(`Raider ${event.probeId + 1} enters from ${event.edge}`);
           break;
         case 'raider_stunned':
-          newLogs.push(`Raider ${event.probeId} STUNNED ${event.stunTicks}t`);
+          newLogs.push(`Raider ${event.probeId + 1} STUNNED ${event.stunTicks}t`);
           break;
         case 'wall_damaged':
           newLogs.push(
@@ -163,10 +163,10 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
           break;
         case 'arrow_hit':
           if (event.hpRemaining <= 0) {
-            newLogs.push(`Archer slew raider ${event.probeId}!`);
+            newLogs.push(`Archer slew raider ${event.probeId + 1}!`);
           } else {
             newLogs.push(
-              `Arrow hit raider ${event.probeId} (-${event.damage}, ${event.hpRemaining} HP)`,
+              `Arrow hit raider ${event.probeId + 1} (-${event.damage}, ${event.hpRemaining} HP)`,
             );
           }
           break;
@@ -182,17 +182,17 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
               e.type === 'arrow_hit' && e.probeId === event.probeId && e.hpRemaining <= 0 && e.t === event.t,
           );
           if (!killByArrow) {
-            newLogs.push(`Raider ${event.probeId} eliminated`);
+            newLogs.push(`Raider ${event.probeId + 1} eliminated`);
           }
           break;
         }
         case 'raid_end': {
           const outcomeText =
             event.outcome === 'defense_win'
-              ? (raidType === 'defend' ? 'DEFENSE VICTORY!' : 'ATTACK FAILED — The keep held')
+              ? (raidType === 'defend' ? 'DEFENSE VICTORY — All raiders defeated!' : 'ATTACK FAILED — The keep held strong')
               : event.outcome === 'partial_breach'
-              ? (raidType === 'defend' ? 'PARTIAL BREACH — Some supplies lost' : 'PARTIAL SUCCESS — Some loot gained')
-              : (raidType === 'defend' ? 'FULL BREACH — Major losses!' : 'FULL SUCCESS — Major loot!');
+              ? (raidType === 'defend' ? 'PARTIAL BREACH — Raiders stole some supplies (<50%)' : 'PARTIAL SUCCESS — Some loot seized')
+              : (raidType === 'defend' ? 'FULL BREACH — Major losses (50%+ stolen)!' : 'FULL SUCCESS — Major plunder!');
           setOutcome(outcomeText);
           newLogs.push(outcomeText);
           break;
@@ -220,9 +220,14 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
     }
   }
 
-  const gridLines: React.ReactNode[] = [];
+  const colHeader = '  ' + Array.from({ length: GRID_SIZE }, (_, i) => i.toString(16).toUpperCase() + ' ').join('');
+  const gridLines: React.ReactNode[] = [
+    <Text key="hdr" dimColor>{colHeader}</Text>,
+  ];
   for (let y = 0; y < GRID_SIZE; y++) {
-    const cells: React.ReactNode[] = [];
+    const cells: React.ReactNode[] = [
+      <Text key="lbl" dimColor>{y.toString(16).toUpperCase() + ' '}</Text>,
+    ];
     for (let x = 0; x < GRID_SIZE; x++) {
       const key = `${x},${y}`;
       const raider = raiderMap.get(key);

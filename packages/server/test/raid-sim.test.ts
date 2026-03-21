@@ -126,7 +126,8 @@ describe('raid-sim — structure interactions', () => {
 
     for (const e of breachEvents) {
       if (e.type === 'treasury_breach') {
-        expect(e.lootTaken.wood).toBeGreaterThan(0);
+        const total = e.lootTaken.gold + e.lootTaken.wood + e.lootTaken.stone;
+        expect(total).toBeGreaterThan(0);
       }
     }
   });

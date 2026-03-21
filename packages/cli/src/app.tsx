@@ -48,10 +48,11 @@ interface AppProps {
   autoResume: boolean;
 }
 
-function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps) {
+function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoResume }: AppProps) {
   const { exit } = useApp();
   const { columns, rows } = useTerminalSize();
   const [screen, setScreen] = useState<Screen>(autoResume ? 'keep' : 'menu');
+  const [asciiMode, setAsciiMode] = useState(initialAsciiMode);
   const [showHelp, setShowHelp] = useState(false);
   const [friendRaidReplay, setFriendRaidReplay] = useState<RaidReplayType | null>(null);
   const [friendKeepGrid, setFriendKeepGrid] = useState<KeepGridState | null>(null);
@@ -149,10 +150,6 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
     }
 
     if (screen === 'menu') {
-      if (input === 'q') {
-        handleQuit();
-        return;
-      }
       return;
     }
 
@@ -298,6 +295,8 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
         onBack={() => setScreen('menu')}
         onResetGame={handleResetGame}
         onReplayTutorial={() => setScreen('tutorial')}
+        asciiMode={asciiMode}
+        onToggleAscii={() => setAsciiMode(a => !a)}
       />
     );
   }

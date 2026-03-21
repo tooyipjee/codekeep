@@ -11,9 +11,9 @@ interface NpcFriend {
 }
 
 const NPC_FRIENDS: NpcFriend[] = [
-  { name: 'ByteBandit', seed: 'friend-bytebandit-42', difficulty: 1, tagline: 'Hoards data like a digital raccoon' },
-  { name: 'NullPointer', seed: 'friend-nullptr-99', difficulty: 2, tagline: 'Leaves segfaults in their wake' },
-  { name: 'StackOverflow', seed: 'friend-stackoverflow-256', difficulty: 3, tagline: 'Recursion is their love language' },
+  { name: 'Lord Ironhelm', seed: 'friend-ironhelm-42', difficulty: 1, tagline: 'A minor lord with modest fortifications' },
+  { name: 'Lady Ashwood', seed: 'friend-ashwood-99', difficulty: 2, tagline: 'Her archers never miss — or so she claims' },
+  { name: 'Baron Stonewatch', seed: 'friend-stonewatch-256', difficulty: 3, tagline: 'Walls thick as legends and twice as old' },
 ];
 
 interface FriendListProps {
@@ -43,11 +43,10 @@ export function FriendList({ onSelectFriend, onBack }: FriendListProps) {
   return (
     <Box flexDirection="column" padding={1}>
       <Box>
-        <Text bold color="cyan">{'⚔ Raid Friend '}</Text>
-        <Text bold color="yellow">{'[ LOCAL SIMULATION ]'}</Text>
+        <Text bold color="cyan">{'⚔ Rival Keeps'}</Text>
       </Box>
       <Text> </Text>
-      <Text dimColor>  Pick a friend's keep to raid. Results are simulated locally.</Text>
+      <Text dimColor>  Choose a rival lord's keep to raid for plunder.</Text>
       <Text> </Text>
 
       {NPC_FRIENDS.map((friend, i) => (

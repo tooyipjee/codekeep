@@ -5,17 +5,22 @@ interface SettingsProps {
   onBack: () => void;
   onResetGame: () => void;
   onReplayTutorial: () => void;
+  asciiMode: boolean;
+  onToggleAscii: () => void;
 }
 
-const ITEMS = [
-  { key: 'tutorial', label: 'Replay Tutorial', desc: 'Learn how to play again' },
-  { key: 'reset', label: 'Reset Game', desc: 'Delete save and start over' },
-  { key: 'back', label: 'Back', desc: 'Return to menu' },
-] as const;
+type SettingsItem = { key: string; label: string; desc: string };
 
-export function Settings({ onBack, onResetGame, onReplayTutorial }: SettingsProps) {
+export function Settings({ onBack, onResetGame, onReplayTutorial, asciiMode, onToggleAscii }: SettingsProps) {
   const [selected, setSelected] = useState(0);
   const [confirmReset, setConfirmReset] = useState(false);
+
+  const ITEMS: SettingsItem[] = [
+    { key: 'ascii', label: `ASCII Mode: ${asciiMode ? 'ON' : 'OFF'}`, desc: 'Use plain ASCII borders (for basic terminals)' },
+    { key: 'tutorial', label: 'Replay Tutorial', desc: 'Learn how to play again' },
+    { key: 'reset', label: 'Reset Game', desc: 'Delete save and start over' },
+    { key: 'back', label: 'Back', desc: 'Return to menu' },
+  ];
 
   useInput((input, key) => {
     if (confirmReset) {
@@ -37,7 +42,8 @@ export function Settings({ onBack, onResetGame, onReplayTutorial }: SettingsProp
     }
     if (key.return) {
       const item = ITEMS[selected];
-      if (item.key === 'tutorial') onReplayTutorial();
+      if (item.key === 'ascii') onToggleAscii();
+      else if (item.key === 'tutorial') onReplayTutorial();
       else if (item.key === 'reset') setConfirmReset(true);
       else if (item.key === 'back') onBack();
     }

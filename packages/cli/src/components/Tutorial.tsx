@@ -331,15 +331,17 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
           <Text> </Text>
           <Text>  <Text bold>u</Text>  Upgrade a structure (Lv.1 → 2 → 3) for better stats</Text>
           <Text>  <Text bold>x</Text>  Demolish a structure (get 50% refund)</Text>
-          <Text>  <Text bold>[ ]</Text> Cycle between all 6 structure types</Text>
+          <Text>  <Text bold>1-6</Text> Quick-select any structure type</Text>
           <Text> </Text>
-          <Text>The full set of structures:</Text>
-          <Text>  <Text color="white" bold>{STRUCTURE_SYMBOLS.wall}</Text> {STRUCTURE_NAMES.wall}       Block paths</Text>
-          <Text>  <Text color="magenta" bold>{STRUCTURE_SYMBOLS.trap}</Text> {STRUCTURE_NAMES.trap}      Stun raiders</Text>
-          <Text>  <Text color="yellow" bold>{STRUCTURE_SYMBOLS.treasury}</Text> {STRUCTURE_NAMES.treasury}      Stores loot, generates income</Text>
-          <Text>  <Text color="cyan" bold>{STRUCTURE_SYMBOLS.ward}</Text> {STRUCTURE_NAMES.ward}           Reduces loot stolen nearby</Text>
-          <Text>  <Text color="green" bold>{STRUCTURE_SYMBOLS.watchtower}</Text> {STRUCTURE_NAMES.watchtower}   Extends ward range, auto-gathers</Text>
-          <Text>  <Text color="redBright" bold>{STRUCTURE_SYMBOLS.archerTower}</Text> {STRUCTURE_NAMES.archerTower}  Shoots raiders</Text>
+          <Text>Two structures you haven't placed yet:</Text>
+          <Text> </Text>
+          <Text>  <Text color="cyan" bold>{STRUCTURE_SYMBOLS.ward}</Text> {STRUCTURE_NAMES.ward} — Place next to a treasury to <Text bold>reduce loot</Text></Text>
+          <Text>    raiders can steal. Wards protect a 1-tile radius around them.</Text>
+          <Text> </Text>
+          <Text>  <Text color="green" bold>{STRUCTURE_SYMBOLS.watchtower}</Text> {STRUCTURE_NAMES.watchtower} — <Text bold>Extends ward range</Text> when adjacent.</Text>
+          <Text>    Also auto-gathers forage nearby and earns passive stone.</Text>
+          <Text> </Text>
+          <Text dimColor>Combo: Ward next to Treasury + Watchtower next to Ward = max protection!</Text>
           <Text> </Text>
           <Text dimColor>Enter to continue</Text>
         </>

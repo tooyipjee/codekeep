@@ -326,9 +326,20 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       if (ar.cooldownRemaining > 0) continue;
       const range = getArcherRange(ar.level);
       const damage = getArcherDamage(ar.level);
-      const target = aliveRaiders.find(
-        (r) => r.alive && r.stunRemaining === 0 && manhattanDistance(ar.pos, r.pos) <= range,
+      const inRange = aliveRaiders.filter(
+        (r) => r.alive && manhattanDistance(ar.pos, r.pos) <= range,
       );
+      const target = inRange.length === 0 ? undefined
+        : inRange.sort((a, b) => {
+            const aStunned = a.stunRemaining > 0 ? 0 : 1;
+            const bStunned = b.stunRemaining > 0 ? 0 : 1;
+            if (aStunned !== bStunned) return aStunned - bStunned;
+            const aTreasury = state.treasuries.find(t => t.structureId === a.targetTreasuryId);
+            const bTreasury = state.treasuries.find(t => t.structureId === b.targetTreasuryId);
+            const aDist = aTreasury ? manhattanDistance(a.pos, aTreasury.pos) : Infinity;
+            const bDist = bTreasury ? manhattanDistance(b.pos, bTreasury.pos) : Infinity;
+            return aDist - bDist;
+          })[0];
       if (target) {
         target.hp -= damage;
         ar.cooldownRemaining = getArcherCooldown(ar.level);
@@ -399,9 +410,16 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
           const actualLoot = Math.min(lootAmount, treasuryTarget.storedResources);
           treasuryTarget.storedResources -= actualLoot;
 
-          const lootGrant: Resources = { gold: 0, wood: actualLoot, stone: 0 };
-          raider.looted.wood += actualLoot;
-          state.totalLoot.wood += actualLoot;
+          const goldShare = Math.ceil(actualLoot * 0.4);
+          const woodShare = Math.ceil(actualLoot * 0.35);
+          const stoneShare = Math.max(0, actualLoot - goldShare - woodShare);
+          const lootGrant: Resources = { gold: goldShare, wood: woodShare, stone: stoneShare };
+          raider.looted.gold += goldShare;
+          raider.looted.wood += woodShare;
+          raider.looted.stone += stoneShare;
+          state.totalLoot.gold += goldShare;
+          state.totalLoot.wood += woodShare;
+          state.totalLoot.stone += stoneShare;
 
           state.events.push({
             t: state.tick,
@@ -474,9 +492,10 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
   const totalOriginal = state.treasuries.reduce((sum, v) => sum + getTreasuryCapacity(v.level), 0);
   let outcome: RaidOutcome;
 
-  if (state.totalLoot.wood === 0) {
+  const totalLooted = state.totalLoot.gold + state.totalLoot.wood + state.totalLoot.stone;
+  if (totalLooted === 0) {
     outcome = 'defense_win';
-  } else if (totalTreasuryResources > 0 && state.totalLoot.wood < totalOriginal * 0.5) {
+  } else if (totalTreasuryResources > 0 && totalLooted < totalOriginal * 0.5) {
     outcome = 'partial_breach';
   } else {
     outcome = 'full_breach';

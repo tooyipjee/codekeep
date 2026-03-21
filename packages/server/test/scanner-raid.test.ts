@@ -193,12 +193,11 @@ describe('raid-sim — archer tower interactions', () => {
     const replayWithout = simulateRaid({ probeCount, keepGrid: gridWithout, seed });
     const replayWith = simulateRaid({ probeCount, keepGrid: gridWith, seed });
 
-    const lootWithout = replayWithout.events
+    const totalLoot = (events: RaidTickEvent[]) => events
       .filter((e): e is Extract<RaidTickEvent, { type: 'treasury_breach' }> => e.type === 'treasury_breach')
-      .reduce((sum, e) => sum + e.lootTaken.wood, 0);
-    const lootWith = replayWith.events
-      .filter((e): e is Extract<RaidTickEvent, { type: 'treasury_breach' }> => e.type === 'treasury_breach')
-      .reduce((sum, e) => sum + e.lootTaken.wood, 0);
+      .reduce((sum, e) => sum + e.lootTaken.gold + e.lootTaken.wood + e.lootTaken.stone, 0);
+    const lootWithout = totalLoot(replayWithout.events);
+    const lootWith = totalLoot(replayWith.events);
 
     expect(lootWith).toBeLessThanOrEqual(lootWithout);
   });

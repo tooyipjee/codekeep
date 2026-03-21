@@ -143,16 +143,16 @@ export interface AchievementDef {
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'first_structure', name: 'Builder', desc: 'Place your first structure', bonus: '+20G welcome bonus' },
-  { id: 'defense_win_5', name: 'Warden', desc: 'Win 5 defense raids', bonus: '+25% defense bonus' },
-  { id: 'win_streak_3', name: 'On Fire', desc: 'Achieve a 3-win streak', bonus: '+10 all resources' },
+  { id: 'first_structure', name: 'Builder', desc: 'Place your first structure', bonus: '+20 gold' },
+  { id: 'defense_win_5', name: 'Warden', desc: 'Win 5 defense raids', bonus: '+25 gold, +15 wood, +15 stone' },
+  { id: 'win_streak_3', name: 'Rallying Cry', desc: 'Achieve a 3-win streak', bonus: '+10 all resources' },
   { id: 'win_streak_5', name: 'Unstoppable', desc: 'Achieve a 5-win streak', bonus: '+30 all resources' },
-  { id: 'all_types', name: 'Diverse', desc: 'Place every structure type' },
-  { id: 'max_level', name: 'Maxed Out', desc: 'Upgrade a structure to Level 3' },
-  { id: 'archer_kills_10', name: 'Headhunter', desc: 'Kill 10 raiders with archers', bonus: '+1 archer damage' },
-  { id: 'structures_20', name: 'Architect', desc: 'Place 20 structures total' },
-  { id: 'raids_10', name: 'Veteran', desc: 'Complete 10 raids', bonus: 'Unlock Lv.2 friend raids' },
-  { id: 'hoarder', name: 'Hoarder', desc: 'Hold 500+ total resources' },
+  { id: 'all_types', name: 'Master Builder', desc: 'Place every structure type', bonus: '+15 all resources' },
+  { id: 'max_level', name: 'Fortifier', desc: 'Upgrade a structure to Level 3', bonus: '+20 gold, +10 stone' },
+  { id: 'archer_kills_10', name: 'Marksman', desc: 'Kill 10 raiders with archers', bonus: '+20 gold, +10 wood, +10 stone' },
+  { id: 'structures_20', name: 'Architect', desc: 'Place 20 structures total', bonus: '+10 all resources' },
+  { id: 'raids_10', name: 'Veteran', desc: 'Complete 10 raids', bonus: '+15 all resources' },
+  { id: 'hoarder', name: 'Treasure Keeper', desc: 'Hold 500+ total resources', bonus: '+25 gold' },
 ];
 
 export const FRAGMENT_TYPES = {

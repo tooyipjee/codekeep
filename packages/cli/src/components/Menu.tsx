@@ -17,10 +17,10 @@ const MENU_ITEMS = [
   { key: 'keep', label: 'Build Keep', desc: 'Place and upgrade structures' },
   { key: 'defend', label: 'Defend Keep', desc: 'Watch NPCs attack YOUR defenses' },
   { key: 'attack', label: 'Attack NPC', desc: 'Raid an NPC keep for resources' },
-  { key: 'friendRaid', label: 'Raid Friend (Sim)', desc: 'Watch a simulated friend raid' },
+  { key: 'friendRaid', label: 'Raid Rival Keep', desc: 'Plunder a rival lord\'s fortress' },
   { key: 'raidLog', label: 'Raid Log', desc: 'View recent raid history' },
   { key: 'settings', label: 'Settings', desc: 'Game options and reset' },
-  { key: 'quit', label: 'Quit', desc: 'Save and exit' },
+  { key: 'quit', label: 'Rest for the Night', desc: 'Save and exit' },
 ] as const;
 
 export function Menu({ gameSave, onKeep, onAttack, onDefend, onFriendRaid, onRaidLog, onSettings, onQuit }: MenuProps) {

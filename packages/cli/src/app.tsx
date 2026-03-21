@@ -297,6 +297,7 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
       <Settings
         onBack={() => setScreen('menu')}
         onResetGame={handleResetGame}
+        onReplayTutorial={() => setScreen('tutorial')}
       />
     );
   }

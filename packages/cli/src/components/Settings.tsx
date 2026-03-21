@@ -4,14 +4,16 @@ import { Box, Text, useInput } from 'ink';
 interface SettingsProps {
   onBack: () => void;
   onResetGame: () => void;
+  onReplayTutorial: () => void;
 }
 
 const ITEMS = [
+  { key: 'tutorial', label: 'Replay Tutorial', desc: 'Learn how to play again' },
   { key: 'reset', label: 'Reset Game', desc: 'Delete save and start over' },
   { key: 'back', label: 'Back', desc: 'Return to menu' },
 ] as const;
 
-export function Settings({ onBack, onResetGame }: SettingsProps) {
+export function Settings({ onBack, onResetGame, onReplayTutorial }: SettingsProps) {
   const [selected, setSelected] = useState(0);
   const [confirmReset, setConfirmReset] = useState(false);
 
@@ -35,7 +37,8 @@ export function Settings({ onBack, onResetGame }: SettingsProps) {
     }
     if (key.return) {
       const item = ITEMS[selected];
-      if (item.key === 'reset') setConfirmReset(true);
+      if (item.key === 'tutorial') onReplayTutorial();
+      else if (item.key === 'reset') setConfirmReset(true);
       else if (item.key === 'back') onBack();
     }
   });

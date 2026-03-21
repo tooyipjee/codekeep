@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import type { GameSave } from '@codekeep/shared';
-import { loadGame, saveGame, createNewGameSave, simulateRaid } from '@codekeep/server';
+import { loadGame, saveGame, createNewGameSave, deleteSaveFile, simulateRaid } from '@codekeep/server';
 import { KeepGrid } from './components/KeepGrid.js';
 import { HUD } from './components/HUD.js';
 import { Help } from './components/Help.js';
@@ -11,6 +11,7 @@ import { Tutorial } from './components/Tutorial.js';
 import { StructurePicker } from './components/StructurePicker.js';
 import { FriendList } from './components/FriendList.js';
 import { RaidLog } from './components/RaidLog.js';
+import { Settings } from './components/Settings.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { useGameState } from './hooks/useGameState.js';
 import type { Keep, RaidReplay as RaidReplayType, KeepGridState, RaidRecord } from '@codekeep/shared';
@@ -37,7 +38,7 @@ function useTerminalSize() {
   return size;
 }
 
-type Screen = 'menu' | 'keep' | 'raid' | 'friendList' | 'friendRaid' | 'tutorial' | 'raidLog';
+type Screen = 'menu' | 'keep' | 'raid' | 'friendList' | 'friendRaid' | 'tutorial' | 'raidLog' | 'settings';
 
 interface AppProps {
   asciiMode: boolean;
@@ -94,6 +95,11 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
   } = useGameState(forceTutorial);
 
   const handleQuit = useCallback(() => {
+    exit();
+  }, [exit]);
+
+  const handleResetGame = useCallback(() => {
+    deleteSaveFile();
     exit();
   }, [exit]);
 
@@ -163,7 +169,7 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
       return;
     }
 
-    if (screen === 'friendList' || screen === 'raidLog') {
+    if (screen === 'friendList' || screen === 'raidLog' || screen === 'settings') {
       return;
     }
 
@@ -264,6 +270,7 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
         }}
         onFriendRaid={() => setScreen('friendList')}
         onRaidLog={() => setScreen('raidLog')}
+        onSettings={() => setScreen('settings')}
         onQuit={handleQuit}
       />
     );
@@ -280,6 +287,15 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
             setScreen('raid');
           }
         }}
+      />
+    );
+  }
+
+  if (screen === 'settings') {
+    return (
+      <Settings
+        onBack={() => setScreen('menu')}
+        onResetGame={handleResetGame}
       />
     );
   }

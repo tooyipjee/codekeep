@@ -9,6 +9,7 @@ interface MenuProps {
   onDefend: () => void;
   onFriendRaid: () => void;
   onRaidLog: () => void;
+  onSettings: () => void;
   onQuit: () => void;
 }
 
@@ -18,10 +19,11 @@ const MENU_ITEMS = [
   { key: 'attack', label: 'Attack NPC', desc: 'Raid an NPC keep for resources' },
   { key: 'friendRaid', label: 'Raid Friend (Sim)', desc: 'Watch a simulated friend raid' },
   { key: 'raidLog', label: 'Raid Log', desc: 'View recent raid history' },
+  { key: 'settings', label: 'Settings', desc: 'Game options and reset' },
   { key: 'quit', label: 'Quit', desc: 'Save and exit' },
 ] as const;
 
-export function Menu({ gameSave, onKeep, onAttack, onDefend, onFriendRaid, onRaidLog, onQuit }: MenuProps) {
+export function Menu({ gameSave, onKeep, onAttack, onDefend, onFriendRaid, onRaidLog, onSettings, onQuit }: MenuProps) {
   const [selected, setSelected] = useState(0);
 
   useInput((input, key) => {
@@ -36,6 +38,7 @@ export function Menu({ gameSave, onKeep, onAttack, onDefend, onFriendRaid, onRai
       else if (item.key === 'attack') onAttack();
       else if (item.key === 'friendRaid') onFriendRaid();
       else if (item.key === 'raidLog') onRaidLog();
+      else if (item.key === 'settings') onSettings();
       else if (item.key === 'quit') onQuit();
     } else if (input === 'q') {
       onQuit();

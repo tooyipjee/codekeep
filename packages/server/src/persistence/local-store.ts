@@ -1,5 +1,5 @@
 import { type GameSave, type Keep, STARTING_RESOURCES } from '@codekeep/shared';
-import { writeFileSync, readFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdirSync, existsSync, renameSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 
@@ -96,4 +96,15 @@ export function loadGame(): GameSave | null {
 
 export function hasSaveFile(): boolean {
   return existsSync(getSavePath());
+}
+
+export function deleteSaveFile(): boolean {
+  const savePath = getSavePath();
+  if (!existsSync(savePath)) return false;
+  try {
+    unlinkSync(savePath);
+    return true;
+  } catch {
+    return false;
+  }
 }

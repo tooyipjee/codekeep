@@ -39,6 +39,9 @@ importers:
       '@types/react':
         specifier: ^19
         version: 19.2.14
+      '@vitest/coverage-v8':
+        specifier: '3'
+        version: 3.2.4(vitest@3.2.4(tsx@4.21.0))
       ink-testing-library:
         specifier: ^4
         version: 4.0.0(@types/react@19.2.14)
@@ -76,6 +79,9 @@ importers:
 
   packages/shared:
     devDependencies:
+      '@vitest/coverage-v8':
+        specifier: '3'
+        version: 3.2.4(vitest@3.2.4(tsx@4.21.0))
       tsup:
         specifier: ^8
         version: 8.5.1(postcss@8.5.8)(tsx@4.21.0)(typescript@5.9.3)

@@ -1,17 +1,17 @@
 export type GridCoord = { x: number; y: number };
 
-export type ResourceId = 'compute' | 'memory' | 'bandwidth';
+export type ResourceId = 'gold' | 'wood' | 'stone';
 export type Resources = Record<ResourceId, number>;
 
 export type StructureKind =
-  | 'firewall'
-  | 'honeypot'
-  | 'dataVault'
-  | 'encryptionNode'
-  | 'relayTower'
-  | 'scanner';
+  | 'wall'
+  | 'trap'
+  | 'treasury'
+  | 'ward'
+  | 'watchtower'
+  | 'archerTower';
 
-export type ProbeType = 'standard' | 'scout' | 'brute';
+export type ProbeType = 'raider' | 'scout' | 'brute';
 
 export type UpgradeLevel = 1 | 2 | 3;
 
@@ -42,14 +42,14 @@ export interface KeepGridState {
 export type RaidOutcome = 'defense_win' | 'partial_breach' | 'full_breach';
 
 export type RaidTickEvent =
-  | { t: number; type: 'probe_spawn'; probeId: number; edge: 'N' | 'S' | 'E' | 'W'; pos: GridCoord }
-  | { t: number; type: 'probe_move'; probeId: number; from: GridCoord; to: GridCoord }
-  | { t: number; type: 'probe_blocked'; probeId: number; pos: GridCoord; firewallId: string }
-  | { t: number; type: 'probe_stunned'; probeId: number; pos: GridCoord; honeypotId: string; stunTicks: number }
-  | { t: number; type: 'firewall_damaged'; structureId: string; hpRemaining: number; destroyed: boolean }
-  | { t: number; type: 'vault_breach'; structureId: string; lootTaken: Resources }
-  | { t: number; type: 'probe_destroyed'; probeId: number; pos: GridCoord }
-  | { t: number; type: 'scanner_hit'; probeId: number; scannerId: string; damage: number; hpRemaining: number }
+  | { t: number; type: 'raider_spawn'; probeId: number; edge: 'N' | 'S' | 'E' | 'W'; pos: GridCoord }
+  | { t: number; type: 'raider_move'; probeId: number; from: GridCoord; to: GridCoord }
+  | { t: number; type: 'raider_blocked'; probeId: number; pos: GridCoord; wallId: string }
+  | { t: number; type: 'raider_stunned'; probeId: number; pos: GridCoord; trapId: string; stunTicks: number }
+  | { t: number; type: 'wall_damaged'; structureId: string; hpRemaining: number; destroyed: boolean }
+  | { t: number; type: 'treasury_breach'; structureId: string; lootTaken: Resources }
+  | { t: number; type: 'raider_destroyed'; probeId: number; pos: GridCoord }
+  | { t: number; type: 'arrow_hit'; probeId: number; archerId: string; damage: number; hpRemaining: number }
   | { t: number; type: 'raid_end'; outcome: RaidOutcome };
 
 export interface RaidReplay {
@@ -98,7 +98,7 @@ export interface GameSave {
     currentWinStreak: number;
     bestWinStreak: number;
     achievements: string[];
-    totalProbesKilledByScanner: number;
+    totalRaidersKilledByArcher: number;
   };
 }
 
@@ -117,7 +117,7 @@ export interface CodingEvent {
   grants: Resources;
 }
 
-export type FragmentType = 'compute_shard' | 'memory_bit' | 'bandwidth_packet' | 'data_bundle';
+export type FragmentType = 'gold_nugget' | 'timber' | 'ore' | 'gem';
 
 export interface DataFragment {
   id: string;

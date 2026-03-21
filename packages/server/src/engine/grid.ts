@@ -35,9 +35,9 @@ export function canPlaceStructure(
 
 export function canAfford(resources: Resources, cost: Resources): boolean {
   return (
-    resources.compute >= cost.compute &&
-    resources.memory >= cost.memory &&
-    resources.bandwidth >= cost.bandwidth
+    resources.gold >= cost.gold &&
+    resources.wood >= cost.wood &&
+    resources.stone >= cost.stone
   );
 }
 
@@ -134,43 +134,43 @@ export function demolishStructure(
 }
 
 function getRefund(structure: PlacedStructure): Resources {
-  let totalCompute = 0;
-  let totalMemory = 0;
-  let totalBandwidth = 0;
+  let totalGold = 0;
+  let totalWood = 0;
+  let totalStone = 0;
   for (let lvl = 1; lvl <= structure.level; lvl++) {
     const cost = STRUCTURE_COSTS[structure.kind][lvl as UpgradeLevel];
-    totalCompute += cost.compute;
-    totalMemory += cost.memory;
-    totalBandwidth += cost.bandwidth;
+    totalGold += cost.gold;
+    totalWood += cost.wood;
+    totalStone += cost.stone;
   }
   return {
-    compute: Math.floor(totalCompute * 0.5),
-    memory: Math.floor(totalMemory * 0.5),
-    bandwidth: Math.floor(totalBandwidth * 0.5),
+    gold: Math.floor(totalGold * 0.5),
+    wood: Math.floor(totalWood * 0.5),
+    stone: Math.floor(totalStone * 0.5),
   };
 }
 
 function shortageMessage(have: Resources, cost: Resources): string {
   const parts: string[] = [];
-  if (cost.compute > have.compute) parts.push(`${cost.compute - have.compute} more compute`);
-  if (cost.memory > have.memory) parts.push(`${cost.memory - have.memory} more memory`);
-  if (cost.bandwidth > have.bandwidth) parts.push(`${cost.bandwidth - have.bandwidth} more bandwidth`);
+  if (cost.gold > have.gold) parts.push(`${cost.gold - have.gold} more gold`);
+  if (cost.wood > have.wood) parts.push(`${cost.wood - have.wood} more wood`);
+  if (cost.stone > have.stone) parts.push(`${cost.stone - have.stone} more stone`);
   return parts.length > 0 ? `Need ${parts.join(', ')}` : 'Not enough resources';
 }
 
 export function subtractResources(a: Resources, b: Resources): Resources {
   return {
-    compute: a.compute - b.compute,
-    memory: a.memory - b.memory,
-    bandwidth: a.bandwidth - b.bandwidth,
+    gold: a.gold - b.gold,
+    wood: a.wood - b.wood,
+    stone: a.stone - b.stone,
   };
 }
 
 export function addResources(a: Resources, b: Resources): Resources {
   return {
-    compute: a.compute + b.compute,
-    memory: a.memory + b.memory,
-    bandwidth: a.bandwidth + b.bandwidth,
+    gold: a.gold + b.gold,
+    wood: a.wood + b.wood,
+    stone: a.stone + b.stone,
   };
 }
 

@@ -4,51 +4,51 @@ import {
   type UpgradeLevel,
   type GridCoord,
   type KeepGridState,
-  FIREWALL_HP,
-  HONEYPOT_STUN_TICKS,
-  HONEYPOT_COOLDOWN_TICKS,
-  VAULT_CAPACITY,
-  ENCRYPTION_MITIGATION,
-  RELAY_RANGE,
-  SCANNER_DAMAGE,
-  SCANNER_RANGE,
-  SCANNER_COOLDOWN_TICKS,
+  WALL_HP,
+  TRAP_STUN_TICKS,
+  TRAP_COOLDOWN_TICKS,
+  TREASURY_CAPACITY,
+  WARD_MITIGATION,
+  WATCHTOWER_RANGE,
+  ARCHER_DAMAGE,
+  ARCHER_RANGE,
+  ARCHER_COOLDOWN_TICKS,
 } from '@codekeep/shared';
 
-export function getFirewallHp(level: UpgradeLevel): number {
-  return FIREWALL_HP[level];
+export function getWallHp(level: UpgradeLevel): number {
+  return WALL_HP[level];
 }
 
-export function getHoneypotStunTicks(level: UpgradeLevel): number {
-  return HONEYPOT_STUN_TICKS[level];
+export function getTrapStunTicks(level: UpgradeLevel): number {
+  return TRAP_STUN_TICKS[level];
 }
 
-export function getHoneypotCooldown(level: UpgradeLevel): number {
-  return HONEYPOT_COOLDOWN_TICKS[level];
+export function getTrapCooldown(level: UpgradeLevel): number {
+  return TRAP_COOLDOWN_TICKS[level];
 }
 
-export function getVaultCapacity(level: UpgradeLevel): number {
-  return VAULT_CAPACITY[level];
+export function getTreasuryCapacity(level: UpgradeLevel): number {
+  return TREASURY_CAPACITY[level];
 }
 
-export function getEncryptionMitigation(level: UpgradeLevel): number {
-  return ENCRYPTION_MITIGATION[level];
+export function getWardMitigation(level: UpgradeLevel): number {
+  return WARD_MITIGATION[level];
 }
 
-export function getRelayRange(level: UpgradeLevel): number {
-  return RELAY_RANGE[level];
+export function getWatchtowerRange(level: UpgradeLevel): number {
+  return WATCHTOWER_RANGE[level];
 }
 
-export function getScannerDamage(level: UpgradeLevel): number {
-  return SCANNER_DAMAGE[level];
+export function getArcherDamage(level: UpgradeLevel): number {
+  return ARCHER_DAMAGE[level];
 }
 
-export function getScannerRange(level: UpgradeLevel): number {
-  return SCANNER_RANGE[level];
+export function getArcherRange(level: UpgradeLevel): number {
+  return ARCHER_RANGE[level];
 }
 
-export function getScannerCooldown(level: UpgradeLevel): number {
-  return SCANNER_COOLDOWN_TICKS[level];
+export function getArcherCooldown(level: UpgradeLevel): number {
+  return ARCHER_COOLDOWN_TICKS[level];
 }
 
 export function getAdjacentCoords(pos: GridCoord): GridCoord[] {
@@ -69,29 +69,29 @@ export function manhattanDistance(a: GridCoord, b: GridCoord): number {
 }
 
 /**
- * Compute effective encryption mitigation for a vault, considering
- * encryption nodes and relay towers that extend their range.
+ * Compute effective ward mitigation for a treasury, considering
+ * wards and watchtowers that extend their range.
  */
 export function getEffectiveMitigation(
   grid: KeepGridState,
-  vaultPos: GridCoord,
+  treasuryPos: GridCoord,
 ): number {
-  const encryptions = grid.structures.filter((s) => s.kind === 'encryptionNode');
-  const relays = grid.structures.filter((s) => s.kind === 'relayTower');
+  const wards = grid.structures.filter((s) => s.kind === 'ward');
+  const watchtowers = grid.structures.filter((s) => s.kind === 'watchtower');
 
   let maxMitigation = 0;
 
-  for (const enc of encryptions) {
-    let effectiveRange = 1; // base adjacency
+  for (const w of wards) {
+    let effectiveRange = 1;
 
-    for (const relay of relays) {
-      if (chebyshevDistance(enc.pos, relay.pos) <= 1) {
-        effectiveRange = Math.max(effectiveRange, 1 + getRelayRange(relay.level));
+    for (const wt of watchtowers) {
+      if (chebyshevDistance(w.pos, wt.pos) <= 1) {
+        effectiveRange = Math.max(effectiveRange, 1 + getWatchtowerRange(wt.level));
       }
     }
 
-    if (chebyshevDistance(enc.pos, vaultPos) <= effectiveRange) {
-      maxMitigation = Math.max(maxMitigation, getEncryptionMitigation(enc.level));
+    if (chebyshevDistance(w.pos, treasuryPos) <= effectiveRange) {
+      maxMitigation = Math.max(maxMitigation, getWardMitigation(w.level));
     }
   }
 

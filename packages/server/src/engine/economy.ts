@@ -5,8 +5,8 @@ import {
   type KeepGridState,
   CODING_EVENT_GRANTS,
   DAILY_RESOURCE_CAP,
-  PASSIVE_INCOME_PER_VAULT,
-  PASSIVE_INCOME_PER_RELAY,
+  PASSIVE_INCOME_PER_TREASURY,
+  PASSIVE_INCOME_PER_WATCHTOWER,
   PASSIVE_INCOME_INTERVAL_MS,
 } from '@codekeep/shared';
 import { addResources } from './grid.js';
@@ -15,7 +15,7 @@ export function grantCodingEventResources(
   keep: Keep,
   event: CodingEvent,
 ): Keep {
-  const grants = event.grants ?? CODING_EVENT_GRANTS[event.type] ?? { compute: 0, memory: 0, bandwidth: 0 };
+  const grants = event.grants ?? CODING_EVENT_GRANTS[event.type] ?? { gold: 0, wood: 0, stone: 0 };
   const newResources = addResources(keep.resources, grants);
 
   return {
@@ -27,9 +27,9 @@ export function grantCodingEventResources(
 
 export function capResources(resources: Resources): Resources {
   return {
-    compute: Math.min(resources.compute, DAILY_RESOURCE_CAP.compute * 10),
-    memory: Math.min(resources.memory, DAILY_RESOURCE_CAP.memory * 10),
-    bandwidth: Math.min(resources.bandwidth, DAILY_RESOURCE_CAP.bandwidth * 10),
+    gold: Math.min(resources.gold, DAILY_RESOURCE_CAP.gold * 10),
+    wood: Math.min(resources.wood, DAILY_RESOURCE_CAP.wood * 10),
+    stone: Math.min(resources.stone, DAILY_RESOURCE_CAP.stone * 10),
   };
 }
 
@@ -38,12 +38,12 @@ export function calculateOfflineResources(
   elapsedMs: number,
 ): Resources {
   const intervals = Math.min(Math.floor(elapsedMs / PASSIVE_INCOME_INTERVAL_MS), 60);
-  const vaultCount = grid.structures.filter((s) => s.kind === 'dataVault').length;
-  const relayCount = grid.structures.filter((s) => s.kind === 'relayTower').length;
+  const treasuryCount = grid.structures.filter((s) => s.kind === 'treasury').length;
+  const watchtowerCount = grid.structures.filter((s) => s.kind === 'watchtower').length;
   return {
-    compute: intervals * (vaultCount * PASSIVE_INCOME_PER_VAULT.compute + relayCount * PASSIVE_INCOME_PER_RELAY.compute),
-    memory: intervals * (vaultCount * PASSIVE_INCOME_PER_VAULT.memory + relayCount * PASSIVE_INCOME_PER_RELAY.memory),
-    bandwidth: intervals * (vaultCount * PASSIVE_INCOME_PER_VAULT.bandwidth + relayCount * PASSIVE_INCOME_PER_RELAY.bandwidth),
+    gold: intervals * (treasuryCount * PASSIVE_INCOME_PER_TREASURY.gold + watchtowerCount * PASSIVE_INCOME_PER_WATCHTOWER.gold),
+    wood: intervals * (treasuryCount * PASSIVE_INCOME_PER_TREASURY.wood + watchtowerCount * PASSIVE_INCOME_PER_WATCHTOWER.wood),
+    stone: intervals * (treasuryCount * PASSIVE_INCOME_PER_TREASURY.stone + watchtowerCount * PASSIVE_INCOME_PER_WATCHTOWER.stone),
   };
 }
 

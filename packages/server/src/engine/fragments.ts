@@ -7,10 +7,10 @@ import {
   FRAGMENT_TYPES,
   FRAGMENT_MAX,
   FRAGMENT_DECAY_MS,
-  FRAGMENT_VAULT_BONUS,
-  FRAGMENT_VAULT_RANGE,
+  FRAGMENT_TREASURY_BONUS,
+  FRAGMENT_TREASURY_RANGE,
   GRID_SIZE,
-  RELAY_RANGE,
+  WATCHTOWER_RANGE,
 } from '@codekeep/shared';
 
 function manhattanDist(a: GridCoord, b: GridCoord): number {
@@ -25,7 +25,7 @@ function pickFragmentType(rng: () => number): FragmentType {
     roll -= def.weight;
     if (roll <= 0) return type;
   }
-  return 'compute_shard';
+  return 'gold_nugget';
 }
 
 function isOccupied(pos: GridCoord, grid: KeepGridState, fragments: DataFragment[]): boolean {
@@ -35,7 +35,7 @@ function isOccupied(pos: GridCoord, grid: KeepGridState, fragments: DataFragment
 }
 
 /**
- * Spawn 1-2 new fragments on empty cells. Scanners on the grid boost spawn count.
+ * Spawn 1-2 new fragments on empty cells. Archer towers on the grid boost spawn count.
  * Returns the updated fragments array (old + new).
  */
 export function spawnFragments(
@@ -46,8 +46,8 @@ export function spawnFragments(
 ): DataFragment[] {
   if (fragments.length >= FRAGMENT_MAX) return fragments;
 
-  const scannerCount = grid.structures.filter((s) => s.kind === 'scanner').length;
-  const bonusSpawns = Math.min(scannerCount, 2);
+  const archerCount = grid.structures.filter((s) => s.kind === 'archerTower').length;
+  const bonusSpawns = Math.min(archerCount, 2);
   const baseSpawns = 1 + (rng() < 0.4 ? 1 : 0);
   const targetSpawns = Math.min(baseSpawns + bonusSpawns, FRAGMENT_MAX - fragments.length);
 
@@ -78,7 +78,7 @@ export function spawnFragments(
 }
 
 /**
- * Collect fragment at the given position. Returns the yield (with vault proximity bonus)
+ * Collect fragment at the given position. Returns the yield (with treasury proximity bonus)
  * and the updated fragments array, or null if no fragment at that position.
  */
 export function collectFragment(
@@ -91,40 +91,38 @@ export function collectFragment(
 
   const collected: DataFragment[] = [fragments[directIdx]];
 
-  // Relay auto-collect: collect adjacent fragments within relay range
-  const relays = grid.structures.filter((s) => s.kind === 'relayTower');
-  let maxRelayRange = 0;
-  for (const relay of relays) {
-    if (manhattanDist(relay.pos, pos) <= RELAY_RANGE[relay.level]) {
-      maxRelayRange = Math.max(maxRelayRange, relay.level);
+  const watchtowers = grid.structures.filter((s) => s.kind === 'watchtower');
+  let maxWatchtowerRange = 0;
+  for (const wt of watchtowers) {
+    if (manhattanDist(wt.pos, pos) <= WATCHTOWER_RANGE[wt.level]) {
+      maxWatchtowerRange = Math.max(maxWatchtowerRange, wt.level);
     }
   }
-  if (maxRelayRange > 0) {
+  if (maxWatchtowerRange > 0) {
     for (const f of fragments) {
       if (collected.includes(f)) continue;
-      if (manhattanDist(pos, f.pos) <= maxRelayRange) {
+      if (manhattanDist(pos, f.pos) <= maxWatchtowerRange) {
         collected.push(f);
       }
     }
   }
 
-  // Calculate total yield
   const collectedIds = new Set(collected.map((f) => f.id));
-  let totalYield: Resources = { compute: 0, memory: 0, bandwidth: 0 };
+  let totalYield: Resources = { gold: 0, wood: 0, stone: 0 };
 
   for (const f of collected) {
     const baseYield = FRAGMENT_TYPES[f.type].yield;
     let yieldMultiplier = 1;
 
-    const nearVault = grid.structures.some(
-      (s) => s.kind === 'dataVault' && manhattanDist(s.pos, f.pos) <= FRAGMENT_VAULT_RANGE,
+    const nearTreasury = grid.structures.some(
+      (s) => s.kind === 'treasury' && manhattanDist(s.pos, f.pos) <= FRAGMENT_TREASURY_RANGE,
     );
-    if (nearVault) yieldMultiplier += FRAGMENT_VAULT_BONUS;
+    if (nearTreasury) yieldMultiplier += FRAGMENT_TREASURY_BONUS;
 
     totalYield = {
-      compute: totalYield.compute + Math.ceil(baseYield.compute * yieldMultiplier),
-      memory: totalYield.memory + Math.ceil(baseYield.memory * yieldMultiplier),
-      bandwidth: totalYield.bandwidth + Math.ceil(baseYield.bandwidth * yieldMultiplier),
+      gold: totalYield.gold + Math.ceil(baseYield.gold * yieldMultiplier),
+      wood: totalYield.wood + Math.ceil(baseYield.wood * yieldMultiplier),
+      stone: totalYield.stone + Math.ceil(baseYield.stone * yieldMultiplier),
     };
   }
 
@@ -135,9 +133,6 @@ export function collectFragment(
   };
 }
 
-/**
- * Remove fragments that have exceeded the decay time.
- */
 export function decayFragments(fragments: DataFragment[], nowMs: number): DataFragment[] {
   return fragments.filter((f) => nowMs - f.spawnedAtMs < FRAGMENT_DECAY_MS);
 }

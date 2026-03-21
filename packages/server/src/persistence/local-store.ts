@@ -45,7 +45,7 @@ export function createNewGameSave(playerName: string): GameSave {
       currentWinStreak: 0,
       bestWinStreak: 0,
       achievements: [],
-      totalProbesKilledByScanner: 0,
+      totalRaidersKilledByArcher: 0,
     },
   };
 }

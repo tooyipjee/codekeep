@@ -11,27 +11,26 @@ import {
   GRID_SIZE,
   TICK_RATE_HZ,
   MAX_RAID_TICKS,
-  PROBE_BASE_HP,
-  PROBE_DAMAGE_PER_TICK,
-  PROBE_LOOT_PER_TICK,
-  PROBE_TYPES,
-  SCANNER_DAMAGE,
-  SCANNER_RANGE,
-  SCANNER_COOLDOWN_TICKS,
+  RAIDER_BASE_HP,
+  RAIDER_DAMAGE_PER_TICK,
+  RAIDER_LOOT_PER_TICK,
+  RAIDER_TYPES,
+  ARCHER_DAMAGE,
+  ARCHER_RANGE,
+  ARCHER_COOLDOWN_TICKS,
 } from '@codekeep/shared';
 import {
-  getFirewallHp,
-  getHoneypotStunTicks,
-  getHoneypotCooldown,
+  getWallHp,
+  getTrapStunTicks,
+  getTrapCooldown,
   getEffectiveMitigation,
-  getVaultCapacity,
-  getScannerDamage,
-  getScannerRange,
-  getScannerCooldown,
+  getTreasuryCapacity,
+  getArcherDamage,
+  getArcherRange,
+  getArcherCooldown,
   manhattanDistance,
 } from './structures.js';
 
-// Mulberry32 PRNG — deterministic 32-bit
 export function mulberry32(seed: number): () => number {
   let s = seed | 0;
   return () => {
@@ -53,39 +52,39 @@ export function hashSeed(str: string): number {
 
 type Edge = 'N' | 'S' | 'E' | 'W';
 
-interface Probe {
+interface Raider {
   id: number;
   pos: GridCoord;
   hp: number;
-  probeType: ProbeType;
+  raiderType: ProbeType;
   stunRemaining: number;
-  targetVaultId: string | null;
+  targetTreasuryId: string | null;
   alive: boolean;
   looted: Resources;
 }
 
-interface FirewallState {
+interface WallState {
   structureId: string;
   pos: GridCoord;
   hp: number;
   destroyed: boolean;
 }
 
-interface HoneypotState {
+interface TrapState {
   structureId: string;
   pos: GridCoord;
   level: UpgradeLevel;
   cooldownRemaining: number;
 }
 
-interface VaultState {
+interface TreasuryState {
   structureId: string;
   pos: GridCoord;
   level: UpgradeLevel;
   storedResources: number;
 }
 
-interface ScannerState {
+interface ArcherState {
   structureId: string;
   pos: GridCoord;
   level: UpgradeLevel;
@@ -94,13 +93,13 @@ interface ScannerState {
 
 interface RaidState {
   tick: number;
-  probes: Probe[];
-  firewalls: FirewallState[];
-  honeypots: HoneypotState[];
-  scanners: ScannerState[];
-  vaults: VaultState[];
+  raiders: Raider[];
+  walls: WallState[];
+  traps: TrapState[];
+  archers: ArcherState[];
+  treasuries: TreasuryState[];
   events: RaidTickEvent[];
-  grid: boolean[][]; // passability cache
+  grid: boolean[][];
   totalLoot: Resources;
 }
 
@@ -124,14 +123,13 @@ function rebuildPassability(state: RaidState, allStructures: PlacedStructure[]):
       state.grid[y][x] = true;
     }
   }
-  for (const fw of state.firewalls) {
-    if (!fw.destroyed) {
-      state.grid[fw.pos.y][fw.pos.x] = false;
+  for (const w of state.walls) {
+    if (!w.destroyed) {
+      state.grid[w.pos.y][w.pos.x] = false;
     }
   }
 }
 
-// Simple A* for 4-neighbor grid
 function astarNextStep(
   from: GridCoord,
   to: GridCoord,
@@ -185,7 +183,6 @@ function astarNextStep(
     for (const n of neighbors) {
       const nk = key(n);
       if (closedSet.has(nk)) continue;
-      // Allow the target even if it's "impassable" (vault cells are passable, but check the target specifically)
       if (!isPassable(state, n) && !(n.x === to.x && n.y === to.y)) continue;
 
       const tentG = current.g + 1;
@@ -197,7 +194,7 @@ function astarNextStep(
     }
   }
 
-  return null; // no path
+  return null;
 }
 
 export interface RaidConfig {
@@ -211,18 +208,18 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
   const rng = mulberry32(hashSeed(config.seed));
   const { keepGrid } = config;
 
-  const firewalls: FirewallState[] = keepGrid.structures
-    .filter((s) => s.kind === 'firewall')
+  const walls: WallState[] = keepGrid.structures
+    .filter((s) => s.kind === 'wall')
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((s) => ({
       structureId: s.id,
       pos: { ...s.pos },
-      hp: getFirewallHp(s.level),
+      hp: getWallHp(s.level),
       destroyed: false,
     }));
 
-  const honeypots: HoneypotState[] = keepGrid.structures
-    .filter((s) => s.kind === 'honeypot')
+  const traps: TrapState[] = keepGrid.structures
+    .filter((s) => s.kind === 'trap')
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((s) => ({
       structureId: s.id,
@@ -231,8 +228,8 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       cooldownRemaining: 0,
     }));
 
-  const scanners: ScannerState[] = keepGrid.structures
-    .filter((s) => s.kind === 'scanner')
+  const archers: ArcherState[] = keepGrid.structures
+    .filter((s) => s.kind === 'archerTower')
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((s) => ({
       structureId: s.id,
@@ -241,128 +238,122 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       cooldownRemaining: 0,
     }));
 
-  let vaults: VaultState[] = keepGrid.structures
-    .filter((s) => s.kind === 'dataVault')
+  let treasuries: TreasuryState[] = keepGrid.structures
+    .filter((s) => s.kind === 'treasury')
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((s) => ({
       structureId: s.id,
       pos: { ...s.pos },
       level: s.level,
-      storedResources: getVaultCapacity(s.level),
+      storedResources: getTreasuryCapacity(s.level),
     }));
 
-  if (vaults.length === 0) {
-    vaults = [{
-      structureId: '__virtual_center_vault',
+  if (treasuries.length === 0) {
+    treasuries = [{
+      structureId: '__virtual_center_treasury',
       pos: { x: 8, y: 8 },
       level: 1,
-      storedResources: getVaultCapacity(1),
+      storedResources: getTreasuryCapacity(1),
     }];
   }
 
   const state: RaidState = {
     tick: 0,
-    probes: [],
-    firewalls,
-    honeypots,
-    scanners,
-    vaults,
+    raiders: [],
+    walls,
+    traps,
+    archers,
+    treasuries,
     events: [],
     grid: Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(true) as boolean[]),
-    totalLoot: { compute: 0, memory: 0, bandwidth: 0 },
+    totalLoot: { gold: 0, wood: 0, stone: 0 },
   };
 
   rebuildPassability(state, keepGrid.structures);
 
-  // Spawn probes from random edges
   const edges: Edge[] = ['N', 'S', 'E', 'W'];
   for (let i = 0; i < config.probeCount; i++) {
     const edge = edges[Math.floor(rng() * edges.length)];
     const offset = Math.floor(rng() * GRID_SIZE);
     const pos = getSpawnPos(edge, offset);
 
-    // Pick closest vault as target
-    let closestVault: VaultState | null = null;
+    let closestTreasury: TreasuryState | null = null;
     let closestDist = Infinity;
-    for (const v of vaults) {
+    for (const v of treasuries) {
       const d = Math.abs(v.pos.x - pos.x) + Math.abs(v.pos.y - pos.y);
       if (d < closestDist) {
         closestDist = d;
-        closestVault = v;
+        closestTreasury = v;
       }
     }
 
-    const probeType: ProbeType = config.probeTypes?.[i] ?? 'standard';
-    state.probes.push({
+    const raiderType: ProbeType = config.probeTypes?.[i] ?? 'raider';
+    state.raiders.push({
       id: i,
       pos: { ...pos },
-      hp: PROBE_TYPES[probeType].hp,
-      probeType,
+      hp: RAIDER_TYPES[raiderType].hp,
+      raiderType,
       stunRemaining: 0,
-      targetVaultId: closestVault?.structureId ?? null,
+      targetTreasuryId: closestTreasury?.structureId ?? null,
       alive: true,
-      looted: { compute: 0, memory: 0, bandwidth: 0 },
+      looted: { gold: 0, wood: 0, stone: 0 },
     });
 
     state.events.push({
       t: 0,
-      type: 'probe_spawn',
+      type: 'raider_spawn',
       probeId: i,
       edge,
       pos: { ...pos },
     });
   }
 
-  // Simulation loop
   while (state.tick < MAX_RAID_TICKS) {
     state.tick++;
 
-    // Tick honeypot cooldowns
-    for (const hp of state.honeypots) {
-      if (hp.cooldownRemaining > 0) hp.cooldownRemaining--;
+    for (const tr of state.traps) {
+      if (tr.cooldownRemaining > 0) tr.cooldownRemaining--;
     }
 
-    // Tick scanner cooldowns
-    for (const sc of state.scanners) {
-      if (sc.cooldownRemaining > 0) sc.cooldownRemaining--;
+    for (const ar of state.archers) {
+      if (ar.cooldownRemaining > 0) ar.cooldownRemaining--;
     }
 
-    const aliveProbes = state.probes.filter((p) => p.alive).sort((a, b) => a.id - b.id);
-    if (aliveProbes.length === 0) break;
+    const aliveRaiders = state.raiders.filter((r) => r.alive).sort((a, b) => a.id - b.id);
+    if (aliveRaiders.length === 0) break;
 
-    // Scanner attacks: damage probes in range
-    for (const sc of state.scanners) {
-      if (sc.cooldownRemaining > 0) continue;
-      const range = getScannerRange(sc.level);
-      const damage = getScannerDamage(sc.level);
-      const target = aliveProbes.find(
-        (p) => p.alive && p.stunRemaining === 0 && manhattanDistance(sc.pos, p.pos) <= range,
+    for (const ar of state.archers) {
+      if (ar.cooldownRemaining > 0) continue;
+      const range = getArcherRange(ar.level);
+      const damage = getArcherDamage(ar.level);
+      const target = aliveRaiders.find(
+        (r) => r.alive && r.stunRemaining === 0 && manhattanDistance(ar.pos, r.pos) <= range,
       );
       if (target) {
         target.hp -= damage;
-        sc.cooldownRemaining = getScannerCooldown(sc.level);
+        ar.cooldownRemaining = getArcherCooldown(ar.level);
         if (target.hp <= 0) {
           target.alive = false;
           state.events.push({
             t: state.tick,
-            type: 'scanner_hit',
+            type: 'arrow_hit',
             probeId: target.id,
-            scannerId: sc.structureId,
+            archerId: ar.structureId,
             damage,
             hpRemaining: 0,
           });
           state.events.push({
             t: state.tick,
-            type: 'probe_destroyed',
+            type: 'raider_destroyed',
             probeId: target.id,
             pos: { ...target.pos },
           });
         } else {
           state.events.push({
             t: state.tick,
-            type: 'scanner_hit',
+            type: 'arrow_hit',
             probeId: target.id,
-            scannerId: sc.structureId,
+            archerId: ar.structureId,
             damage,
             hpRemaining: target.hp,
           });
@@ -370,111 +361,105 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       }
     }
 
-    for (const probe of aliveProbes) {
-      if (!probe.alive) continue;
+    for (const raider of aliveRaiders) {
+      if (!raider.alive) continue;
 
-      if (probe.stunRemaining > 0) {
-        probe.stunRemaining--;
+      if (raider.stunRemaining > 0) {
+        raider.stunRemaining--;
         continue;
       }
 
-      const moveCount = PROBE_TYPES[probe.probeType].speed;
+      const moveCount = RAIDER_TYPES[raider.raiderType].speed;
       for (let move = 0; move < moveCount; move++) {
-        if (!probe.alive) break;
+        if (!raider.alive) break;
 
-        // Find target vault
-        const targetVault = state.vaults.find((v) => v.structureId === probe.targetVaultId);
-        if (!targetVault || targetVault.storedResources <= 0) {
-          // Retarget to next vault with resources
-          const newTarget = state.vaults
+        const targetTreasury = state.treasuries.find((v) => v.structureId === raider.targetTreasuryId);
+        if (!targetTreasury || targetTreasury.storedResources <= 0) {
+          const newTarget = state.treasuries
             .filter((v) => v.storedResources > 0)
             .sort((a, b) => {
-              const da = Math.abs(a.pos.x - probe.pos.x) + Math.abs(a.pos.y - probe.pos.y);
-              const db = Math.abs(b.pos.x - probe.pos.x) + Math.abs(b.pos.y - probe.pos.y);
+              const da = Math.abs(a.pos.x - raider.pos.x) + Math.abs(a.pos.y - raider.pos.y);
+              const db = Math.abs(b.pos.x - raider.pos.x) + Math.abs(b.pos.y - raider.pos.y);
               return da - db || a.structureId.localeCompare(b.structureId);
             })[0];
 
           if (!newTarget) {
-            probe.alive = false;
-            state.events.push({ t: state.tick, type: 'probe_destroyed', probeId: probe.id, pos: { ...probe.pos } });
+            raider.alive = false;
+            state.events.push({ t: state.tick, type: 'raider_destroyed', probeId: raider.id, pos: { ...raider.pos } });
             break;
           }
-          probe.targetVaultId = newTarget.structureId;
+          raider.targetTreasuryId = newTarget.structureId;
         }
 
-        const vaultTarget = state.vaults.find((v) => v.structureId === probe.targetVaultId)!;
+        const treasuryTarget = state.treasuries.find((v) => v.structureId === raider.targetTreasuryId)!;
 
-        // Check if on vault cell — loot
-        if (probe.pos.x === vaultTarget.pos.x && probe.pos.y === vaultTarget.pos.y) {
-          const mitigation = getEffectiveMitigation(keepGrid, vaultTarget.pos);
-          const lootAmount = Math.max(1, Math.floor(PROBE_TYPES[probe.probeType].loot * vaultTarget.level * (1 - mitigation)));
-          const actualLoot = Math.min(lootAmount, vaultTarget.storedResources);
-          vaultTarget.storedResources -= actualLoot;
+        if (raider.pos.x === treasuryTarget.pos.x && raider.pos.y === treasuryTarget.pos.y) {
+          const mitigation = getEffectiveMitigation(keepGrid, treasuryTarget.pos);
+          const lootAmount = Math.max(1, Math.floor(RAIDER_TYPES[raider.raiderType].loot * treasuryTarget.level * (1 - mitigation)));
+          const actualLoot = Math.min(lootAmount, treasuryTarget.storedResources);
+          treasuryTarget.storedResources -= actualLoot;
 
-          const lootGrant: Resources = { compute: 0, memory: actualLoot, bandwidth: 0 };
-          probe.looted.memory += actualLoot;
-          state.totalLoot.memory += actualLoot;
+          const lootGrant: Resources = { gold: 0, wood: actualLoot, stone: 0 };
+          raider.looted.wood += actualLoot;
+          state.totalLoot.wood += actualLoot;
 
           state.events.push({
             t: state.tick,
-            type: 'vault_breach',
-            structureId: vaultTarget.structureId,
+            type: 'treasury_breach',
+            structureId: treasuryTarget.structureId,
             lootTaken: lootGrant,
           });
           break;
         }
 
-        // Check if adjacent to firewall blocking path — attack it
-        const nextStep = astarNextStep(probe.pos, vaultTarget.pos, state);
+        const nextStep = astarNextStep(raider.pos, treasuryTarget.pos, state);
         if (!nextStep) {
-          const adjacentFw = state.firewalls.find(
-            (fw) =>
-              !fw.destroyed &&
-              Math.abs(fw.pos.x - probe.pos.x) + Math.abs(fw.pos.y - probe.pos.y) === 1,
+          const adjacentWall = state.walls.find(
+            (w) =>
+              !w.destroyed &&
+              Math.abs(w.pos.x - raider.pos.x) + Math.abs(w.pos.y - raider.pos.y) === 1,
           );
-          if (adjacentFw) {
-            adjacentFw.hp -= PROBE_TYPES[probe.probeType].damage;
-            const destroyed = adjacentFw.hp <= 0;
+          if (adjacentWall) {
+            adjacentWall.hp -= RAIDER_TYPES[raider.raiderType].damage;
+            const destroyed = adjacentWall.hp <= 0;
             if (destroyed) {
-              adjacentFw.destroyed = true;
+              adjacentWall.destroyed = true;
               rebuildPassability(state, keepGrid.structures);
             }
             state.events.push({
               t: state.tick,
-              type: 'firewall_damaged',
-              structureId: adjacentFw.structureId,
-              hpRemaining: Math.max(0, adjacentFw.hp),
+              type: 'wall_damaged',
+              structureId: adjacentWall.structureId,
+              hpRemaining: Math.max(0, adjacentWall.hp),
               destroyed,
             });
           }
           break;
         }
 
-        // Move to next step
-        const from = { ...probe.pos };
-        probe.pos = { ...nextStep };
+        const from = { ...raider.pos };
+        raider.pos = { ...nextStep };
         state.events.push({
           t: state.tick,
-          type: 'probe_move',
-          probeId: probe.id,
+          type: 'raider_move',
+          probeId: raider.id,
           from,
-          to: { ...probe.pos },
+          to: { ...raider.pos },
         });
 
-        // Check for honeypot on new position
-        const honeypot = state.honeypots.find(
-          (hp) => hp.pos.x === probe.pos.x && hp.pos.y === probe.pos.y && hp.cooldownRemaining === 0,
+        const trap = state.traps.find(
+          (tr) => tr.pos.x === raider.pos.x && tr.pos.y === raider.pos.y && tr.cooldownRemaining === 0,
         );
-        if (honeypot) {
-          const stunTicks = getHoneypotStunTicks(honeypot.level);
-          probe.stunRemaining = stunTicks;
-          honeypot.cooldownRemaining = getHoneypotCooldown(honeypot.level);
+        if (trap) {
+          const stunTicks = getTrapStunTicks(trap.level);
+          raider.stunRemaining = stunTicks;
+          trap.cooldownRemaining = getTrapCooldown(trap.level);
           state.events.push({
             t: state.tick,
-            type: 'probe_stunned',
-            probeId: probe.id,
-            pos: { ...probe.pos },
-            honeypotId: honeypot.structureId,
+            type: 'raider_stunned',
+            probeId: raider.id,
+            pos: { ...raider.pos },
+            trapId: trap.structureId,
             stunTicks,
           });
           break;
@@ -482,18 +467,16 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       }
     }
 
-    // Check if all probes are done
-    if (state.probes.every((p) => !p.alive || p.stunRemaining > 100)) break;
+    if (state.raiders.every((r) => !r.alive || r.stunRemaining > 100)) break;
   }
 
-  // Determine outcome
-  const totalVaultResources = state.vaults.reduce((sum, v) => sum + v.storedResources, 0);
-  const totalOriginal = state.vaults.reduce((sum, v) => sum + getVaultCapacity(v.level), 0);
+  const totalTreasuryResources = state.treasuries.reduce((sum, v) => sum + v.storedResources, 0);
+  const totalOriginal = state.treasuries.reduce((sum, v) => sum + getTreasuryCapacity(v.level), 0);
   let outcome: RaidOutcome;
 
-  if (state.totalLoot.memory === 0) {
+  if (state.totalLoot.wood === 0) {
     outcome = 'defense_win';
-  } else if (totalVaultResources > 0 && state.totalLoot.memory < totalOriginal * 0.5) {
+  } else if (totalTreasuryResources > 0 && state.totalLoot.wood < totalOriginal * 0.5) {
     outcome = 'partial_breach';
   } else {
     outcome = 'full_breach';

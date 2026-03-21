@@ -6,104 +6,112 @@ export const MAX_RAID_TICKS = 2400;
 export const RULES_VERSION = 1;
 
 export const STARTING_RESOURCES: Resources = {
-  compute: 80,
-  memory: 40,
-  bandwidth: 20,
+  gold: 80,
+  wood: 40,
+  stone: 20,
 };
 
 export const DAILY_RESOURCE_CAP: Resources = {
-  compute: 200,
-  memory: 120,
-  bandwidth: 80,
+  gold: 200,
+  wood: 120,
+  stone: 80,
 };
 
 export const STRUCTURE_SYMBOLS: Record<StructureKind, string> = {
-  firewall: '#',
-  honeypot: '%',
-  dataVault: '$',
-  encryptionNode: '@',
-  relayTower: '^',
-  scanner: '!',
+  wall: '#',
+  trap: '%',
+  treasury: '$',
+  ward: '@',
+  watchtower: '^',
+  archerTower: '!',
 };
 
 export const STRUCTURE_NAMES: Record<StructureKind, string> = {
-  firewall: 'Firewall',
-  honeypot: 'Honeypot',
-  dataVault: 'Data Vault',
-  encryptionNode: 'Encryption',
-  relayTower: 'Relay Tower',
-  scanner: 'Scanner',
+  wall: 'Stone Wall',
+  trap: 'Bear Trap',
+  treasury: 'Treasury',
+  ward: 'Ward',
+  watchtower: 'Watchtower',
+  archerTower: 'Archer Tower',
 };
 
 export const EMPTY_CELL_SYMBOL = '·';
 
 export const STRUCTURE_COSTS: Record<StructureKind, Record<UpgradeLevel, Resources>> = {
-  firewall: {
-    1: { compute: 12, memory: 0, bandwidth: 2 },
-    2: { compute: 10, memory: 0, bandwidth: 4 },
-    3: { compute: 14, memory: 0, bandwidth: 6 },
+  wall: {
+    1: { gold: 12, wood: 0, stone: 2 },
+    2: { gold: 10, wood: 0, stone: 4 },
+    3: { gold: 14, wood: 0, stone: 6 },
   },
-  honeypot: {
-    1: { compute: 8, memory: 4, bandwidth: 6 },
-    2: { compute: 8, memory: 4, bandwidth: 6 },
-    3: { compute: 10, memory: 6, bandwidth: 8 },
+  trap: {
+    1: { gold: 8, wood: 4, stone: 6 },
+    2: { gold: 8, wood: 4, stone: 6 },
+    3: { gold: 10, wood: 6, stone: 8 },
   },
-  dataVault: {
-    1: { compute: 6, memory: 14, bandwidth: 2 },
-    2: { compute: 6, memory: 18, bandwidth: 4 },
-    3: { compute: 8, memory: 24, bandwidth: 6 },
+  treasury: {
+    1: { gold: 6, wood: 14, stone: 2 },
+    2: { gold: 6, wood: 18, stone: 4 },
+    3: { gold: 8, wood: 24, stone: 6 },
   },
-  encryptionNode: {
-    1: { compute: 10, memory: 10, bandwidth: 0 },
-    2: { compute: 12, memory: 12, bandwidth: 0 },
-    3: { compute: 16, memory: 16, bandwidth: 0 },
+  ward: {
+    1: { gold: 10, wood: 10, stone: 0 },
+    2: { gold: 12, wood: 12, stone: 0 },
+    3: { gold: 16, wood: 16, stone: 0 },
   },
-  relayTower: {
-    1: { compute: 6, memory: 2, bandwidth: 12 },
-    2: { compute: 6, memory: 4, bandwidth: 14 },
-    3: { compute: 8, memory: 6, bandwidth: 18 },
+  watchtower: {
+    1: { gold: 6, wood: 2, stone: 12 },
+    2: { gold: 6, wood: 4, stone: 14 },
+    3: { gold: 8, wood: 6, stone: 18 },
   },
-  scanner: {
-    1: { compute: 14, memory: 6, bandwidth: 8 },
-    2: { compute: 16, memory: 8, bandwidth: 10 },
-    3: { compute: 20, memory: 12, bandwidth: 14 },
+  archerTower: {
+    1: { gold: 14, wood: 6, stone: 8 },
+    2: { gold: 16, wood: 8, stone: 10 },
+    3: { gold: 20, wood: 12, stone: 14 },
   },
 };
 
-export const FIREWALL_HP: Record<UpgradeLevel, number> = { 1: 40, 2: 70, 3: 110 };
-export const HONEYPOT_STUN_TICKS: Record<UpgradeLevel, number> = { 1: 4, 2: 6, 3: 9 };
-export const HONEYPOT_COOLDOWN_TICKS: Record<UpgradeLevel, number> = { 1: 16, 2: 12, 3: 8 };
-export const VAULT_CAPACITY: Record<UpgradeLevel, number> = { 1: 80, 2: 160, 3: 280 };
-export const ENCRYPTION_MITIGATION: Record<UpgradeLevel, number> = { 1: 0.15, 2: 0.28, 3: 0.40 };
-export const RELAY_RANGE: Record<UpgradeLevel, number> = { 1: 1, 2: 2, 3: 3 };
+export const WALL_HP: Record<UpgradeLevel, number> = { 1: 40, 2: 70, 3: 110 };
+export const TRAP_STUN_TICKS: Record<UpgradeLevel, number> = { 1: 4, 2: 6, 3: 9 };
+export const TRAP_COOLDOWN_TICKS: Record<UpgradeLevel, number> = { 1: 16, 2: 12, 3: 8 };
+export const TREASURY_CAPACITY: Record<UpgradeLevel, number> = { 1: 80, 2: 160, 3: 280 };
+export const WARD_MITIGATION: Record<UpgradeLevel, number> = { 1: 0.15, 2: 0.28, 3: 0.40 };
+export const WATCHTOWER_RANGE: Record<UpgradeLevel, number> = { 1: 1, 2: 2, 3: 3 };
 
-export const SCANNER_DAMAGE: Record<UpgradeLevel, number> = { 1: 4, 2: 7, 3: 10 };
-export const SCANNER_RANGE: Record<UpgradeLevel, number> = { 1: 2, 2: 2, 3: 3 };
-export const SCANNER_COOLDOWN_TICKS: Record<UpgradeLevel, number> = { 1: 4, 2: 3, 3: 2 };
+export const ARCHER_DAMAGE: Record<UpgradeLevel, number> = { 1: 4, 2: 7, 3: 10 };
+export const ARCHER_RANGE: Record<UpgradeLevel, number> = { 1: 2, 2: 2, 3: 3 };
+export const ARCHER_COOLDOWN_TICKS: Record<UpgradeLevel, number> = { 1: 4, 2: 3, 3: 2 };
 
-export const PROBE_BASE_HP = 30;
-export const PROBE_DAMAGE_PER_TICK = 8;
-export const PROBE_LOOT_PER_TICK = 3;
+export const RAIDER_BASE_HP = 30;
+export const RAIDER_DAMAGE_PER_TICK = 8;
+export const RAIDER_LOOT_PER_TICK = 3;
 
-export const PROBE_TYPES = {
-  standard: { hp: 30, damage: 8, loot: 3, speed: 1 },
+export const RAIDER_TYPES = {
+  raider: { hp: 30, damage: 8, loot: 3, speed: 1 },
   scout: { hp: 14, damage: 4, loot: 2, speed: 2 },
   brute: { hp: 55, damage: 14, loot: 5, speed: 1 },
 } as const;
 
 export const PASSIVE_INCOME_INTERVAL_MS = 60_000;
-export const PASSIVE_INCOME_PER_VAULT: Resources = { compute: 2, memory: 4, bandwidth: 1 };
-export const PASSIVE_INCOME_PER_RELAY: Resources = { compute: 1, memory: 0, bandwidth: 3 };
+export const PASSIVE_INCOME_PER_TREASURY: Resources = { gold: 2, wood: 4, stone: 1 };
+export const PASSIVE_INCOME_PER_WATCHTOWER: Resources = { gold: 1, wood: 0, stone: 3 };
 
 export const CODING_EVENT_GRANTS: Record<string, Resources> = {
-  build_success: { compute: 12, memory: 0, bandwidth: 4 },
-  tests_pass: { compute: 0, memory: 8, bandwidth: 4 },
-  git_commit: { compute: 5, memory: 5, bandwidth: 10 },
-  session_reward: { compute: 8, memory: 3, bandwidth: 6 },
-  daily_login: { compute: 5, memory: 5, bandwidth: 10 },
+  build_success: { gold: 12, wood: 0, stone: 4 },
+  tests_pass: { gold: 0, wood: 8, stone: 4 },
+  git_commit: { gold: 5, wood: 5, stone: 10 },
+  session_reward: { gold: 8, wood: 3, stone: 6 },
+  daily_login: { gold: 5, wood: 5, stone: 10 },
 };
 
-export const BACKGROUND_RAID_INTERVAL_MS = 900_000; // 15 min
+export const KINGDOM_EVENT_NAMES: Record<string, string> = {
+  build_success: 'Miners returned',
+  tests_pass: 'Harvest complete',
+  git_commit: 'Trade caravan arrived',
+  session_reward: 'Tax collection',
+  daily_login: 'Morning tribute',
+};
+
+export const BACKGROUND_RAID_INTERVAL_MS = 900_000;
 export const BACKGROUND_RAID_MAX = 5;
 
 export const FAUCET_BASE_USES = 10;
@@ -117,36 +125,36 @@ export interface AchievementDef {
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
-  { id: 'first_structure', name: 'Builder', desc: 'Place your first structure', bonus: '+20C welcome bonus' },
+  { id: 'first_structure', name: 'Builder', desc: 'Place your first structure', bonus: '+20G welcome bonus' },
   { id: 'defense_win_5', name: 'Warden', desc: 'Win 5 defense raids', bonus: '+25% defense bonus' },
   { id: 'win_streak_3', name: 'On Fire', desc: 'Achieve a 3-win streak', bonus: '+10 all resources' },
   { id: 'win_streak_5', name: 'Unstoppable', desc: 'Achieve a 5-win streak', bonus: '+30 all resources' },
   { id: 'all_types', name: 'Diverse', desc: 'Place every structure type' },
   { id: 'max_level', name: 'Maxed Out', desc: 'Upgrade a structure to Level 3' },
-  { id: 'scanner_kills_10', name: 'Headhunter', desc: 'Kill 10 probes with scanners', bonus: '+1 scanner damage' },
+  { id: 'archer_kills_10', name: 'Headhunter', desc: 'Kill 10 raiders with archers', bonus: '+1 archer damage' },
   { id: 'structures_20', name: 'Architect', desc: 'Place 20 structures total' },
   { id: 'raids_10', name: 'Veteran', desc: 'Complete 10 raids', bonus: 'Unlock Lv.2 friend raids' },
   { id: 'hoarder', name: 'Hoarder', desc: 'Hold 500+ total resources' },
 ];
 
 export const FRAGMENT_TYPES = {
-  compute_shard:    { symbol: '~', color: 'cyan',    yield: { compute: 4, memory: 0, bandwidth: 0 } as Resources, weight: 35 },
-  memory_bit:       { symbol: '~', color: 'yellow',  yield: { compute: 0, memory: 4, bandwidth: 0 } as Resources, weight: 35 },
-  bandwidth_packet: { symbol: '~', color: 'green',   yield: { compute: 0, memory: 0, bandwidth: 4 } as Resources, weight: 20 },
-  data_bundle:      { symbol: '~', color: 'white',   yield: { compute: 2, memory: 2, bandwidth: 2 } as Resources, weight: 10 },
+  gold_nugget: { symbol: '~', color: 'cyan',    yield: { gold: 4, wood: 0, stone: 0 } as Resources, weight: 35 },
+  timber:      { symbol: '~', color: 'yellow',  yield: { gold: 0, wood: 4, stone: 0 } as Resources, weight: 35 },
+  ore:         { symbol: '~', color: 'green',   yield: { gold: 0, wood: 0, stone: 4 } as Resources, weight: 20 },
+  gem:         { symbol: '~', color: 'white',   yield: { gold: 2, wood: 2, stone: 2 } as Resources, weight: 10 },
 } as const;
 
 export const FRAGMENT_MAX = 6;
 export const FRAGMENT_SPAWN_INTERVAL_MS = 35_000;
 export const FRAGMENT_DECAY_MS = 180_000;
-export const FRAGMENT_VAULT_BONUS = 0.25;
-export const FRAGMENT_VAULT_RANGE = 2;
+export const FRAGMENT_TREASURY_BONUS = 0.25;
+export const FRAGMENT_TREASURY_RANGE = 2;
 
 export const ALL_STRUCTURE_KINDS: StructureKind[] = [
-  'firewall',
-  'honeypot',
-  'dataVault',
-  'encryptionNode',
-  'relayTower',
-  'scanner',
+  'wall',
+  'trap',
+  'treasury',
+  'ward',
+  'watchtower',
+  'archerTower',
 ];

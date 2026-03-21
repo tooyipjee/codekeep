@@ -10,7 +10,7 @@ import {
 import { mulberry32, hashSeed } from '../engine/raid-sim.js';
 
 export interface NpcDifficulty {
-  level: number; // 1-5
+  level: number;
   structureCount: number;
   maxUpgradeLevel: UpgradeLevel;
   probeCount: number;
@@ -31,68 +31,62 @@ export function generateNpcKeep(seed: string, difficulty: number): Keep {
   const structures: PlacedStructure[] = [];
   const occupied = new Set<string>();
 
-  // Place vaults in inner area (away from edges)
-  const vaultCount = Math.max(1, Math.floor(diff.structureCount / 5));
-  for (let i = 0; i < vaultCount; i++) {
+  const treasuryCount = Math.max(1, Math.floor(diff.structureCount / 5));
+  for (let i = 0; i < treasuryCount; i++) {
     const pos = findFreeInnerPos(rng, occupied);
     if (!pos) break;
-    structures.push(makeStructure('dataVault', pos, randomLevel(rng, diff.maxUpgradeLevel)));
+    structures.push(makeStructure('treasury', pos, randomLevel(rng, diff.maxUpgradeLevel)));
     occupied.add(`${pos.x},${pos.y}`);
   }
 
-  // Place firewalls around vaults to create chokepoints
-  const fwCount = Math.floor(diff.structureCount * 0.35);
-  for (let i = 0; i < fwCount; i++) {
+  const wallCount = Math.floor(diff.structureCount * 0.35);
+  for (let i = 0; i < wallCount; i++) {
     const pos = findFreeNearStructures(rng, occupied, structures);
     if (!pos) break;
-    structures.push(makeStructure('firewall', pos, randomLevel(rng, diff.maxUpgradeLevel)));
+    structures.push(makeStructure('wall', pos, randomLevel(rng, diff.maxUpgradeLevel)));
     occupied.add(`${pos.x},${pos.y}`);
   }
 
-  // Place honeypots on likely approach paths
-  const hpCount = Math.floor(diff.structureCount * 0.2);
-  for (let i = 0; i < hpCount; i++) {
+  const trapCount = Math.floor(diff.structureCount * 0.2);
+  for (let i = 0; i < trapCount; i++) {
     const pos = findFreeNearEdge(rng, occupied);
     if (!pos) break;
-    structures.push(makeStructure('honeypot', pos, randomLevel(rng, diff.maxUpgradeLevel)));
+    structures.push(makeStructure('trap', pos, randomLevel(rng, diff.maxUpgradeLevel)));
     occupied.add(`${pos.x},${pos.y}`);
   }
 
-  // Place encryption nodes adjacent to vaults
-  const encCount = Math.max(1, Math.floor(diff.structureCount * 0.15));
-  for (let i = 0; i < encCount; i++) {
-    const allVaults = structures.filter((s) => s.kind === 'dataVault');
-    const vault = allVaults.length > 0 ? allVaults[Math.floor(rng() * allVaults.length)] : undefined;
-    if (!vault) break;
+  const wardCount = Math.max(1, Math.floor(diff.structureCount * 0.15));
+  for (let i = 0; i < wardCount; i++) {
+    const allTreasuries = structures.filter((s) => s.kind === 'treasury');
+    const treasury = allTreasuries.length > 0 ? allTreasuries[Math.floor(rng() * allTreasuries.length)] : undefined;
+    if (!treasury) break;
     const adjacents: GridCoord[] = [
-      { x: vault.pos.x - 1, y: vault.pos.y },
-      { x: vault.pos.x + 1, y: vault.pos.y },
-      { x: vault.pos.x, y: vault.pos.y - 1 },
-      { x: vault.pos.x, y: vault.pos.y + 1 },
+      { x: treasury.pos.x - 1, y: treasury.pos.y },
+      { x: treasury.pos.x + 1, y: treasury.pos.y },
+      { x: treasury.pos.x, y: treasury.pos.y - 1 },
+      { x: treasury.pos.x, y: treasury.pos.y + 1 },
     ].filter((p) => p.x >= 0 && p.x < GRID_SIZE && p.y >= 0 && p.y < GRID_SIZE && !occupied.has(`${p.x},${p.y}`));
 
     if (adjacents.length > 0) {
       const pos = adjacents[Math.floor(rng() * adjacents.length)];
-      structures.push(makeStructure('encryptionNode', pos, randomLevel(rng, diff.maxUpgradeLevel)));
+      structures.push(makeStructure('ward', pos, randomLevel(rng, diff.maxUpgradeLevel)));
       occupied.add(`${pos.x},${pos.y}`);
     }
   }
 
-  // Place scanners in defensive positions
-  const scannerCount = Math.max(0, Math.floor(diff.structureCount * 0.10));
-  for (let i = 0; i < scannerCount; i++) {
+  const archerCount = Math.max(0, Math.floor(diff.structureCount * 0.10));
+  for (let i = 0; i < archerCount; i++) {
     const pos = findFreeNearStructures(rng, occupied, structures);
     if (!pos) break;
-    structures.push(makeStructure('scanner', pos, randomLevel(rng, diff.maxUpgradeLevel)));
+    structures.push(makeStructure('archerTower', pos, randomLevel(rng, diff.maxUpgradeLevel)));
     occupied.add(`${pos.x},${pos.y}`);
   }
 
-  // Fill remaining with relay towers
   const remaining = diff.structureCount - structures.length;
   for (let i = 0; i < remaining; i++) {
     const pos = findFreePos(rng, occupied);
     if (!pos) break;
-    structures.push(makeStructure('relayTower', pos, randomLevel(rng, diff.maxUpgradeLevel)));
+    structures.push(makeStructure('watchtower', pos, randomLevel(rng, diff.maxUpgradeLevel)));
     occupied.add(`${pos.x},${pos.y}`);
   }
 

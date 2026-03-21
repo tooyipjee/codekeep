@@ -42,7 +42,7 @@ export interface KeepGridState {
 export type RaidOutcome = 'defense_win' | 'partial_breach' | 'full_breach';
 
 export type RaidTickEvent =
-  | { t: number; type: 'raider_spawn'; probeId: number; edge: 'N' | 'S' | 'E' | 'W'; pos: GridCoord }
+  | { t: number; type: 'raider_spawn'; probeId: number; edge: 'N' | 'S' | 'E' | 'W'; pos: GridCoord; raiderType?: ProbeType; maxHp?: number }
   | { t: number; type: 'raider_move'; probeId: number; from: GridCoord; to: GridCoord }
   | { t: number; type: 'raider_blocked'; probeId: number; pos: GridCoord; wallId: string }
   | { t: number; type: 'raider_stunned'; probeId: number; pos: GridCoord; trapId: string; stunTicks: number }

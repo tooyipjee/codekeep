@@ -1,7 +1,10 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import type { KeepGridState, GridCoord, StructureKind, DataFragment } from '@codekeep/shared';
-import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL, FRAGMENT_TYPES } from '@codekeep/shared';
+import type { KeepGridState, GridCoord, StructureKind, DataFragment, PlacedStructure } from '@codekeep/shared';
+import {
+  GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL, FRAGMENT_TYPES,
+  ARCHER_RANGE, WATCHTOWER_RANGE, WARD_MITIGATION,
+} from '@codekeep/shared';
 
 interface KeepGridProps {
   grid: KeepGridState;
@@ -33,6 +36,65 @@ const FRAGMENT_COLORS: Record<string, string> = Object.fromEntries(
   Object.entries(FRAGMENT_TYPES).map(([k, v]) => [k, v.color]),
 );
 
+function manhattanDist(a: GridCoord, b: GridCoord): number {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
+function chebyshevDist(a: GridCoord, b: GridCoord): number {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+}
+
+function computeRangeOverlay(
+  structure: PlacedStructure,
+  allStructures: PlacedStructure[],
+): { tiles: Set<string>; color: string } | null {
+  const tiles = new Set<string>();
+
+  if (structure.kind === 'archerTower') {
+    const range = ARCHER_RANGE[structure.level];
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        if (manhattanDist(structure.pos, { x, y }) <= range && !(x === structure.pos.x && y === structure.pos.y)) {
+          tiles.add(`${x},${y}`);
+        }
+      }
+    }
+    return { tiles, color: 'red' };
+  }
+
+  if (structure.kind === 'watchtower') {
+    const range = WATCHTOWER_RANGE[structure.level];
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        if (chebyshevDist(structure.pos, { x, y }) <= range && !(x === structure.pos.x && y === structure.pos.y)) {
+          tiles.add(`${x},${y}`);
+        }
+      }
+    }
+    return { tiles, color: 'green' };
+  }
+
+  if (structure.kind === 'ward') {
+    let effectiveRange = 1;
+    const watchtowers = allStructures.filter(s => s.kind === 'watchtower');
+    for (const wt of watchtowers) {
+      if (chebyshevDist(structure.pos, wt.pos) <= 1) {
+        effectiveRange = Math.max(effectiveRange, 1 + WATCHTOWER_RANGE[wt.level]);
+      }
+    }
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        if (chebyshevDist(structure.pos, { x, y }) <= effectiveRange && !(x === structure.pos.x && y === structure.pos.y)) {
+          tiles.add(`${x},${y}`);
+        }
+      }
+    }
+    return { tiles, color: 'cyan' };
+  }
+
+  return null;
+}
+
 export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [] }: KeepGridProps) {
   const h = asciiMode ? '-' : '─';
   const v = asciiMode ? '|' : '│';
@@ -59,6 +121,11 @@ export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [] }: K
     fragmentMap.set(`${f.pos.x},${f.pos.y}`, f);
   }
 
+  const cursorStructure = structureMap.get(`${cursor.x},${cursor.y}`);
+  const rangeOverlay = cursorStructure
+    ? computeRangeOverlay(cursorStructure, grid.structures)
+    : null;
+
   const rows: React.ReactNode[] = [];
 
   for (let y = 0; y < GRID_SIZE; y++) {
@@ -70,12 +137,14 @@ export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [] }: K
     for (let x = 0; x < GRID_SIZE; x++) {
       const isCursor = cursor.x === x && cursor.y === y;
       const structure = structureMap.get(`${x},${y}`);
+      const cellKey = `${x},${y}`;
+      const inRange = rangeOverlay?.tiles.has(cellKey) ?? false;
 
       let char: string;
       let color: string | undefined;
       let bold = false;
 
-      const fragment = fragmentMap.get(`${x},${y}`);
+      const fragment = fragmentMap.get(cellKey);
 
       if (structure) {
         char = STRUCTURE_SYMBOLS[structure.kind];
@@ -96,6 +165,18 @@ export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [] }: K
       if (isCursor) {
         cells.push(
           <Text key={x} backgroundColor="white" color="black" bold>
+            {char + suffix}
+          </Text>
+        );
+      } else if (inRange && !structure && !fragment) {
+        cells.push(
+          <Text key={x} color={rangeOverlay!.color} dimColor>
+            {'░' + (compact ? '' : ' ')}
+          </Text>
+        );
+      } else if (inRange && structure) {
+        cells.push(
+          <Text key={x} color={color} bold={bold} backgroundColor={rangeOverlay!.color === 'red' ? 'red' : undefined}>
             {char + suffix}
           </Text>
         );

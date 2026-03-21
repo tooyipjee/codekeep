@@ -305,6 +305,8 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       probeId: i,
       edge,
       pos: { ...pos },
+      raiderType,
+      maxHp: RAIDER_TYPES[raiderType].hp,
     });
   }
 

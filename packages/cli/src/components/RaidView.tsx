@@ -52,6 +52,7 @@ interface VisualEffect {
   color: string;
   bold?: boolean;
   expiresAtTick: number;
+  priority: number;
 }
 
 const RAIDER_CHARS: Record<string, string> = {
@@ -98,7 +99,7 @@ const STRUCTURE_COLORS: Record<string, string> = {
 
 export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, onSpeedChange, onDone }: RaidViewProps) {
   const [currentTick, setCurrentTick] = useState(0);
-  const [speed, setSpeedState] = useState<SpeedMultiplier>(initialSpeed ?? 2);
+  const [speed, setSpeedState] = useState<SpeedMultiplier>(initialSpeed ?? 1);
 
   const setSpeed = useCallback((s: SpeedMultiplier) => {
     setSpeedState(s);
@@ -164,6 +165,7 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
     const newLogs: string[] = [];
     const newEffects: VisualEffect[] = [];
 
+    let newRaidersRef = new Map<number, RaiderDisplay>();
     setRaiders((prev) => {
       const newRaiders = new Map(prev);
       for (const event of eventsInRange) {
@@ -211,6 +213,7 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
             break;
         }
       }
+      newRaidersRef = newRaiders;
       return newRaiders;
     });
 
@@ -233,13 +236,15 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
         case 'raider_spawn': {
           const rType = event.raiderType ?? 'raider';
           const badge = RAIDER_CHARS[rType] ?? 'R';
-          newLogs.push(`${badge} Raider ${event.probeId + 1} enters from ${event.edge}`);
+          const edgeArrow = event.edge === 'N' ? '↓' : event.edge === 'S' ? '↑' : event.edge === 'W' ? '→' : '←';
+          newLogs.push(`${badge} Raider ${event.probeId + 1} enters from ${event.edge} ${edgeArrow}`);
           newEffects.push({
             pos: { ...event.pos },
-            char: '※',
+            char: edgeArrow,
             color: 'yellowBright',
             bold: true,
-            expiresAtTick: currentTick + 2,
+            expiresAtTick: currentTick + 3,
+            priority: 0,
           });
           break;
         }
@@ -251,20 +256,22 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
             color: 'cyanBright',
             bold: true,
             expiresAtTick: currentTick + 3,
+            priority: 2,
           });
           break;
         }
         case 'wall_damaged': {
           if (event.destroyed) {
             newLogs.push(`💥 Wall DESTROYED!`);
-            const w = walls.get(event.structureId);
-            if (w) {
+            const wallStruct = keepGrid.structures.find(s => s.id === event.structureId);
+            if (wallStruct) {
               newEffects.push({
-                pos: { ...w.pos },
+                pos: { ...wallStruct.pos },
                 char: '✗',
                 color: 'redBright',
                 bold: true,
                 expiresAtTick: currentTick + 4,
+                priority: 2,
               });
             }
           } else {
@@ -273,26 +280,28 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
           break;
         }
         case 'arrow_hit': {
-          const raider = raiders.get(event.probeId);
-          const archerStruct = keepGrid.structures.find(s => s.id === event.archerId);
-          if (archerStruct && raider) {
+          const targetRaider = newRaidersRef.get(event.probeId);
+          const targetPos = targetRaider ? { ...targetRaider.pos } : null;
+          if (targetPos) {
             newEffects.push({
-              pos: { ...raider.pos },
+              pos: targetPos,
               char: '†',
               color: 'redBright',
               bold: true,
               expiresAtTick: currentTick + 2,
+              priority: 1,
             });
           }
           if (event.hpRemaining <= 0) {
             newLogs.push(`🏹 Archer slew raider ${event.probeId + 1}!`);
-            if (raider) {
+            if (targetPos) {
               newEffects.push({
-                pos: { ...raider.pos },
+                pos: targetPos,
                 char: '✖',
                 color: 'redBright',
                 bold: true,
                 expiresAtTick: currentTick + 4,
+                priority: 3,
               });
             }
           } else {
@@ -315,6 +324,7 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
               color: 'yellowBright',
               bold: true,
               expiresAtTick: currentTick + 5,
+              priority: 3,
             });
           }
           break;
@@ -358,6 +368,16 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
   for (const s of keepGrid.structures) {
     structureMap.set(`${s.pos.x},${s.pos.y}`, s);
   }
+  const hasTreasury = keepGrid.structures.some(s => s.kind === 'treasury');
+  if (!hasTreasury) {
+    const virtualTreasury: PlacedStructure = {
+      id: '__virtual_center_treasury',
+      kind: 'treasury',
+      pos: { x: 8, y: 8 },
+      level: 1,
+    };
+    structureMap.set('8,8', virtualTreasury);
+  }
 
   const raiderMap = new Map<string, RaiderDisplay>();
   for (const [, p] of raiders) {
@@ -374,7 +394,8 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
   const effectMap = new Map<string, VisualEffect>();
   for (const e of effects) {
     const k = `${e.pos.x},${e.pos.y}`;
-    if (!effectMap.has(k) || e.expiresAtTick > (effectMap.get(k)?.expiresAtTick ?? 0)) {
+    const existing = effectMap.get(k);
+    if (!existing || e.priority > existing.priority || (e.priority === existing.priority && e.expiresAtTick > existing.expiresAtTick)) {
       effectMap.set(k, e);
     }
   }
@@ -529,7 +550,7 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
         <Box flexDirection="column">
           <Text dimColor>p pause  1/2/4/8 speed  n/↵ skip  q back</Text>
           <Text dimColor>
-            <Text color="green" bold>R</Text>=Raider  <Text color="yellow" bold>S</Text>=Scout  <Text color="red" bold>B</Text>=Brute  <Text color="cyan">◊</Text>=Stunned  <Text color="red">✖</Text>=Kill  <Text color="redBright">†</Text>=Arrow
+            <Text color="green" bold>R</Text>=Raider  <Text color="yellow" bold>S</Text>=Scout  <Text color="red" bold>B</Text>=Brute  <Text color="cyan">◊</Text>=Stunned  <Text color="red">✖</Text>=Kill  <Text color="redBright">†</Text>=Arrow  <Text color="yellowBright">↓↑→←</Text>=Spawn
           </Text>
         </Box>
       )}

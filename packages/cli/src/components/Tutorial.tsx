@@ -424,6 +424,7 @@ export function Tutorial({ gameSave, onComplete }: TutorialProps) {
           <Text>  • Put archer towers nearby to <Text bold>finish stunned raiders</Text></Text>
           <Text>  • Hide treasuries <Text bold>deep inside</Text> your walls</Text>
           <Text>  • Place wards next to treasuries to <Text bold>reduce loot stolen</Text></Text>
+          <Text>  • <Text bold>Hover over</Text> towers/wards to see their <Text bold color="red">range overlay</Text></Text>
           <Text> </Text>
           <Text dimColor>Enter to continue</Text>
         </>

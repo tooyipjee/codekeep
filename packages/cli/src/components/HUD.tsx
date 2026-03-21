@@ -51,6 +51,13 @@ export function HUD({ resources, selectedStructure, message, compact, structureA
     );
   }
 
+  const cursorInfo = structureAtCursor
+    ? `${STRUCTURE_NAMES[structureAtCursor.kind]} Lv.${structureAtCursor.level}` +
+      (structureAtCursor.level < 3
+        ? ` → Lv.${structureAtCursor.level + 1}: ${formatCost(STRUCTURE_COSTS[structureAtCursor.kind][(structureAtCursor.level + 1) as 1 | 2 | 3])}`
+        : ' (MAX)')
+    : '';
+
   return (
     <Box flexDirection="column" marginBottom={1}>
       <Box flexDirection="row" gap={1}>
@@ -68,18 +75,8 @@ export function HUD({ resources, selectedStructure, message, compact, structureA
           </>
         )}
       </Box>
-      {message && (
-        <Text color={message.startsWith('!') ? 'red' : 'yellow'}>{message}</Text>
-      )}
-      {structureAtCursor && (
-        <Text dimColor>
-          {STRUCTURE_NAMES[structureAtCursor.kind]} Lv.{structureAtCursor.level}
-          {structureAtCursor.level < 3 ? (() => {
-            const nextCost = STRUCTURE_COSTS[structureAtCursor.kind][(structureAtCursor.level + 1) as 1 | 2 | 3];
-            return ` → Lv.${structureAtCursor.level + 1}: ${formatCost(nextCost)}`;
-          })() : ' (MAX)'}
-        </Text>
-      )}
+      <Text color={message.startsWith('!') ? 'red' : 'yellow'}>{message || ' '}</Text>
+      <Text dimColor>{cursorInfo || ' '}</Text>
     </Box>
   );
 }

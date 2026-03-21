@@ -59,7 +59,7 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
   const [coordMode, setCoordMode] = useState(false);
   const [coordInput, setCoordInput] = useState('');
   const [raidReturnScreen, setRaidReturnScreen] = useState<Screen>('keep');
-  const raidSpeedRef = useRef<1 | 2 | 4 | 8>(2);
+  const raidSpeedRef = useRef<1 | 2 | 4 | 8>(1);
 
   const isCompact = compact || columns < 80 || rows < 24;
   const tooSmall = columns < MIN_COLS || rows < MIN_ROWS;

@@ -82,6 +82,7 @@ function computeRangeOverlay(
         effectiveRange = Math.max(effectiveRange, 1 + WATCHTOWER_RANGE[wt.level]);
       }
     }
+    effectiveRange = Math.min(effectiveRange, 5);
     for (let y = 0; y < GRID_SIZE; y++) {
       for (let x = 0; x < GRID_SIZE; x++) {
         if (chebyshevDist(structure.pos, { x, y }) <= effectiveRange && !(x === structure.pos.x && y === structure.pos.y)) {
@@ -170,7 +171,7 @@ export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [] }: K
         );
       } else if (inRange && !structure && !fragment) {
         cells.push(
-          <Text key={x} color={rangeOverlay!.color} dimColor>
+          <Text key={x} color={rangeOverlay!.color}>
             {'░' + (compact ? '' : ' ')}
           </Text>
         );

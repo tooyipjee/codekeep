@@ -1,13 +1,14 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import type { KeepGridState, GridCoord, StructureKind } from '@codekeep/shared';
-import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL } from '@codekeep/shared';
+import type { KeepGridState, GridCoord, StructureKind, DataFragment } from '@codekeep/shared';
+import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL, FRAGMENT_TYPES } from '@codekeep/shared';
 
 interface KeepGridProps {
   grid: KeepGridState;
   cursor: GridCoord;
   asciiMode?: boolean;
   compact?: boolean;
+  fragments?: DataFragment[];
 }
 
 const STRUCTURE_COLORS: Record<StructureKind, string> = {
@@ -28,7 +29,14 @@ const BRIGHT_COLORS: Record<StructureKind, string> = {
   scanner: 'redBright',
 };
 
-export function KeepGrid({ grid, cursor, asciiMode, compact }: KeepGridProps) {
+const FRAGMENT_COLORS: Record<string, string> = {
+  compute_shard: 'cyan',
+  memory_bit: 'yellow',
+  bandwidth_packet: 'green',
+  data_bundle: 'whiteBright',
+};
+
+export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [] }: KeepGridProps) {
   const h = asciiMode ? '-' : '─';
   const v = asciiMode ? '|' : '│';
   const tl = asciiMode ? '+' : '┌';
@@ -49,6 +57,11 @@ export function KeepGrid({ grid, cursor, asciiMode, compact }: KeepGridProps) {
     structureMap.set(`${s.pos.x},${s.pos.y}`, s);
   }
 
+  const fragmentMap = new Map<string, DataFragment>();
+  for (const f of fragments) {
+    fragmentMap.set(`${f.pos.x},${f.pos.y}`, f);
+  }
+
   const rows: React.ReactNode[] = [];
 
   for (let y = 0; y < GRID_SIZE; y++) {
@@ -65,11 +78,17 @@ export function KeepGrid({ grid, cursor, asciiMode, compact }: KeepGridProps) {
       let color: string | undefined;
       let bold = false;
 
+      const fragment = fragmentMap.get(`${x},${y}`);
+
       if (structure) {
         char = STRUCTURE_SYMBOLS[structure.kind];
         color = STRUCTURE_COLORS[structure.kind];
         if (structure.level >= 2) bold = true;
         if (structure.level === 3) color = BRIGHT_COLORS[structure.kind];
+      } else if (fragment) {
+        char = '~';
+        color = FRAGMENT_COLORS[fragment.type] ?? 'cyan';
+        bold = true;
       } else {
         char = EMPTY_CELL_SYMBOL;
         color = undefined;

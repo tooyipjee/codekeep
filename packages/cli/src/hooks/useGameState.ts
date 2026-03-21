@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameSave, GridCoord, StructureKind, RaidReplay, Resources, KeepGridState, ProbeType } from '@codekeep/shared';
-import { GRID_SIZE, ALL_STRUCTURE_KINDS, PROBE_TYPES, BACKGROUND_RAID_INTERVAL_MS, BACKGROUND_RAID_MAX, FAUCET_BASE_USES, FAUCET_DIMINISH_FACTOR, ACHIEVEMENTS } from '@codekeep/shared';
+import type { GameSave, GridCoord, StructureKind, RaidReplay, Resources, KeepGridState, ProbeType, DataFragment } from '@codekeep/shared';
+import { GRID_SIZE, ALL_STRUCTURE_KINDS, PROBE_TYPES, BACKGROUND_RAID_INTERVAL_MS, BACKGROUND_RAID_MAX, FAUCET_BASE_USES, FAUCET_DIMINISH_FACTOR, ACHIEVEMENTS, FRAGMENT_SPAWN_INTERVAL_MS, FRAGMENT_TYPES } from '@codekeep/shared';
 import {
   loadGame,
   saveGame,
@@ -15,6 +15,9 @@ import {
   calculateOfflineResources,
   capResources,
   addResources,
+  spawnFragments,
+  collectFragment,
+  decayFragments,
 } from '@codekeep/server';
 import { useCodingEvents } from './useCodingEvents.js';
 
@@ -221,10 +224,17 @@ export function useGameState(forceTutorial: boolean) {
   const [raidType, setRaidType] = useState<'attack' | 'defend' | null>(null);
   const [raidSummary, setRaidSummary] = useState<RaidSummary | null>(null);
   const [offlineReport, setOfflineReport] = useState<OfflineReport | null>(null);
+  const [fragments, setFragments] = useState<DataFragment[]>([]);
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFaucetTimeRef = useRef(0);
   const faucetUsesRef = useRef(0);
   const passiveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fragmentTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastQuickRaidRef = useRef<{
+    replay: RaidReplay;
+    grid: KeepGridState;
+    summary: RaidSummary;
+  } | null>(null);
 
   const selectedStructure = ALL_STRUCTURE_KINDS[structureIndex];
 
@@ -326,6 +336,19 @@ export function useGameState(forceTutorial: boolean) {
     }, PASSIVE_TICK_MS);
     return () => { if (passiveTimerRef.current) clearInterval(passiveTimerRef.current); };
   }, []);
+
+  // Fragment spawn/decay timer
+  useEffect(() => {
+    fragmentTimerRef.current = setInterval(() => {
+      setFragments((prev) => {
+        if (!gameSave) return prev;
+        const rng = simpleRng(Date.now());
+        const afterDecay = decayFragments(prev, Date.now());
+        return spawnFragments(afterDecay, gameSave.keep.grid, Date.now(), rng);
+      });
+    }, FRAGMENT_SPAWN_INTERVAL_MS);
+    return () => { if (fragmentTimerRef.current) clearInterval(fragmentTimerRef.current); };
+  }, [gameSave]);
 
   useEffect(() => {
     return () => { if (messageTimerRef.current) clearTimeout(messageTimerRef.current); };
@@ -587,14 +610,73 @@ export function useGameState(forceTutorial: boolean) {
         },
       });
 
+      const probesKilled = replay.events.filter((e) => e.type === 'probe_destroyed').length;
+      const firewallsDestroyed = replay.events.filter((e) => e.type === 'firewall_damaged' && e.destroyed).length;
+
+      lastQuickRaidRef.current = {
+        replay,
+        grid: gameSave.keep.grid,
+        summary: {
+          won, raidType: 'defend', outcome: lastEvent.outcome,
+          lootGained: defenseBonus, lootLost, probesKilled, probesTotal: probeCount,
+          firewallsDestroyed,
+          scannersActive: gameSave.keep.grid.structures.filter((s) => s.kind === 'scanner').length,
+          difficulty,
+        },
+      };
+
       if (won) {
-        showMessage(`Defense WIN! +${defenseBonus.compute}C +${defenseBonus.memory}M +${defenseBonus.bandwidth}B`);
+        showMessage(`Defense WIN! +${defenseBonus.compute}C +${defenseBonus.memory}M +${defenseBonus.bandwidth}B  [v] view`);
       } else {
         const total = lootLost.compute + lootLost.memory + lootLost.bandwidth;
-        showMessage(`Defense BREACH! Lost ${total} resources`);
+        showMessage(`Defense BREACH! Lost ${total} res  [v] view`);
       }
     }
   }, [gameSave, persist, showMessage]);
+
+  const watchLastRaid = useCallback((): boolean => {
+    const last = lastQuickRaidRef.current;
+    if (!last) return false;
+    setRaidReplay(last.replay);
+    setRaidGrid(last.grid);
+    setRaidType('defend');
+    setRaidSummary(last.summary);
+    lastQuickRaidRef.current = null;
+    return true;
+  }, []);
+
+  const collectAtCursor = useCallback(() => {
+    if (!gameSave) return;
+    const result = collectFragment(fragments, cursor, gameSave.keep.grid);
+    if (!result) {
+      showMessage('!Nothing to collect here');
+      return;
+    }
+    setFragments(result.updatedFragments);
+    const y = result.yield;
+    const updated = {
+      ...gameSave,
+      keep: { ...gameSave.keep, resources: capResources(addResources(gameSave.keep.resources, y)) },
+    };
+    persist(updated);
+    const parts: string[] = [];
+    if (y.compute > 0) parts.push(`+${y.compute}C`);
+    if (y.memory > 0) parts.push(`+${y.memory}M`);
+    if (y.bandwidth > 0) parts.push(`+${y.bandwidth}B`);
+    const typeName = result.collected[0]?.type.replace('_', ' ') ?? 'fragment';
+    const multi = result.collected.length > 1 ? ` (${result.collected.length}x)` : '';
+    showMessage(`${parts.join(' ')} ${typeName}${multi}`);
+  }, [gameSave, fragments, cursor, persist, showMessage]);
+
+  const watchRaidRecord = useCallback((record: { replay: RaidReplay; attackerId: string; defenderKeepId: string }): boolean => {
+    if (!gameSave) return false;
+    const isDefense = record.attackerId !== gameSave.player.id;
+    setRaidReplay(record.replay);
+    setRaidGrid(gameSave.keep.grid);
+    setRaidType(isDefense ? 'defend' : 'attack');
+    setRaidSummary(null);
+    return true;
+  }, [gameSave]);
 
   const clearRaid = useCallback(() => {
     setRaidReplay(null);
@@ -668,6 +750,7 @@ export function useGameState(forceTutorial: boolean) {
     selectedStructure,
     structureAtCursor,
     message,
+    fragments,
     raidReplay,
     raidGrid,
     raidType,
@@ -679,9 +762,12 @@ export function useGameState(forceTutorial: boolean) {
     placeAtCursor,
     upgradeAtCursor,
     demolishAtCursor,
+    collectAtCursor,
     startAttackRaid,
     startDefendRaid,
     quickDefend,
+    watchLastRaid,
+    watchRaidRecord,
     clearRaid,
     completeTutorial,
     grantSimResources,

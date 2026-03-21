@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import type { GameSave } from '@codekeep/shared';
 import { loadGame, saveGame, createNewGameSave, simulateRaid } from '@codekeep/server';
@@ -13,7 +13,7 @@ import { FriendList } from './components/FriendList.js';
 import { RaidLog } from './components/RaidLog.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { useGameState } from './hooks/useGameState.js';
-import type { Keep, RaidReplay as RaidReplayType, KeepGridState } from '@codekeep/shared';
+import type { Keep, RaidReplay as RaidReplayType, KeepGridState, RaidRecord } from '@codekeep/shared';
 
 const MIN_COLS = 60;
 const MIN_ROWS = 18;
@@ -55,6 +55,8 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
   const [friendKeepGrid, setFriendKeepGrid] = useState<KeepGridState | null>(null);
   const [coordMode, setCoordMode] = useState(false);
   const [coordInput, setCoordInput] = useState('');
+  const [raidReturnScreen, setRaidReturnScreen] = useState<Screen>('keep');
+  const raidSpeedRef = useRef<1 | 2 | 4 | 8>(2);
 
   const isCompact = compact || columns < 80 || rows < 24;
   const tooSmall = columns < MIN_COLS || rows < MIN_ROWS;
@@ -64,6 +66,7 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
     cursor,
     selectedStructure,
     message,
+    fragments,
     raidReplay,
     raidGrid,
     raidType,
@@ -76,9 +79,12 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
     placeAtCursor,
     upgradeAtCursor,
     demolishAtCursor,
+    collectAtCursor,
     startAttackRaid,
     startDefendRaid,
     quickDefend,
+    watchLastRaid,
+    watchRaidRecord,
     clearRaid,
     completeTutorial,
     grantSimResources,
@@ -186,8 +192,16 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
     else if (input === ']') cycleStructure(1);
     else if (input === 'f') grantSimResources();
 
+    // Collect fragment at cursor
+    else if (input === 'c') collectAtCursor();
+
     // Quick defend from keep screen
     else if (input === 'r') quickDefend();
+
+    // View last quick-defend replay
+    else if (input === 'v') {
+      if (watchLastRaid()) setScreen('raid');
+    }
 
     // Coordinate jump
     else if (input === 'g') {
@@ -256,7 +270,18 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
   }
 
   if (screen === 'raidLog') {
-    return <RaidLog gameSave={gameSave} onBack={() => setScreen('menu')} />;
+    return (
+      <RaidLog
+        gameSave={gameSave}
+        onBack={() => setScreen('menu')}
+        onWatchReplay={(record) => {
+          if (watchRaidRecord(record)) {
+            setRaidReturnScreen('raidLog');
+            setScreen('raid');
+          }
+        }}
+      />
+    );
   }
 
   if (screen === 'friendList') {
@@ -286,6 +311,8 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
           replay={friendRaidReplay}
           keepGrid={friendKeepGrid}
           raidType="attack"
+          initialSpeed={raidSpeedRef.current}
+          onSpeedChange={(s) => { raidSpeedRef.current = s; }}
           onDone={() => {
             setFriendRaidReplay(null);
             setFriendKeepGrid(null);
@@ -303,9 +330,12 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
         keepGrid={raidGrid}
         raidType={raidType || 'defend'}
         summary={raidSummary || undefined}
+        initialSpeed={raidSpeedRef.current}
+        onSpeedChange={(s) => { raidSpeedRef.current = s; }}
         onDone={() => {
           clearRaid();
-          setScreen('keep');
+          setScreen(raidReturnScreen);
+          setRaidReturnScreen('keep');
         }}
       />
     );
@@ -333,6 +363,7 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
         message={coordMode ? `Jump to: ${coordInput}_` : message}
         compact={isCompact}
         structureAtCursor={structureAtCursor}
+        fragmentCount={fragments.length}
       />
       <Box flexDirection="row">
         <KeepGrid
@@ -340,20 +371,21 @@ function AppContent({ asciiMode, compact, forceTutorial, autoResume }: AppProps)
           cursor={cursor}
           asciiMode={asciiMode}
           compact={isCompact}
+          fragments={fragments}
         />
         {!isCompact && (
           <Box flexDirection="column" marginLeft={2} width={28}>
             <StructurePicker selected={selectedStructure} />
             <Box marginTop={1}>
               <Text dimColor>
-                {'e place  u upgrade  x demo\n[ ] cycle  1-6 select\nr quick-raid  g jump\nTab next  ?help  q quit\nEsc menu  f +resources'}
+                {'e place  u upgrade  x demo\n[ ] cycle  1-6 select\nc collect  r raid  v replay\ng jump  Tab next  f +res\n?help  Esc menu  q quit'}
               </Text>
             </Box>
           </Box>
         )}
       </Box>
       {isCompact && (
-        <Text dimColor>e/u/x build  [ ] cycle  r raid  f +res  ?help  q quit</Text>
+        <Text dimColor>e/u/x build  c collect  r raid  v replay  f +res  q quit</Text>
       )}
     </Box>
   );

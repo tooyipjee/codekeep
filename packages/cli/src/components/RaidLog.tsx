@@ -1,24 +1,35 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import type { GameSave } from '@codekeep/shared';
+import type { GameSave, RaidRecord } from '@codekeep/shared';
 import { ACHIEVEMENTS } from '@codekeep/shared';
 
 interface RaidLogProps {
   gameSave: GameSave;
   onBack: () => void;
+  onWatchReplay?: (record: RaidRecord) => void;
 }
 
-export function RaidLog({ gameSave, onBack }: RaidLogProps) {
+export function RaidLog({ gameSave, onBack, onWatchReplay }: RaidLogProps) {
   const [tab, setTab] = useState<'raids' | 'achievements'>('raids');
+  const [selected, setSelected] = useState(0);
+
+  const raids = [...gameSave.raidHistory].reverse().slice(0, 15);
 
   useInput((input, key) => {
     if (input === 'q' || key.escape) { onBack(); return; }
     if (key.tab || input === 't') {
       setTab(t => t === 'raids' ? 'achievements' : 'raids');
     }
+
+    if (tab === 'raids' && raids.length > 0) {
+      if (input === 'j' || key.downArrow) setSelected(s => Math.min(s + 1, raids.length - 1));
+      if (input === 'k' || key.upArrow) setSelected(s => Math.max(s - 1, 0));
+      if ((key.return || input === 'v') && raids[selected] && onWatchReplay) {
+        onWatchReplay(raids[selected]);
+      }
+    }
   });
 
-  const raids = [...gameSave.raidHistory].reverse().slice(0, 15);
   const p = gameSave.progression;
 
   return (
@@ -51,12 +62,19 @@ export function RaidLog({ gameSave, onBack }: RaidLogProps) {
               const gainStr = r.lootGained.compute + r.lootGained.memory + r.lootGained.bandwidth > 0
                 ? ` +${r.lootGained.compute}C+${r.lootGained.memory}M+${r.lootGained.bandwidth}B`
                 : '';
+              const sel = i === selected ? '>' : ' ';
               return (
-                <Text key={r.id} dimColor={i > 4}>
-                  {'  '}<Text color={color}>{icon}</Text> {type} {r.outcome.replace('_', ' ')}{lootStr}{gainStr} <Text dimColor>({ago})</Text>
+                <Text key={r.id} dimColor={i > 4 && i !== selected} bold={i === selected}>
+                  {sel} <Text color={color}>{icon}</Text> {type} {r.outcome.replace('_', ' ')}{lootStr}{gainStr} <Text dimColor>({ago})</Text>
                 </Text>
               );
             })
+          )}
+          {raids.length > 0 && (
+            <>
+              <Text> </Text>
+              <Text dimColor>  j/k navigate · Enter/v watch replay</Text>
+            </>
           )}
         </Box>
       )}

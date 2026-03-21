@@ -19,8 +19,15 @@ export function Help() {
       <Text>  u                           Upgrade structure</Text>
       <Text>  x                           Demolish structure (50% refund)</Text>
       <Text> </Text>
+      <Text bold>Foraging</Text>
+      <Text>  c                           Collect data fragment at cursor</Text>
+      <Text>  {'                             (~ symbols on the grid)'}</Text>
+      <Text>  {'  Scanners boost spawn rate, vaults boost yield'}</Text>
+      <Text>  {'  Relays auto-collect nearby fragments'}</Text>
+      <Text> </Text>
       <Text bold>Combat</Text>
       <Text>  r                           Quick defend (instant result)</Text>
+      <Text>  v                           View last quick-defend replay</Text>
       <Text>  Defend Keep (menu)          Watch NPCs attack your grid</Text>
       <Text>  Attack NPC (menu)           Raid NPC keep for resources</Text>
       <Text> </Text>

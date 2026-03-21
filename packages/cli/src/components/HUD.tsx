@@ -9,6 +9,7 @@ interface HUDProps {
   message: string;
   compact?: boolean;
   structureAtCursor?: PlacedStructure | null;
+  fragmentCount?: number;
 }
 
 const COMPACT_NAMES: Record<StructureKind, string> = {
@@ -20,7 +21,7 @@ const COMPACT_NAMES: Record<StructureKind, string> = {
   scanner: 'SC',
 };
 
-export function HUD({ resources, selectedStructure, message, compact, structureAtCursor }: HUDProps) {
+export function HUD({ resources, selectedStructure, message, compact, structureAtCursor, fragmentCount = 0 }: HUDProps) {
   if (compact) {
     const name = COMPACT_NAMES[selectedStructure];
     return (
@@ -52,6 +53,12 @@ export function HUD({ resources, selectedStructure, message, compact, structureA
         <Text color="green">B:{resources.bandwidth}</Text>
         <Text dimColor>{'│'}</Text>
         <Text>Sel: <Text bold>{STRUCTURE_NAMES[selectedStructure]}</Text></Text>
+        {fragmentCount > 0 && (
+          <>
+            <Text dimColor>{'│'}</Text>
+            <Text color="cyan" bold>~{fragmentCount}</Text>
+          </>
+        )}
       </Box>
       {message && (
         <Text color={message.startsWith('!') ? 'red' : 'yellow'}>{message}</Text>

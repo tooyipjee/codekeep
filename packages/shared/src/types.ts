@@ -116,3 +116,12 @@ export interface CodingEvent {
   timestamp: number;
   grants: Resources;
 }
+
+export type FragmentType = 'compute_shard' | 'memory_bit' | 'bandwidth_packet' | 'data_bundle';
+
+export interface DataFragment {
+  id: string;
+  type: FragmentType;
+  pos: GridCoord;
+  spawnedAtMs: number;
+}

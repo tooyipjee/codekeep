@@ -21,6 +21,8 @@ interface RaidViewProps {
   keepGrid: KeepGridState;
   raidType: 'attack' | 'defend';
   summary?: RaidSummary;
+  initialSpeed?: SpeedMultiplier;
+  onSpeedChange?: (speed: SpeedMultiplier) => void;
   onDone: () => void;
 }
 
@@ -42,9 +44,14 @@ const STRUCTURE_COLORS: Record<string, string> = {
   scanner: 'redBright',
 };
 
-export function RaidView({ replay, keepGrid, raidType, summary, onDone }: RaidViewProps) {
+export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, onSpeedChange, onDone }: RaidViewProps) {
   const [currentTick, setCurrentTick] = useState(0);
-  const [speed, setSpeed] = useState<SpeedMultiplier>(2);
+  const [speed, setSpeedState] = useState<SpeedMultiplier>(initialSpeed ?? 2);
+
+  const setSpeed = useCallback((s: SpeedMultiplier) => {
+    setSpeedState(s);
+    onSpeedChange?.(s);
+  }, [onSpeedChange]);
   const [paused, setPaused] = useState(false);
   const [probes, setProbes] = useState<Map<number, ProbeState>>(new Map());
   const [logs, setLogs] = useState<string[]>([]);

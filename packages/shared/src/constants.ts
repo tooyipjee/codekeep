@@ -1,4 +1,4 @@
-import type { StructureKind, UpgradeLevel, Resources, StructureStats } from './types.js';
+import type { StructureKind, UpgradeLevel, Resources, StructureStats, FragmentType } from './types.js';
 
 export const GRID_SIZE = 16;
 export const TICK_RATE_HZ = 8;
@@ -128,6 +128,19 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'raids_10', name: 'Veteran', desc: 'Complete 10 raids', bonus: 'Unlock Lv.2 friend raids' },
   { id: 'hoarder', name: 'Hoarder', desc: 'Hold 500+ total resources' },
 ];
+
+export const FRAGMENT_TYPES = {
+  compute_shard:    { symbol: '~', color: 'cyan',    yield: { compute: 4, memory: 0, bandwidth: 0 } as Resources, weight: 35 },
+  memory_bit:       { symbol: '~', color: 'yellow',  yield: { compute: 0, memory: 4, bandwidth: 0 } as Resources, weight: 35 },
+  bandwidth_packet: { symbol: '~', color: 'green',   yield: { compute: 0, memory: 0, bandwidth: 4 } as Resources, weight: 20 },
+  data_bundle:      { symbol: '~', color: 'white',   yield: { compute: 2, memory: 2, bandwidth: 2 } as Resources, weight: 10 },
+} as const;
+
+export const FRAGMENT_MAX = 6;
+export const FRAGMENT_SPAWN_INTERVAL_MS = 35_000;
+export const FRAGMENT_DECAY_MS = 180_000;
+export const FRAGMENT_VAULT_BONUS = 0.25;
+export const FRAGMENT_VAULT_RANGE = 2;
 
 export const ALL_STRUCTURE_KINDS: StructureKind[] = [
   'firewall',

@@ -70,6 +70,7 @@ export interface RaidRecord {
   lootLost: Resources;
   lootGained: Resources;
   replay: RaidReplay;
+  defenderGrid?: KeepGridState;
 }
 
 export interface PlayerProfile {

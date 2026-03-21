@@ -502,6 +502,7 @@ export function useGameState(forceTutorial: boolean) {
         startedAtUnixMs: Date.now(), resolvedAtUnixMs: Date.now(), outcome: lastEvent.outcome,
         lootLost: { gold: 0, wood: 0, stone: 0 },
         lootGained: won ? lootGained : { gold: 0, wood: 0, stone: 0 }, replay,
+        defenderGrid: npcKeep.grid,
       };
       persist({
         ...gameSave,
@@ -685,11 +686,11 @@ export function useGameState(forceTutorial: boolean) {
     showMessage(`${parts.join(' ')} ${typeName}${multi}`);
   }, [gameSave, fragments, cursor, persist, showMessage]);
 
-  const watchRaidRecord = useCallback((record: { replay: RaidReplay; attackerId: string; defenderKeepId: string }): boolean => {
+  const watchRaidRecord = useCallback((record: { replay: RaidReplay; attackerId: string; defenderKeepId: string; defenderGrid?: KeepGridState }): boolean => {
     if (!gameSave) return false;
     const isDefense = record.attackerId !== gameSave.player.id;
     setRaidReplay(record.replay);
-    setRaidGrid(gameSave.keep.grid);
+    setRaidGrid(isDefense ? gameSave.keep.grid : (record.defenderGrid ?? gameSave.keep.grid));
     setRaidType(isDefense ? 'defend' : 'attack');
     setRaidSummary(null);
     return true;

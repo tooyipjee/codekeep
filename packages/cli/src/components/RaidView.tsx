@@ -351,7 +351,8 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
     if (newLogs.length > 0) {
       setLogs((prev) => [...prev.slice(-10), ...newLogs]);
     }
-  }, [currentTick, raidType, replay, keepGrid, walls, raiders]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTick, raidType, replay, keepGrid]);
 
   const structureMap = new Map<string, PlacedStructure>();
   for (const s of keepGrid.structures) {

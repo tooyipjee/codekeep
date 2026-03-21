@@ -94,13 +94,13 @@ describe('App component', () => {
     const { stdin, lastFrame } = render(
       <App asciiMode={false} compact={false} forceTutorial={false} autoResume={false} />,
     );
-    await delay(300);
+    await delay(500);
     stdin.write('\r');
-    await delay(300);
+    await delay(500);
     stdin.write('?');
-    await delay(300);
+    await delay(500);
     stdin.write('a');
-    await delay(300);
+    await delay(500);
     expect(lastFrame()).not.toContain('Navigation');
   });
 

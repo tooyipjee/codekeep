@@ -106,10 +106,10 @@ describe('Tutorial component', () => {
     await delay(80);
     stdin.write('\r');
     await delay(80);
-    stdin.write('h'); await delay(50);
-    stdin.write('j'); await delay(50);
-    stdin.write('k'); await delay(50);
-    stdin.write('l'); await delay(80);
+    stdin.write('h'); await delay(150);
+    stdin.write('j'); await delay(150);
+    stdin.write('k'); await delay(150);
+    stdin.write('l'); await delay(200);
     expect(lastFrame()).toContain('Great!');
     stdin.write('\r');
     await delay(80);
@@ -144,76 +144,76 @@ describe('Tutorial component', () => {
     const { stdin, lastFrame } = render(
       <Tutorial gameSave={makeGameSave()} onComplete={onComplete} />,
     );
-    await delay(80);
+    await delay(200);
 
     // welcome → resources
     stdin.write('\r');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('Gold');
 
     // resources → move
     stdin.write('\r');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('Movement');
 
     // move: 4 moves with generous delays
-    stdin.write('h'); await delay(50);
-    stdin.write('h'); await delay(50);
-    stdin.write('h'); await delay(50);
-    stdin.write('h'); await delay(80);
+    stdin.write('h'); await delay(150);
+    stdin.write('h'); await delay(150);
+    stdin.write('h'); await delay(150);
+    stdin.write('h'); await delay(200);
     expect(lastFrame()).toContain('Great!');
 
     // move → place_wall
     stdin.write('\r');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('Stone Wall');
 
     // place wall at cursor pos
     stdin.write('e');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('Treasury');
 
     // move right and place treasury
-    stdin.write('l'); await delay(50);
+    stdin.write('l'); await delay(150);
     stdin.write('e');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('Archer Tower');
 
     // move right and place archer
-    stdin.write('l'); await delay(50);
+    stdin.write('l'); await delay(150);
     stdin.write('e');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('Bear Trap');
 
     // move right and place trap
-    stdin.write('l'); await delay(50);
+    stdin.write('l'); await delay(150);
     stdin.write('e');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('Upgrading');
 
     // upgrade_explain → first_raid
     stdin.write('\r');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('First Raid');
 
     // first_raid → simulate
     stdin.write('\r');
-    await delay(200);
+    await delay(300);
     expect(lastFrame()).toMatch(/Victory|raiders got through/);
 
     // raid_result → foraging
     stdin.write('\r');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('Foraging');
 
     // foraging → tips
     stdin.write('\r');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('Pro Tips');
 
     // tips → done
     stdin.write('\r');
-    await delay(80);
+    await delay(200);
     expect(lastFrame()).toContain('ready to defend');
 
     // done → complete

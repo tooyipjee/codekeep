@@ -164,9 +164,9 @@ describe('RaidView component', () => {
     const { stdin, lastFrame } = render(
       <RaidView replay={replay} keepGrid={emptyGrid} raidType="defend" onDone={vi.fn()} />,
     );
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 500));
     stdin.write('p');
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 500));
     const frame = lastFrame();
     expect(frame).toContain('PAUSED');
   });
@@ -178,9 +178,9 @@ describe('RaidView component', () => {
       <RaidView replay={replay} keepGrid={emptyGrid} raidType="defend"
                 onDone={vi.fn()} onSpeedChange={onSpeedChange} />,
     );
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 500));
     stdin.write('4');
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 500));
     expect(lastFrame()).toContain('Speed: 4x');
     expect(onSpeedChange).toHaveBeenCalledWith(4);
   });

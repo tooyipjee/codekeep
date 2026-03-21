@@ -453,6 +453,49 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
               hpRemaining: Math.max(0, adjacentWall.hp),
               destroyed,
             });
+          } else {
+            // No path to treasury and not adjacent to a wall yet —
+            // pathfind toward the nearest intact wall so raiders
+            // don't just idle at their spawn positions.
+            const nearestWall = state.walls
+              .filter((w) => !w.destroyed)
+              .sort((a, b) => {
+                const da = Math.abs(a.pos.x - raider.pos.x) + Math.abs(a.pos.y - raider.pos.y);
+                const db = Math.abs(b.pos.x - raider.pos.x) + Math.abs(b.pos.y - raider.pos.y);
+                return da - db;
+              })[0];
+
+            if (nearestWall) {
+              // Find a passable cell adjacent to the wall and pathfind there
+              const adjCells: GridCoord[] = [
+                { x: nearestWall.pos.x - 1, y: nearestWall.pos.y },
+                { x: nearestWall.pos.x + 1, y: nearestWall.pos.y },
+                { x: nearestWall.pos.x, y: nearestWall.pos.y - 1 },
+                { x: nearestWall.pos.x, y: nearestWall.pos.y + 1 },
+              ].filter((c) => isPassable(state, c));
+
+              const bestAdj = adjCells.sort((a, b) => {
+                const da = Math.abs(a.x - raider.pos.x) + Math.abs(a.y - raider.pos.y);
+                const db = Math.abs(b.x - raider.pos.x) + Math.abs(b.y - raider.pos.y);
+                return da - db;
+              })[0];
+
+              if (bestAdj) {
+                const wallStep = astarNextStep(raider.pos, bestAdj, state);
+                if (wallStep) {
+                  const from = { ...raider.pos };
+                  raider.pos = { ...wallStep };
+                  state.events.push({
+                    t: state.tick,
+                    type: 'raider_move',
+                    probeId: raider.id,
+                    from,
+                    to: { ...raider.pos },
+                  });
+                  continue;
+                }
+              }
+            }
           }
           break;
         }

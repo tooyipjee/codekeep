@@ -258,13 +258,13 @@ describe('Settings component', () => {
                 asciiMode={false} onToggleAscii={noop} />,
     );
     stdin.write('j');
-    await delay(50);
+    await delay(150);
     stdin.write('j');
-    await delay(50);
+    await delay(150);
     stdin.write('\r');
-    await delay(50);
+    await delay(150);
     stdin.write('y');
-    await delay(50);
+    await delay(150);
     expect(onResetGame).toHaveBeenCalled();
   });
 

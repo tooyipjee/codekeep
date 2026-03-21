@@ -101,27 +101,30 @@ describe('balance — raid outcome diversity', () => {
       outcomes.push(getOutcome(replay));
     }
 
-    // Enclosed treasury — raiders can't reach, defense wins
-    const enclosedGrid: KeepGridState = {
+    // Strong defense: walled treasury with archers to kill raiders
+    const strongGrid: KeepGridState = {
       width: 16,
       height: 16,
       structures: [
         makeStructure('treasury', 8, 8, 1),
-        makeStructure('wall', 7, 7, 2),
-        makeStructure('wall', 8, 7, 2),
-        makeStructure('wall', 9, 7, 2),
-        makeStructure('wall', 7, 8, 2),
-        makeStructure('wall', 9, 8, 2),
-        makeStructure('wall', 7, 9, 2),
-        makeStructure('wall', 8, 9, 2),
-        makeStructure('wall', 9, 9, 2),
+        makeStructure('wall', 7, 7, 3),
+        makeStructure('wall', 8, 7, 3),
+        makeStructure('wall', 9, 7, 3),
+        makeStructure('wall', 7, 8, 3),
+        makeStructure('wall', 9, 8, 3),
+        makeStructure('wall', 7, 9, 3),
+        makeStructure('wall', 8, 9, 3),
+        makeStructure('wall', 9, 9, 3),
+        makeStructure('archerTower', 8, 8, 3, 'at-center'),
+        makeStructure('archerTower', 6, 6, 2, 'at-nw'),
+        makeStructure('archerTower', 10, 10, 2, 'at-se'),
       ],
     };
     for (let i = 0; i < 3; i++) {
       const replay = simulateRaid({
         probeCount: 2,
-        keepGrid: enclosedGrid,
-        seed: `enclosed-raid-${i}`,
+        keepGrid: strongGrid,
+        seed: `strong-raid-${i}`,
       });
       outcomes.push(getOutcome(replay));
     }
@@ -139,7 +142,7 @@ describe('balance — raid outcome diversity', () => {
   }, 30_000);
 
   it('different_layouts_produce_different_outcomes', () => {
-    // Fortress: treasury enclosed by double ring of level 3 walls — unreachable
+    // Fortress: double walls + archers kill raiders before they breach
     const fortressGrid: KeepGridState = {
       width: 16,
       height: 16,
@@ -157,6 +160,14 @@ describe('balance — raid outcome diversity', () => {
           [6, 9], [10, 9],
           [6, 10], [7, 10], [8, 10], [9, 10], [10, 10],
         ].map(([x, y]) => makeStructure('wall', x, y, 3, `fw-outer-${x}-${y}`)),
+        makeStructure('archerTower', 8, 8, 3, 'at-center'),
+        makeStructure('archerTower', 7, 8, 3, 'at-w'),
+        makeStructure('archerTower', 9, 8, 3, 'at-e'),
+        makeStructure('archerTower', 8, 7, 3, 'at-n'),
+        makeStructure('trap', 5, 7, 2, 'trap-nw'),
+        makeStructure('trap', 11, 7, 2, 'trap-ne'),
+        makeStructure('trap', 5, 9, 2, 'trap-sw'),
+        makeStructure('trap', 11, 9, 2, 'trap-se'),
       ],
     };
 

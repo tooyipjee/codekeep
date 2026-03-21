@@ -121,7 +121,7 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
   const [breachedTreasuries, setBreachedTreasuries] = useState<Set<string>>(new Set());
   const [logs, setLogs] = useState<string[]>([]);
   const [outcome, setOutcome] = useState<string | null>(null);
-  const lastProcessedTickRef = useRef(0);
+  const lastProcessedTickRef = useRef(-1);
 
   useInput((input, key) => {
     if (input === 'q' || key.escape) {

@@ -245,6 +245,8 @@ describe('Settings component', () => {
     await delay(50);
     stdin.write('j');
     await delay(50);
+    stdin.write('j');
+    await delay(50);
     stdin.write('\r');
     await delay(50);
     expect(lastFrame()).toContain('Are you sure');
@@ -257,6 +259,8 @@ describe('Settings component', () => {
       <Settings onBack={noop} onResetGame={onResetGame} onReplayTutorial={noop}
                 asciiMode={false} onToggleAscii={noop} />,
     );
+    stdin.write('j');
+    await delay(150);
     stdin.write('j');
     await delay(150);
     stdin.write('j');
@@ -275,6 +279,7 @@ describe('Settings component', () => {
       <Settings onBack={noop} onResetGame={onResetGame} onReplayTutorial={noop}
                 asciiMode={false} onToggleAscii={noop} />,
     );
+    stdin.write('j');
     stdin.write('j');
     stdin.write('j');
     stdin.write('\r');

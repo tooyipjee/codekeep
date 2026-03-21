@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { generateGitHubIssueUrl, type CrashReport } from '../lib/crash-reporter.js';
 
 interface SettingsProps {
   onBack: () => void;
@@ -14,15 +15,50 @@ type SettingsItem = { key: string; label: string; desc: string };
 export function Settings({ onBack, onResetGame, onReplayTutorial, asciiMode, onToggleAscii }: SettingsProps) {
   const [selected, setSelected] = useState(0);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
+  const [bugInput, setBugInput] = useState('');
 
   const ITEMS: SettingsItem[] = [
     { key: 'ascii', label: `ASCII Mode: ${asciiMode ? 'ON' : 'OFF'}`, desc: 'Use plain ASCII borders (for basic terminals)' },
     { key: 'tutorial', label: 'Replay Tutorial', desc: 'Learn how to play again' },
+    { key: 'report', label: 'Report Bug', desc: 'Open a GitHub issue for bugs' },
     { key: 'reset', label: 'Reset Game', desc: 'Delete save and start over' },
     { key: 'back', label: 'Back', desc: 'Return to menu' },
   ];
 
   useInput((input, key) => {
+    if (showBugReport) {
+      if (key.escape) {
+        setShowBugReport(false);
+        setBugInput('');
+        return;
+      }
+      if (key.return && bugInput.length > 0) {
+        const report: CrashReport = {
+          timestamp: new Date().toISOString(),
+          error: bugInput,
+          version: '0.1.0',
+          nodeVersion: process.version,
+          platform: process.platform,
+          arch: process.arch,
+          screen: 'settings',
+        };
+        const url = generateGitHubIssueUrl(report);
+        process.stderr.write(`\nOpen this URL to report the bug:\n${url}\n\n`);
+        setShowBugReport(false);
+        setBugInput('');
+        return;
+      }
+      if (key.backspace || key.delete) {
+        setBugInput((prev) => prev.slice(0, -1));
+        return;
+      }
+      if (input && input.length === 1) {
+        setBugInput((prev) => prev + input);
+      }
+      return;
+    }
+
     if (confirmReset) {
       if (input === 'y' || input === 'Y') {
         onResetGame();
@@ -44,6 +80,7 @@ export function Settings({ onBack, onResetGame, onReplayTutorial, asciiMode, onT
       const item = ITEMS[selected];
       if (item.key === 'ascii') onToggleAscii();
       else if (item.key === 'tutorial') onReplayTutorial();
+      else if (item.key === 'report') setShowBugReport(true);
       else if (item.key === 'reset') setConfirmReset(true);
       else if (item.key === 'back') onBack();
     }
@@ -54,7 +91,15 @@ export function Settings({ onBack, onResetGame, onReplayTutorial, asciiMode, onT
       <Text bold color="yellow">{'◆ Settings'}</Text>
       <Text> </Text>
 
-      {confirmReset ? (
+      {showBugReport ? (
+        <Box flexDirection="column">
+          <Text bold color="cyan">Report a Bug</Text>
+          <Text>Describe the issue briefly:</Text>
+          <Text color="cyan">{bugInput}<Text dimColor>_</Text></Text>
+          <Text> </Text>
+          <Text dimColor>Enter to generate GitHub issue URL · Esc cancel</Text>
+        </Box>
+      ) : confirmReset ? (
         <Box flexDirection="column">
           <Text bold color="red">Are you sure you want to reset?</Text>
           <Text>This will permanently delete your save file.</Text>

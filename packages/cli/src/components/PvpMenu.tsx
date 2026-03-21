@@ -8,7 +8,7 @@ interface PvpMenuProps {
   targets: MatchTarget[];
   isSearching: boolean;
   onSearch: () => void;
-  onAttack: (target: MatchTarget, probeTypes: ProbeType[]) => void;
+  onAttack: (target: MatchTarget) => void;
   onWarCamp: () => void;
   onLeaderboard: () => void;
   onBack: () => void;
@@ -52,7 +52,7 @@ export function PvpMenu({ pvpProfile, targets, isSearching, onSearch, onAttack, 
       else if (item.key.startsWith('target-')) {
         const idx = parseInt(item.key.split('-')[1]);
         const target = targets[idx];
-        if (target) onAttack(target, ['raider', 'raider', 'raider', 'scout', 'brute']);
+        if (target) onAttack(target);
       }
     }
     else if (key.escape || input === 'q') onBack();

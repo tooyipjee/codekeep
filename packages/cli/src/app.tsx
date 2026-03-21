@@ -18,10 +18,11 @@ import { PvpMenu } from './components/PvpMenu.js';
 import { WarCampView } from './components/WarCampView.js';
 import { LeaderboardView } from './components/LeaderboardView.js';
 import { AuthView } from './components/AuthView.js';
+import { RaidPlanner } from './components/RaidPlanner.js';
 import { useGameState } from './hooks/useGameState.js';
 import { OnlineBackend } from './lib/online-backend.js';
 import type { MatchTarget, PvpProfile, LeaderboardEntry } from './lib/backend.js';
-import type { Keep, RaidReplay as RaidReplayType, KeepGridState, RaidRecord, ProbeType, WarCamp } from '@codekeep/shared';
+import type { Keep, RaidReplay as RaidReplayType, KeepGridState, RaidRecord, ProbeType, WarCamp, RaidSpawnSpec } from '@codekeep/shared';
 
 const MIN_COLS = 60;
 const MIN_ROWS = 18;
@@ -45,7 +46,7 @@ function useTerminalSize() {
   return size;
 }
 
-type Screen = 'menu' | 'keep' | 'raid' | 'friendList' | 'friendRaid' | 'tutorial' | 'raidLog' | 'settings' | 'pvp' | 'warcamp' | 'leaderboard' | 'auth';
+type Screen = 'menu' | 'keep' | 'raid' | 'friendList' | 'friendRaid' | 'tutorial' | 'raidLog' | 'settings' | 'pvp' | 'warcamp' | 'leaderboard' | 'auth' | 'raidPlanner';
 
 interface AppProps {
   asciiMode: boolean;
@@ -77,6 +78,7 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
   const [warCamp, setWarCamp] = useState<WarCamp>({ slots: [], maxSlots: 3 });
+  const [selectedTarget, setSelectedTarget] = useState<MatchTarget | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -160,11 +162,11 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
     }
   }, []);
 
-  const handlePvpAttack = useCallback(async (target: MatchTarget, probeTypes: ProbeType[]) => {
+  const handlePvpAttack = useCallback(async (target: MatchTarget, probeTypes: ProbeType[], spawnSpecs?: RaidSpawnSpec[]) => {
     const backend = onlineBackendRef.current;
     if (!backend?.launchPvpRaid || !gameSave) return;
     try {
-      const result = await backend.launchPvpRaid(target.playerId, probeTypes);
+      const result = await backend.launchPvpRaid(target.playerId, probeTypes, spawnSpecs);
       const watched = watchRaidRecord({
         replay: result.replay,
         attackerId: gameSave.player.id,
@@ -258,7 +260,8 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
     }
 
     if (screen === 'friendList' || screen === 'raidLog' || screen === 'settings'
-        || screen === 'pvp' || screen === 'warcamp' || screen === 'leaderboard' || screen === 'auth') {
+        || screen === 'pvp' || screen === 'warcamp' || screen === 'leaderboard' || screen === 'auth'
+        || screen === 'raidPlanner') {
       return;
     }
 
@@ -416,13 +419,41 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
         targets={matchTargets}
         isSearching={isSearching}
         onSearch={handleSearchMatch}
-        onAttack={handlePvpAttack}
-        onWarCamp={() => setScreen('warcamp')}
+        onAttack={(target) => {
+          setSelectedTarget(target);
+          setScreen('raidPlanner');
+        }}
+        onWarCamp={() => {
+          const backend = onlineBackendRef.current;
+          backend?.getWarCamp?.().then((camp) => { if (camp) setWarCamp(camp); });
+          setScreen('warcamp');
+        }}
         onLeaderboard={() => {
           handleLoadLeaderboard();
           setScreen('leaderboard');
         }}
         onBack={() => setScreen('menu')}
+      />
+    );
+  }
+
+  if (screen === 'raidPlanner' && selectedTarget) {
+    return (
+      <RaidPlanner
+        targetName={selectedTarget.displayName}
+        targetTrophies={selectedTarget.trophies}
+        targetGrid={selectedTarget.grid}
+        warCamp={warCamp}
+        resources={gameSave.keep.resources}
+        onLaunch={(spawnSpecs) => {
+          const probeTypes = spawnSpecs.map((s) => s.raiderType);
+          handlePvpAttack(selectedTarget, probeTypes, spawnSpecs);
+          setSelectedTarget(null);
+        }}
+        onBack={() => {
+          setSelectedTarget(null);
+          setScreen('pvp');
+        }}
       />
     );
   }

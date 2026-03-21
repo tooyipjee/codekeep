@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
 import { requireAuth } from '../middleware/auth.js';
-import { findKeepByPlayerId } from '@codekeep/db';
+import { findKeepByPlayerId, updateKeepResources } from '@codekeep/db';
 import { findPlayerById, updatePlayerTrophies, updatePlayerShield } from '@codekeep/db';
 import { createRaid, findRaidsByAttacker, findRaidsByDefender, findRaidById, findIncomingRaids } from '@codekeep/db';
 import { simulateRaid } from '@codekeep/server';
 import {
-  RULES_VERSION, TROPHY_CONFIG, SHIELD_DURATION_MS, LEAGUE_BRACKETS,
-  type KeepGridState, type Resources, type ProbeType, type RaidOutcome, type League,
+  RULES_VERSION, TROPHY_CONFIG, SHIELD_DURATION_MS, LEAGUE_BRACKETS, PVP_LOOT_CAP_PERCENT,
+  type KeepGridState, type Resources, type ProbeType, type RaidOutcome, type League, type RaidSpawnSpec,
 } from '@codekeep/shared';
 import type { Env } from '../app.js';
 
@@ -36,7 +36,11 @@ raidRoutes.use('*', requireAuth);
 raidRoutes.post('/launch', async (c) => {
   const db = c.get('db');
   const attackerId = c.get('playerId');
-  const body = await c.req.json<{ defenderPlayerId: string; probeTypes: ProbeType[] }>();
+  const body = await c.req.json<{
+    defenderPlayerId: string;
+    probeTypes: ProbeType[];
+    spawnSpecs?: RaidSpawnSpec[];
+  }>();
 
   const defenderKeep = findKeepByPlayerId(db, body.defenderPlayerId);
   if (!defenderKeep) return c.json({ error: 'Defender keep not found' }, 404);
@@ -48,7 +52,9 @@ raidRoutes.post('/launch', async (c) => {
     return c.json({ error: 'Defender is shielded' }, 400);
   }
 
+  const attackerKeep = findKeepByPlayerId(db, attackerId);
   const defenderGrid: KeepGridState = JSON.parse(defenderKeep.grid_state);
+  const defenderResources: Resources = JSON.parse(defenderKeep.resources);
   const seed = `pvp-${Date.now()}-${randomUUID().slice(0, 8)}`;
 
   const replay = simulateRaid({
@@ -56,18 +62,44 @@ raidRoutes.post('/launch', async (c) => {
     keepGrid: defenderGrid,
     seed,
     probeTypes: body.probeTypes,
+    spawnSpecs: body.spawnSpecs,
   });
 
   const endEvent = replay.events.find((e) => e.type === 'raid_end');
   const outcome: RaidOutcome = endEvent?.type === 'raid_end' ? endEvent.outcome : 'defense_win';
 
-  let lootGained: Resources = { gold: 0, wood: 0, stone: 0 };
+  let rawLoot: Resources = { gold: 0, wood: 0, stone: 0 };
   for (const e of replay.events) {
     if (e.type === 'treasury_breach') {
-      lootGained.gold += e.lootTaken.gold;
-      lootGained.wood += e.lootTaken.wood;
-      lootGained.stone += e.lootTaken.stone;
+      rawLoot.gold += e.lootTaken.gold;
+      rawLoot.wood += e.lootTaken.wood;
+      rawLoot.stone += e.lootTaken.stone;
     }
+  }
+
+  // Cap loot at PVP_LOOT_CAP_PERCENT of defender's actual resources
+  const lootGained: Resources = {
+    gold: Math.min(rawLoot.gold, Math.floor(defenderResources.gold * PVP_LOOT_CAP_PERCENT)),
+    wood: Math.min(rawLoot.wood, Math.floor(defenderResources.wood * PVP_LOOT_CAP_PERCENT)),
+    stone: Math.min(rawLoot.stone, Math.floor(defenderResources.stone * PVP_LOOT_CAP_PERCENT)),
+  };
+
+  // Transfer resources: deduct from defender, add to attacker
+  const newDefenderResources: Resources = {
+    gold: Math.max(0, defenderResources.gold - lootGained.gold),
+    wood: Math.max(0, defenderResources.wood - lootGained.wood),
+    stone: Math.max(0, defenderResources.stone - lootGained.stone),
+  };
+  updateKeepResources(db, defenderKeep.id, JSON.stringify(newDefenderResources));
+
+  if (attackerKeep) {
+    const attackerResources: Resources = JSON.parse(attackerKeep.resources);
+    const newAttackerResources: Resources = {
+      gold: attackerResources.gold + lootGained.gold,
+      wood: attackerResources.wood + lootGained.wood,
+      stone: attackerResources.stone + lootGained.stone,
+    };
+    updateKeepResources(db, attackerKeep.id, JSON.stringify(newAttackerResources));
   }
 
   const attackerDelta = computeTrophyDelta(outcome, true);
@@ -82,7 +114,6 @@ raidRoutes.post('/launch', async (c) => {
 
   const shieldMs = SHIELD_DURATION_MS[outcome];
   updatePlayerShield(db, body.defenderPlayerId, Date.now() + shieldMs);
-
   updatePlayerShield(db, attackerId, null);
 
   const raidId = `r_${randomUUID().slice(0, 8)}`;

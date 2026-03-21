@@ -155,10 +155,10 @@ export class OnlineBackend implements GameBackend {
     return data.targets;
   }
 
-  async launchPvpRaid(defenderPlayerId: string, probeTypes: ProbeType[]): Promise<RaidLaunchResult> {
+  async launchPvpRaid(defenderPlayerId: string, probeTypes: ProbeType[], spawnSpecs?: import('@codekeep/shared').RaidSpawnSpec[]): Promise<RaidLaunchResult> {
     return this.request<RaidLaunchResult>('/raids/launch', {
       method: 'POST',
-      body: JSON.stringify({ defenderPlayerId, probeTypes }),
+      body: JSON.stringify({ defenderPlayerId, probeTypes, spawnSpecs }),
     });
   }
 
@@ -188,19 +188,35 @@ export class OnlineBackend implements GameBackend {
   }
 
   async getWarCamp(): Promise<WarCamp | null> {
-    return null;
+    try {
+      return await this.request<WarCamp>('/warcamp');
+    } catch {
+      return null;
+    }
   }
 
   async trainRaider(slotId: number, raiderType: ProbeType): Promise<WarCamp> {
-    return { slots: [], maxSlots: 3 };
+    const result = await this.request<{ slots: WarCamp['slots']; maxSlots: number }>('/warcamp/train', {
+      method: 'POST',
+      body: JSON.stringify({ slotId, raiderType }),
+    });
+    return { slots: result.slots, maxSlots: result.maxSlots };
   }
 
   async getBounties(): Promise<DailyBounty[]> {
-    return [];
+    try {
+      const data = await this.request<{ bounties: DailyBounty[] }>('/bounties');
+      return data.bounties;
+    } catch {
+      return [];
+    }
   }
 
-  async claimBounty(_bountyId: string): Promise<Resources> {
-    return { gold: 0, wood: 0, stone: 0 };
+  async claimBounty(bountyId: string): Promise<Resources> {
+    const data = await this.request<{ reward: Resources }>(`/bounties/${bountyId}/claim`, {
+      method: 'POST',
+    });
+    return data.reward;
   }
 
   async registerForMatchmaking(): Promise<void> {

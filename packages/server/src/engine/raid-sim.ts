@@ -9,6 +9,7 @@ import {
   type UpgradeLevel,
   type ProbeType,
   type StructureKind,
+  type RaidSpawnSpec,
   GRID_SIZE,
   TICK_RATE_HZ,
   MAX_RAID_TICKS,
@@ -312,6 +313,7 @@ export interface RaidConfig {
   keepGrid: KeepGridState;
   seed: string;
   probeTypes?: ProbeType[];
+  spawnSpecs?: RaidSpawnSpec[];
 }
 
 export function simulateRaid(config: RaidConfig): RaidReplay {
@@ -384,11 +386,29 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
 
   rebuildPassability(state);
 
+  interface PendingSpawn {
+    id: number;
+    edge: Edge;
+    offset: number;
+    raiderType: ProbeType;
+    spawnAtTick: number;
+  }
+
+  const pendingSpawns: PendingSpawn[] = [];
   const edges: Edge[] = ['N', 'S', 'E', 'W'];
+
   for (let i = 0; i < config.probeCount; i++) {
-    const edge = edges[Math.floor(rng() * edges.length)];
-    const offset = Math.floor(rng() * GRID_SIZE);
-    const pos = getSpawnPos(edge, offset);
+    const spec = config.spawnSpecs?.[i];
+    const edge: Edge = spec?.edge ?? edges[Math.floor(rng() * edges.length)];
+    const offset = spec?.offset ?? Math.floor(rng() * GRID_SIZE);
+    const raiderType: ProbeType = spec?.raiderType ?? config.probeTypes?.[i] ?? 'raider';
+    const spawnAtTick = spec?.waveDelay ?? 0;
+
+    pendingSpawns.push({ id: i, edge, offset, raiderType, spawnAtTick });
+  }
+
+  function spawnRaider(ps: PendingSpawn, tick: number): void {
+    const pos = getSpawnPos(ps.edge, ps.offset);
 
     let closestTreasury: TreasuryState | null = null;
     let closestDist = Infinity;
@@ -400,12 +420,11 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       }
     }
 
-    const raiderType: ProbeType = config.probeTypes?.[i] ?? 'raider';
     state.raiders.push({
-      id: i,
+      id: ps.id,
       pos: { ...pos },
-      hp: RAIDER_TYPES[raiderType].hp,
-      raiderType,
+      hp: RAIDER_TYPES[ps.raiderType].hp,
+      raiderType: ps.raiderType,
       stunRemaining: 0,
       targetId: closestTreasury?.structureId ?? null,
       alive: true,
@@ -413,18 +432,28 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
     });
 
     state.events.push({
-      t: 0,
+      t: tick,
       type: 'raider_spawn',
-      probeId: i,
-      edge,
+      probeId: ps.id,
+      edge: ps.edge,
       pos: { ...pos },
-      raiderType,
-      maxHp: RAIDER_TYPES[raiderType].hp,
+      raiderType: ps.raiderType,
+      maxHp: RAIDER_TYPES[ps.raiderType].hp,
     });
+  }
+
+  // Spawn wave-0 raiders immediately
+  for (const ps of pendingSpawns) {
+    if (ps.spawnAtTick === 0) spawnRaider(ps, 0);
   }
 
   while (state.tick < MAX_RAID_TICKS) {
     state.tick++;
+
+    // Spawn delayed-wave raiders
+    for (const ps of pendingSpawns) {
+      if (ps.spawnAtTick === state.tick) spawnRaider(ps, state.tick);
+    }
 
     for (const tr of state.traps) {
       if (tr.cooldownRemaining > 0) tr.cooldownRemaining--;
@@ -435,7 +464,8 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
     }
 
     const aliveRaiders = state.raiders.filter((r) => r.alive).sort((a, b) => a.id - b.id);
-    if (aliveRaiders.length === 0) break;
+    const hasPendingSpawns = pendingSpawns.some((ps) => ps.spawnAtTick > state.tick);
+    if (aliveRaiders.length === 0 && !hasPendingSpawns) break;
 
     // Archers fire (only non-destroyed archers)
     for (const ar of state.archers) {
@@ -625,7 +655,9 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       }
     }
 
-    if (state.raiders.every((r) => !r.alive || r.stunRemaining > 100)) break;
+    const allDead = state.raiders.every((r) => !r.alive || r.stunRemaining > 100);
+    const moreComing = pendingSpawns.some((ps) => ps.spawnAtTick > state.tick);
+    if (allDead && !moreComing) break;
   }
 
   const totalTreasuryResources = state.treasuries.reduce((sum, v) => sum + v.storedResources, 0);

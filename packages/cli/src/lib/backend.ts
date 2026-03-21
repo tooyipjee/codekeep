@@ -1,4 +1,4 @@
-import type { GameSave, Resources, KeepGridState, ProbeType, RaidReplay, RaidRecord, RaidOutcome, League, DailyBounty, WarCamp } from '@codekeep/shared';
+import type { GameSave, Resources, KeepGridState, ProbeType, RaidReplay, RaidRecord, RaidOutcome, League, DailyBounty, WarCamp, RaidSpawnSpec } from '@codekeep/shared';
 
 export interface RaidLaunchResult {
   raidId: string;
@@ -45,7 +45,7 @@ export interface GameBackend {
 
   // PvP (online only — throws in local mode)
   findMatch?(): Promise<MatchTarget[]>;
-  launchPvpRaid?(defenderPlayerId: string, probeTypes: ProbeType[]): Promise<RaidLaunchResult>;
+  launchPvpRaid?(defenderPlayerId: string, probeTypes: ProbeType[], spawnSpecs?: RaidSpawnSpec[]): Promise<RaidLaunchResult>;
   getIncomingRaids?(since: number): Promise<RaidRecord[]>;
   getPvpProfile?(): Promise<PvpProfile | null>;
   getLeaderboard?(limit?: number): Promise<LeaderboardEntry[]>;

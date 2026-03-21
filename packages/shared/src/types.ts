@@ -60,6 +60,13 @@ export interface RaidReplay {
   events: RaidTickEvent[];
 }
 
+export interface RaidSpawnSpec {
+  raiderType: ProbeType;
+  edge: 'N' | 'S' | 'E' | 'W';
+  offset: number;
+  waveDelay: number;
+}
+
 export interface RaidRecord {
   id: string;
   seed: string;

@@ -1,0 +1,31 @@
+{
+  "name": "@codekeep/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "codekeep": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/index.tsx",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@codekeep/shared": "workspace:*",
+    "@codekeep/server": "workspace:*",
+    "chalk": "^5",
+    "commander": "^13",
+    "ink": "^6",
+    "react": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "ink-testing-library": "^4",
+    "tsup": "^8",
+    "tsx": "^4",
+    "typescript": "^5.7",
+    "vitest": "^3"
+  }
+}

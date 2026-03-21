@@ -1,0 +1,35 @@
+---
+description: CodeKeep project conventions for all contributors
+globs: ["**/*.ts", "**/*.tsx"]
+---
+
+# CodeKeep Cursor Rules
+
+## Architecture
+- Game logic in `packages/server` — pure functions, no UI, no network
+- Types and constants in `packages/shared` — zero deps
+- TUI rendering in `packages/cli` — thin layer over server functions
+
+## Code Style
+- TypeScript strict mode, no `any`
+- ESM only (`"type": "module"` everywhere)
+- Prefer `const` and pure functions over classes
+- No hardcoded game numbers — use constants from `@codekeep/shared`
+
+## ASCII Rendering
+- Grid: 16 lines of monospace string, not nested Ink Box components
+- Characters: `· # % $ @ ^` for game elements
+- Colors: 16-color ANSI baseline. Use chalk named colors only (red, green, yellow, cyan, white, gray)
+- Always handle terminal resize gracefully (show "too small" if < 80x24)
+
+## Testing
+- Vitest for all packages
+- Game engine tests: pure input → output, no mocks needed
+- TUI tests: ink-testing-library, assert on lastFrame() content
+- Raid tests: always verify determinism with seeded RNG
+
+## Keybindings
+- hjkl / WASD / arrows for movement
+- Enter/e to place, u to upgrade, x to demolish
+- [/] to cycle structures, ? for help, q to quit
+- Never use Ctrl+key for common actions (terminal conflicts)

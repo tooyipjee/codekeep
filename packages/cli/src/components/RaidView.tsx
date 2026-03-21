@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
-import type { RaidReplay, KeepGridState, GridCoord, RaidTickEvent, Resources, ProbeType, PlacedStructure } from '@codekeep/shared';
-import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL, RESOURCE_ICONS, RAIDER_TYPES, WALL_HP } from '@codekeep/shared';
+import type { RaidReplay, KeepGridState, GridCoord, RaidTickEvent, Resources, ProbeType, PlacedStructure, StructureKind } from '@codekeep/shared';
+import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL, RESOURCE_ICONS, RAIDER_TYPES, WALL_HP, ARCHER_TOWER_HP, WATCHTOWER_HP, STRUCTURE_NAMES } from '@codekeep/shared';
 
 interface RaidSummary {
   won: boolean;
@@ -38,8 +38,9 @@ interface RaiderDisplay {
   raiderType: ProbeType;
 }
 
-interface WallDisplay {
+interface SolidDisplay {
   structureId: string;
+  kind: StructureKind;
   pos: GridCoord;
   hp: number;
   maxHp: number;
@@ -107,12 +108,18 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
   }, [onSpeedChange]);
   const [paused, setPaused] = useState(false);
   const [raiders, setRaiders] = useState<Map<number, RaiderDisplay>>(new Map());
-  const [walls, setWalls] = useState<Map<string, WallDisplay>>(() => {
-    const m = new Map<string, WallDisplay>();
+  const [solids, setSolids] = useState<Map<string, SolidDisplay>>(() => {
+    const m = new Map<string, SolidDisplay>();
+    const hpMap: Record<string, Record<number, number>> = {
+      wall: WALL_HP,
+      archerTower: ARCHER_TOWER_HP,
+      watchtower: WATCHTOWER_HP,
+    };
     for (const s of keepGrid.structures) {
-      if (s.kind === 'wall') {
-        const maxHp = WALL_HP[s.level];
-        m.set(s.id, { structureId: s.id, pos: { ...s.pos }, hp: maxHp, maxHp, destroyed: false });
+      const hp = hpMap[s.kind];
+      if (hp) {
+        const maxHp = hp[s.level];
+        m.set(s.id, { structureId: s.id, kind: s.kind, pos: { ...s.pos }, hp: maxHp, maxHp, destroyed: false });
       }
     }
     return m;
@@ -217,18 +224,18 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
       return newRaiders;
     });
 
-    setWalls((prev) => {
-      const newWalls = new Map(prev);
+    setSolids((prev) => {
+      const updated = new Map(prev);
       for (const event of eventsInRange) {
-        if (event.type === 'wall_damaged') {
-          const w = newWalls.get(event.structureId);
-          if (w) {
-            w.hp = Math.max(0, event.hpRemaining);
-            w.destroyed = event.destroyed;
+        if (event.type === 'wall_damaged' || event.type === 'structure_damaged') {
+          const s = updated.get(event.structureId);
+          if (s) {
+            s.hp = Math.max(0, event.hpRemaining);
+            s.destroyed = event.destroyed;
           }
         }
       }
-      return newWalls;
+      return updated;
     });
 
     for (const event of eventsInRange) {
@@ -276,6 +283,26 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
             }
           } else {
             newLogs.push(`⚔ Wall hit (${event.hpRemaining} HP)`);
+          }
+          break;
+        }
+        case 'structure_damaged': {
+          const name = STRUCTURE_NAMES[event.structureKind] ?? event.structureKind;
+          if (event.destroyed) {
+            newLogs.push(`💥 ${name} DESTROYED!`);
+            const struct = keepGrid.structures.find(s => s.id === event.structureId);
+            if (struct) {
+              newEffects.push({
+                pos: { ...struct.pos },
+                char: '✗',
+                color: 'redBright',
+                bold: true,
+                expiresAtTick: currentTick + 5,
+                priority: 3,
+              });
+            }
+          } else {
+            newLogs.push(`⚔ ${name} hit (${event.hpRemaining} HP)`);
           }
           break;
         }
@@ -386,9 +413,9 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
     }
   }
 
-  const wallMap = new Map<string, WallDisplay>();
-  for (const [, w] of walls) {
-    wallMap.set(`${w.pos.x},${w.pos.y}`, w);
+  const solidMap = new Map<string, SolidDisplay>();
+  for (const [, s] of solids) {
+    solidMap.set(`${s.pos.x},${s.pos.y}`, s);
   }
 
   const effectMap = new Map<string, VisualEffect>();
@@ -413,7 +440,7 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
       const key = `${x},${y}`;
       const raider = raiderMap.get(key);
       const structure = structureMap.get(key);
-      const wall = wallMap.get(key);
+      const solid = solidMap.get(key);
       const effect = effectMap.get(key);
 
       if (effect && !raider) {
@@ -433,14 +460,15 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
           </Text>,
         );
       } else if (structure) {
-        if (wall && !wall.destroyed) {
-          const col = wallColor(wall.hp, wall.maxHp);
+        if (solid && !solid.destroyed) {
+          const col = wallColor(solid.hp, solid.maxHp);
+          const sym = STRUCTURE_SYMBOLS[solid.kind] ?? '#';
           cells.push(
-            <Text key={x} color={col} bold={wall.hp > wall.maxHp * 0.6}>
-              {'# '}
+            <Text key={x} color={col} bold={solid.hp > solid.maxHp * 0.6}>
+              {sym + ' '}
             </Text>,
           );
-        } else if (wall && wall.destroyed) {
+        } else if (solid && solid.destroyed) {
           cells.push(
             <Text key={x} color="red" dimColor>
               {'x '}

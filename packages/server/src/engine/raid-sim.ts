@@ -8,19 +8,16 @@ import {
   type PlacedStructure,
   type UpgradeLevel,
   type ProbeType,
+  type StructureKind,
   GRID_SIZE,
   TICK_RATE_HZ,
   MAX_RAID_TICKS,
-  RAIDER_BASE_HP,
-  RAIDER_DAMAGE_PER_TICK,
-  RAIDER_LOOT_PER_TICK,
   RAIDER_TYPES,
-  ARCHER_DAMAGE,
-  ARCHER_RANGE,
-  ARCHER_COOLDOWN_TICKS,
 } from '@codekeep/shared';
 import {
   getWallHp,
+  getArcherTowerHp,
+  getWatchtowerHp,
   getTrapStunTicks,
   getTrapCooldown,
   getEffectiveMitigation,
@@ -58,13 +55,14 @@ interface Raider {
   hp: number;
   raiderType: ProbeType;
   stunRemaining: number;
-  targetTreasuryId: string | null;
+  targetId: string | null;
   alive: boolean;
   looted: Resources;
 }
 
-interface WallState {
+interface SolidStructure {
   structureId: string;
+  kind: StructureKind;
   pos: GridCoord;
   hp: number;
   destroyed: boolean;
@@ -89,12 +87,13 @@ interface ArcherState {
   pos: GridCoord;
   level: UpgradeLevel;
   cooldownRemaining: number;
+  destroyed: boolean;
 }
 
 interface RaidState {
   tick: number;
   raiders: Raider[];
-  walls: WallState[];
+  solids: SolidStructure[];
   traps: TrapState[];
   archers: ArcherState[];
   treasuries: TreasuryState[];
@@ -117,15 +116,15 @@ function isPassable(state: RaidState, pos: GridCoord): boolean {
   return state.grid[pos.y][pos.x];
 }
 
-function rebuildPassability(state: RaidState, allStructures: PlacedStructure[]): void {
+function rebuildPassability(state: RaidState): void {
   for (let y = 0; y < GRID_SIZE; y++) {
     for (let x = 0; x < GRID_SIZE; x++) {
       state.grid[y][x] = true;
     }
   }
-  for (const w of state.walls) {
-    if (!w.destroyed) {
-      state.grid[w.pos.y][w.pos.x] = false;
+  for (const s of state.solids) {
+    if (!s.destroyed) {
+      state.grid[s.pos.y][s.pos.x] = false;
     }
   }
 }
@@ -197,6 +196,115 @@ function astarNextStep(
   return null;
 }
 
+function getStructureHp(kind: StructureKind, level: UpgradeLevel): number {
+  switch (kind) {
+    case 'wall': return getWallHp(level);
+    case 'archerTower': return getArcherTowerHp(level);
+    case 'watchtower': return getWatchtowerHp(level);
+    default: return 0;
+  }
+}
+
+const DEFENSE_KINDS: StructureKind[] = ['archerTower', 'watchtower'];
+
+function findAdjacentSolid(state: RaidState, pos: GridCoord): SolidStructure | undefined {
+  return state.solids.find(
+    (s) => !s.destroyed && manhattanDistance(s.pos, pos) === 1,
+  );
+}
+
+function attackSolid(state: RaidState, raider: Raider, target: SolidStructure): void {
+  target.hp -= RAIDER_TYPES[raider.raiderType].damage;
+  const destroyed = target.hp <= 0;
+  if (destroyed) {
+    target.destroyed = true;
+    rebuildPassability(state);
+    // Also mark archer as destroyed if it was an archer tower
+    const archer = state.archers.find((a) => a.structureId === target.structureId);
+    if (archer) archer.destroyed = true;
+  }
+
+  if (target.kind === 'wall') {
+    state.events.push({
+      t: state.tick,
+      type: 'wall_damaged',
+      structureId: target.structureId,
+      hpRemaining: Math.max(0, target.hp),
+      destroyed,
+    });
+  } else {
+    state.events.push({
+      t: state.tick,
+      type: 'structure_damaged',
+      structureId: target.structureId,
+      structureKind: target.kind,
+      hpRemaining: Math.max(0, target.hp),
+      destroyed,
+    });
+  }
+}
+
+function moveTowardSolid(state: RaidState, raider: Raider, target: SolidStructure): boolean {
+  const adjCells: GridCoord[] = [
+    { x: target.pos.x - 1, y: target.pos.y },
+    { x: target.pos.x + 1, y: target.pos.y },
+    { x: target.pos.x, y: target.pos.y - 1 },
+    { x: target.pos.x, y: target.pos.y + 1 },
+  ].filter((c) => isPassable(state, c));
+
+  const bestAdj = adjCells.sort((a, b) => {
+    const da = manhattanDistance(a, raider.pos);
+    const db = manhattanDistance(b, raider.pos);
+    return da - db;
+  })[0];
+
+  if (!bestAdj) return false;
+
+  if (manhattanDistance(raider.pos, bestAdj) === 0) return false;
+
+  const step = astarNextStep(raider.pos, bestAdj, state);
+  if (!step) return false;
+
+  const from = { ...raider.pos };
+  raider.pos = { ...step };
+  state.events.push({
+    t: state.tick,
+    type: 'raider_move',
+    probeId: raider.id,
+    from,
+    to: { ...raider.pos },
+  });
+  return true;
+}
+
+/**
+ * Brute AI: prioritize destroying defense structures (archers > watchtowers),
+ * then fall back to treasury like a normal raider.
+ */
+function brutePickTarget(state: RaidState, raider: Raider): SolidStructure | null {
+  const defenses = state.solids
+    .filter((s) => !s.destroyed && DEFENSE_KINDS.includes(s.kind))
+    .sort((a, b) => {
+      // Prefer archer towers over watchtowers
+      const aIsArcher = a.kind === 'archerTower' ? 0 : 1;
+      const bIsArcher = b.kind === 'archerTower' ? 0 : 1;
+      if (aIsArcher !== bIsArcher) return aIsArcher - bIsArcher;
+      return manhattanDistance(a.pos, raider.pos) - manhattanDistance(b.pos, raider.pos);
+    });
+  return defenses[0] ?? null;
+}
+
+/**
+ * Scout AI: find the weakest blocking structure (lowest HP) to break through.
+ */
+function scoutPickWeakestBlocker(state: RaidState, raider: Raider): SolidStructure | null {
+  const adjacent = state.solids.filter(
+    (s) => !s.destroyed && manhattanDistance(s.pos, raider.pos) === 1,
+  );
+  if (adjacent.length === 0) return null;
+  return adjacent.sort((a, b) => a.hp - b.hp)[0];
+}
+
 export interface RaidConfig {
   probeCount: number;
   keepGrid: KeepGridState;
@@ -208,13 +316,15 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
   const rng = mulberry32(hashSeed(config.seed));
   const { keepGrid } = config;
 
-  const walls: WallState[] = keepGrid.structures
-    .filter((s) => s.kind === 'wall')
+  const solidKinds: StructureKind[] = ['wall', 'archerTower', 'watchtower'];
+  const solids: SolidStructure[] = keepGrid.structures
+    .filter((s) => solidKinds.includes(s.kind))
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((s) => ({
       structureId: s.id,
+      kind: s.kind,
       pos: { ...s.pos },
-      hp: getWallHp(s.level),
+      hp: getStructureHp(s.kind, s.level),
       destroyed: false,
     }));
 
@@ -236,6 +346,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       pos: { ...s.pos },
       level: s.level,
       cooldownRemaining: 0,
+      destroyed: false,
     }));
 
   let treasuries: TreasuryState[] = keepGrid.structures
@@ -260,7 +371,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
   const state: RaidState = {
     tick: 0,
     raiders: [],
-    walls,
+    solids,
     traps,
     archers,
     treasuries,
@@ -269,7 +380,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
     totalLoot: { gold: 0, wood: 0, stone: 0 },
   };
 
-  rebuildPassability(state, keepGrid.structures);
+  rebuildPassability(state);
 
   const edges: Edge[] = ['N', 'S', 'E', 'W'];
   for (let i = 0; i < config.probeCount; i++) {
@@ -280,7 +391,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
     let closestTreasury: TreasuryState | null = null;
     let closestDist = Infinity;
     for (const v of treasuries) {
-      const d = Math.abs(v.pos.x - pos.x) + Math.abs(v.pos.y - pos.y);
+      const d = manhattanDistance(v.pos, pos);
       if (d < closestDist) {
         closestDist = d;
         closestTreasury = v;
@@ -294,7 +405,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       hp: RAIDER_TYPES[raiderType].hp,
       raiderType,
       stunRemaining: 0,
-      targetTreasuryId: closestTreasury?.structureId ?? null,
+      targetId: closestTreasury?.structureId ?? null,
       alive: true,
       looted: { gold: 0, wood: 0, stone: 0 },
     });
@@ -324,8 +435,9 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
     const aliveRaiders = state.raiders.filter((r) => r.alive).sort((a, b) => a.id - b.id);
     if (aliveRaiders.length === 0) break;
 
+    // Archers fire (only non-destroyed archers)
     for (const ar of state.archers) {
-      if (ar.cooldownRemaining > 0) continue;
+      if (ar.destroyed || ar.cooldownRemaining > 0) continue;
       const range = getArcherRange(ar.level);
       const damage = getArcherDamage(ar.level);
       const inRange = aliveRaiders.filter(
@@ -336,8 +448,8 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
             const aStunned = a.stunRemaining > 0 ? 0 : 1;
             const bStunned = b.stunRemaining > 0 ? 0 : 1;
             if (aStunned !== bStunned) return aStunned - bStunned;
-            const aTreasury = state.treasuries.find(t => t.structureId === a.targetTreasuryId);
-            const bTreasury = state.treasuries.find(t => t.structureId === b.targetTreasuryId);
+            const aTreasury = state.treasuries.find(t => t.structureId === a.targetId);
+            const bTreasury = state.treasuries.find(t => t.structureId === b.targetId);
             const aDist = aTreasury ? manhattanDistance(a.pos, aTreasury.pos) : Infinity;
             const bDist = bTreasury ? manhattanDistance(b.pos, bTreasury.pos) : Infinity;
             return aDist - bDist;
@@ -348,32 +460,22 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
         if (target.hp <= 0) {
           target.alive = false;
           state.events.push({
-            t: state.tick,
-            type: 'arrow_hit',
-            probeId: target.id,
-            archerId: ar.structureId,
-            damage,
-            hpRemaining: 0,
+            t: state.tick, type: 'arrow_hit', probeId: target.id,
+            archerId: ar.structureId, damage, hpRemaining: 0,
           });
           state.events.push({
-            t: state.tick,
-            type: 'raider_destroyed',
-            probeId: target.id,
-            pos: { ...target.pos },
+            t: state.tick, type: 'raider_destroyed', probeId: target.id, pos: { ...target.pos },
           });
         } else {
           state.events.push({
-            t: state.tick,
-            type: 'arrow_hit',
-            probeId: target.id,
-            archerId: ar.structureId,
-            damage,
-            hpRemaining: target.hp,
+            t: state.tick, type: 'arrow_hit', probeId: target.id,
+            archerId: ar.structureId, damage, hpRemaining: target.hp,
           });
         }
       }
     }
 
+    // Each raider takes their turn
     for (const raider of aliveRaiders) {
       if (!raider.alive) continue;
 
@@ -386,13 +488,50 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       for (let move = 0; move < moveCount; move++) {
         if (!raider.alive) break;
 
-        const targetTreasury = state.treasuries.find((v) => v.structureId === raider.targetTreasuryId);
+        // === BRUTE AI: prioritize destroying defense structures ===
+        if (raider.raiderType === 'brute') {
+          const defTarget = brutePickTarget(state, raider);
+          if (defTarget) {
+            // Adjacent? Attack it.
+            if (manhattanDistance(raider.pos, defTarget.pos) === 1) {
+              attackSolid(state, raider, defTarget);
+              break;
+            }
+            // Try to pathfind toward the defense structure
+            if (moveTowardSolid(state, raider, defTarget)) {
+              // Check for trap at new position
+              const trap = state.traps.find(
+                (tr) => tr.pos.x === raider.pos.x && tr.pos.y === raider.pos.y && tr.cooldownRemaining === 0,
+              );
+              if (trap) {
+                raider.stunRemaining = getTrapStunTicks(trap.level);
+                trap.cooldownRemaining = getTrapCooldown(trap.level);
+                state.events.push({
+                  t: state.tick, type: 'raider_stunned', probeId: raider.id,
+                  pos: { ...raider.pos }, trapId: trap.structureId, stunTicks: raider.stunRemaining,
+                });
+                break;
+              }
+              continue;
+            }
+            // Can't reach — attack whatever is adjacent
+            const adj = findAdjacentSolid(state, raider.pos);
+            if (adj) {
+              attackSolid(state, raider, adj);
+              break;
+            }
+            // Nothing adjacent and no path — fall through to treasury targeting
+          }
+        }
+
+        // === COMMON: find treasury target ===
+        const targetTreasury = state.treasuries.find((v) => v.structureId === raider.targetId);
         if (!targetTreasury || targetTreasury.storedResources <= 0) {
           const newTarget = state.treasuries
             .filter((v) => v.storedResources > 0)
             .sort((a, b) => {
-              const da = Math.abs(a.pos.x - raider.pos.x) + Math.abs(a.pos.y - raider.pos.y);
-              const db = Math.abs(b.pos.x - raider.pos.x) + Math.abs(b.pos.y - raider.pos.y);
+              const da = manhattanDistance(a.pos, raider.pos);
+              const db = manhattanDistance(b.pos, raider.pos);
               return da - db || a.structureId.localeCompare(b.structureId);
             })[0];
 
@@ -401,11 +540,12 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
             state.events.push({ t: state.tick, type: 'raider_destroyed', probeId: raider.id, pos: { ...raider.pos } });
             break;
           }
-          raider.targetTreasuryId = newTarget.structureId;
+          raider.targetId = newTarget.structureId;
         }
 
-        const treasuryTarget = state.treasuries.find((v) => v.structureId === raider.targetTreasuryId)!;
+        const treasuryTarget = state.treasuries.find((v) => v.structureId === raider.targetId)!;
 
+        // At treasury? Loot it.
         if (raider.pos.x === treasuryTarget.pos.x && raider.pos.y === treasuryTarget.pos.y) {
           const mitigation = getEffectiveMitigation(keepGrid, treasuryTarget.pos);
           const lootAmount = Math.max(1, Math.floor(RAIDER_TYPES[raider.raiderType].loot * treasuryTarget.level * (1 - mitigation)));
@@ -424,92 +564,49 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
           state.totalLoot.stone += stoneShare;
 
           state.events.push({
-            t: state.tick,
-            type: 'treasury_breach',
-            structureId: treasuryTarget.structureId,
-            lootTaken: lootGrant,
+            t: state.tick, type: 'treasury_breach',
+            structureId: treasuryTarget.structureId, lootTaken: lootGrant,
           });
           break;
         }
 
+        // Try to pathfind to treasury
         const nextStep = astarNextStep(raider.pos, treasuryTarget.pos, state);
         if (!nextStep) {
-          const adjacentWall = state.walls.find(
-            (w) =>
-              !w.destroyed &&
-              Math.abs(w.pos.x - raider.pos.x) + Math.abs(w.pos.y - raider.pos.y) === 1,
-          );
-          if (adjacentWall) {
-            adjacentWall.hp -= RAIDER_TYPES[raider.raiderType].damage;
-            const destroyed = adjacentWall.hp <= 0;
-            if (destroyed) {
-              adjacentWall.destroyed = true;
-              rebuildPassability(state, keepGrid.structures);
+          // === SCOUT AI: attack weakest adjacent blocker ===
+          if (raider.raiderType === 'scout') {
+            const weakest = scoutPickWeakestBlocker(state, raider);
+            if (weakest) {
+              attackSolid(state, raider, weakest);
+              break;
             }
-            state.events.push({
-              t: state.tick,
-              type: 'wall_damaged',
-              structureId: adjacentWall.structureId,
-              hpRemaining: Math.max(0, adjacentWall.hp),
-              destroyed,
-            });
+          }
+
+          // Standard: attack any adjacent solid
+          const adj = findAdjacentSolid(state, raider.pos);
+          if (adj) {
+            attackSolid(state, raider, adj);
           } else {
-            // No path to treasury and not adjacent to a wall yet —
-            // pathfind toward the nearest intact wall so raiders
-            // don't just idle at their spawn positions.
-            const nearestWall = state.walls
-              .filter((w) => !w.destroyed)
-              .sort((a, b) => {
-                const da = Math.abs(a.pos.x - raider.pos.x) + Math.abs(a.pos.y - raider.pos.y);
-                const db = Math.abs(b.pos.x - raider.pos.x) + Math.abs(b.pos.y - raider.pos.y);
-                return da - db;
-              })[0];
-
-            if (nearestWall) {
-              // Find a passable cell adjacent to the wall and pathfind there
-              const adjCells: GridCoord[] = [
-                { x: nearestWall.pos.x - 1, y: nearestWall.pos.y },
-                { x: nearestWall.pos.x + 1, y: nearestWall.pos.y },
-                { x: nearestWall.pos.x, y: nearestWall.pos.y - 1 },
-                { x: nearestWall.pos.x, y: nearestWall.pos.y + 1 },
-              ].filter((c) => isPassable(state, c));
-
-              const bestAdj = adjCells.sort((a, b) => {
-                const da = Math.abs(a.x - raider.pos.x) + Math.abs(a.y - raider.pos.y);
-                const db = Math.abs(b.x - raider.pos.x) + Math.abs(b.y - raider.pos.y);
-                return da - db;
-              })[0];
-
-              if (bestAdj) {
-                const wallStep = astarNextStep(raider.pos, bestAdj, state);
-                if (wallStep) {
-                  const from = { ...raider.pos };
-                  raider.pos = { ...wallStep };
-                  state.events.push({
-                    t: state.tick,
-                    type: 'raider_move',
-                    probeId: raider.id,
-                    from,
-                    to: { ...raider.pos },
-                  });
-                  continue;
-                }
-              }
+            // Not adjacent to anything — walk toward nearest solid
+            const nearest = state.solids
+              .filter((s) => !s.destroyed)
+              .sort((a, b) => manhattanDistance(a.pos, raider.pos) - manhattanDistance(b.pos, raider.pos))[0];
+            if (nearest) {
+              moveTowardSolid(state, raider, nearest);
             }
           }
           break;
         }
 
+        // Move one step
         const from = { ...raider.pos };
         raider.pos = { ...nextStep };
         state.events.push({
-          t: state.tick,
-          type: 'raider_move',
-          probeId: raider.id,
-          from,
-          to: { ...raider.pos },
+          t: state.tick, type: 'raider_move', probeId: raider.id,
+          from, to: { ...raider.pos },
         });
 
+        // Check for trap
         const trap = state.traps.find(
           (tr) => tr.pos.x === raider.pos.x && tr.pos.y === raider.pos.y && tr.cooldownRemaining === 0,
         );
@@ -518,12 +615,8 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
           raider.stunRemaining = stunTicks;
           trap.cooldownRemaining = getTrapCooldown(trap.level);
           state.events.push({
-            t: state.tick,
-            type: 'raider_stunned',
-            probeId: raider.id,
-            pos: { ...raider.pos },
-            trapId: trap.structureId,
-            stunTicks,
+            t: state.tick, type: 'raider_stunned', probeId: raider.id,
+            pos: { ...raider.pos }, trapId: trap.structureId, stunTicks,
           });
           break;
         }

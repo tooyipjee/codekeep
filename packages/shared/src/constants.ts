@@ -89,6 +89,8 @@ export const STRUCTURE_COSTS: Record<StructureKind, Record<UpgradeLevel, Resourc
 };
 
 export const WALL_HP: Record<UpgradeLevel, number> = { 1: 40, 2: 70, 3: 110 };
+export const ARCHER_TOWER_HP: Record<UpgradeLevel, number> = { 1: 25, 2: 40, 3: 60 };
+export const WATCHTOWER_HP: Record<UpgradeLevel, number> = { 1: 20, 2: 35, 3: 50 };
 export const TRAP_STUN_TICKS: Record<UpgradeLevel, number> = { 1: 4, 2: 6, 3: 9 };
 export const TRAP_COOLDOWN_TICKS: Record<UpgradeLevel, number> = { 1: 16, 2: 12, 3: 8 };
 export const TREASURY_CAPACITY: Record<UpgradeLevel, number> = { 1: 80, 2: 160, 3: 280 };

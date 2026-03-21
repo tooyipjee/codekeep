@@ -47,6 +47,7 @@ export type RaidTickEvent =
   | { t: number; type: 'raider_blocked'; probeId: number; pos: GridCoord; wallId: string }
   | { t: number; type: 'raider_stunned'; probeId: number; pos: GridCoord; trapId: string; stunTicks: number }
   | { t: number; type: 'wall_damaged'; structureId: string; hpRemaining: number; destroyed: boolean }
+  | { t: number; type: 'structure_damaged'; structureId: string; structureKind: StructureKind; hpRemaining: number; destroyed: boolean }
   | { t: number; type: 'treasury_breach'; structureId: string; lootTaken: Resources }
   | { t: number; type: 'raider_destroyed'; probeId: number; pos: GridCoord }
   | { t: number; type: 'arrow_hit'; probeId: number; archerId: string; damage: number; hpRemaining: number }

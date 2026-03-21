@@ -5,6 +5,8 @@ import {
   type GridCoord,
   type KeepGridState,
   WALL_HP,
+  ARCHER_TOWER_HP,
+  WATCHTOWER_HP,
   TRAP_STUN_TICKS,
   TRAP_COOLDOWN_TICKS,
   TREASURY_CAPACITY,
@@ -17,6 +19,14 @@ import {
 
 export function getWallHp(level: UpgradeLevel): number {
   return WALL_HP[level];
+}
+
+export function getArcherTowerHp(level: UpgradeLevel): number {
+  return ARCHER_TOWER_HP[level];
+}
+
+export function getWatchtowerHp(level: UpgradeLevel): number {
+  return WATCHTOWER_HP[level];
 }
 
 export function getTrapStunTicks(level: UpgradeLevel): number {

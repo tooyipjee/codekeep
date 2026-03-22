@@ -23,8 +23,8 @@ describe('grid constants', () => {
 });
 
 describe('card definitions', () => {
-  it('has at least 10 cards', () => {
-    expect(CARD_DEFS.length).toBeGreaterThanOrEqual(10);
+  it('has at least 45 cards', () => {
+    expect(CARD_DEFS.length).toBeGreaterThanOrEqual(45);
   });
 
   it('every card has required fields', () => {
@@ -40,6 +40,24 @@ describe('card definitions', () => {
   it('card IDs are unique', () => {
     const ids = CARD_DEFS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('has all rarities represented', () => {
+    const rarities = new Set(CARD_DEFS.map((c) => c.rarity));
+    expect(rarities.has('common')).toBe(true);
+    expect(rarities.has('uncommon')).toBe(true);
+    expect(rarities.has('rare')).toBe(true);
+    expect(rarities.has('legendary')).toBe(true);
+  });
+
+  it('has emplace cards', () => {
+    const emplaceCards = CARD_DEFS.filter((c) => c.type === 'emplace');
+    expect(emplaceCards.length).toBeGreaterThanOrEqual(10);
+    for (const card of emplaceCards) {
+      expect(card.emplaceCost).toBeDefined();
+      expect(card.emplaceHp).toBeDefined();
+      expect(card.emplaceEffects).toBeDefined();
+    }
   });
 
   it('getCardDef returns correct card', () => {
@@ -66,8 +84,8 @@ describe('starter deck', () => {
 });
 
 describe('enemy templates', () => {
-  it('has at least 2 enemies', () => {
-    expect(ENEMY_TEMPLATES.length).toBeGreaterThanOrEqual(2);
+  it('has at least 10 enemies', () => {
+    expect(ENEMY_TEMPLATES.length).toBeGreaterThanOrEqual(10);
   });
 
   it('every enemy has valid stats', () => {
@@ -78,6 +96,19 @@ describe('enemy templates', () => {
       expect(enemy.damage).toBeGreaterThan(0);
       expect(enemy.speed).toBeGreaterThan(0);
     }
+  });
+
+  it('has enemies for all 3 acts', () => {
+    const acts = new Set(ENEMY_TEMPLATES.map((e) => e.act));
+    expect(acts.has(1)).toBe(true);
+    expect(acts.has(2)).toBe(true);
+    expect(acts.has(3)).toBe(true);
+  });
+
+  it('has boss templates', () => {
+    expect(getEnemyTemplate('boss_suture')).toBeDefined();
+    expect(getEnemyTemplate('boss_archivist')).toBeDefined();
+    expect(getEnemyTemplate('boss_pale')).toBeDefined();
   });
 
   it('getEnemyTemplate returns correct enemy', () => {

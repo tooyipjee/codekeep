@@ -1,203 +1,82 @@
-```
-   ____          _       _  __              
-  / ___|___   __| | ___ | |/ /___  ___ _ __ 
- | |   / _ \ / _` |/ _ \| ' // _ \/ _ \ '_ \
- | |__| (_) | (_| |  __/| . \  __/  __/ |_) |
-  \____\___/ \__,_|\___||_|\_\___|\___| .__/ 
-                                      |_|    
-```
+# CodeKeep: The Pale
 
-Async tower defense terminal game — build ASCII fortresses while you vibe code.
+A deck-building tactical roguelike played in your terminal.
+
+Build a deck. Defend the Gate. Push back the Pale.
+
+## Install
 
 ```bash
 npx codekeep
 ```
 
----
+## What Is It?
 
-## Quickstart
+CodeKeep is a Slay the Spire-inspired roguelike that runs entirely in your terminal. Navigate procedural maps, fight enemies on a 5-column tactical grid, build your deck with 70+ unique cards, and uncover a layered narrative across dozens of runs.
 
-**Play instantly** (no install):
+### Core Loop
 
-```bash
-npx codekeep@latest
-```
+1. **Draw** — 5 cards each turn from your deck
+2. **Play** — Spend Resolve to cast cards (damage, block, heal) or **emplace** them as permanent column structures
+3. **End Turn** — Enemies advance, attack, and execute their telegraphed intents
+4. **Win** — Kill all enemies before they destroy your Gate
 
-**From source:**
+### Features
 
-```bash
-git clone <repo-url>
-cd codekeep
-pnpm install
-pnpm build
-pnpm play
-```
-
-**Prerequisites:** Node.js **≥ 20**
-
----
-
-## How to Play
-
-Build a keep on a 16×16 grid, place defensive structures, and fend off NPC raiders. Resources come from a sim-mode faucet (press `f`), foraging fragments on the grid, and winning raids.
+- **70+ cards** across 4 categories: Armament, Fortification, Edict, Wild
+- **Emplacements** — Dual-use cards that can be placed as persistent structures on the 5-column grid
+- **13 enemy types** + 3 multi-phase bosses (The Suture, The Archivist, The Pale Itself)
+- **3-act campaign** with procedural branching maps, shops, events, rest sites
+- **The Keep** — Persistent hub with 5 structures to upgrade and 5 NPCs with evolving relationships
+- **15 Ascension levels** — Stacking difficulty modifiers for replayability
+- **15 relics** — Passive bonuses from bosses and elites
+- **5 potions** — Consumable tactical options
+- **30 achievements** with Echo rewards
+- **Daily challenge** — Seeded runs with scoring
+- **Layered narrative** — Inscryption-style story that unfolds across 50+ runs
+- **12 lore entries** revealing the mystery of the Pale
+- **Git integration** (optional) — Small damage bonuses from daily commits (capped at 10%)
+- **Save/resume** — Autosaves on every action; crash recovery on next launch
+- **Local-first** — No backend, no account, no telemetry
 
 ### Controls
 
-| Keys | Action |
-|------|--------|
-| `h` `j` `k` `l` / `WASD` / Arrows | Move cursor |
-| `[` `]` | Cycle selected structure |
-| `1`–`7` | Select structure by number |
-| `e` or `Enter` | Place structure at cursor |
-| `u` | Upgrade structure (Lv.1 → 2 → 3) |
-| `x` | Demolish structure (50% refund) |
-| `z` | Undo last build/upgrade/demolish |
-| `r` | Quick defend (instant raid result) |
-| `v` | Watch replay of last defense |
-| `f` | Kingdom boon (sim-mode resources) |
-| `g` + coords | Jump to coordinate (e.g. `g 5,3`) |
-| `Tab` | Jump to next structure |
-| `p` | Copy keep postcard to clipboard |
-| `?` | Toggle full help screen |
-| `Esc` | Back to main menu |
-| `q` | Save and quit |
-
-**Raid replay:** `p` pause · `1` / `2` / `4` / `8` speed · `n` skip to end · `q` exit
-
-### Structures
-
-| # | Symbol | Structure | Role |
-|---|--------|-----------|------|
-| 1 | `#` | Stone Wall | Blocks raiders, has HP |
-| 2 | `%` | Bear Trap | Stuns raiders on contact |
-| 3 | `$` | Treasury | Stores loot, generates passive income |
-| 4 | `@` | Ward | Reduces loot stolen from nearby treasuries |
-| 5 | `^` | Watchtower | Extends ward range, auto-gathers forage |
-| 6 | `!` | Archer Tower | Fires arrows at raiders in range |
-| 7 | `&` | Vault | Protects stored resources from raids |
-
-Empty cells render as `·`.
-
-### Structure Synergies
-
-Place structures in specific patterns for bonus effects:
-
-| Synergy | Pattern | Bonus |
-|---------|---------|-------|
-| **Killbox** | Trap + Archer Tower adjacent | +30% archer damage to stunned |
-| **Fortress** | 3+ walls in a line | +25% wall HP in line |
-| **Sanctum** | Ward + Treasury + Watchtower adjacent | 2x treasury mitigation |
-| **Gauntlet** | 2+ traps within 3 tiles | +2 stun ticks |
-
-### Resources
-
-| Icon | Resource | Sources |
-|------|----------|---------|
-| ● | **Gold** | Events, foraging, raids, passive income |
-| ♣ | **Wood** | Events, treasuries, foraging |
-| ■ | **Stone** | Events, watchtowers, foraging |
-
-Treasuries and watchtowers generate passive income over time.
-
-### Raider Types
-
-| Type | HP | Dmg | Speed | Behavior |
-|------|---:|----:|------:|----------|
-| Raider | 15 | 4 | 1 | Standard foot soldier |
-| Scout | 8 | 2 | 2 | Fast, attacks weakest blocker |
-| Brute | 30 | 6 | 1 | Targets defenses first |
-
-### Raid Difficulty (Lv.1–10)
-
-Difficulty scales with total raids completed. Higher levels bring more raiders, scouts, and brutes. At difficulty 2+, random **anomalies** modify raid rules (Fog of War, Speed Raid, Fortified, Swarm, etc.). At difficulty 6+, you may face two anomalies at once.
-
----
-
-## Roguelike Features
-
-### Raid Anomalies
-
-Random modifiers applied to raids: faster raiders, double brute chance, halved watchtower range, all-from-one-edge flanking, and more. Displayed during raids and in the HUD.
-
-### Choice-based Rewards
-
-After winning a raid, pick 1-of-3 rewards:
-- **Gold Cache** — big gold payout
-- **Supply Crate** — balanced resources
-- **Buff** — temporary modifier lasting 2-3 raids (e.g. Fortified Walls, Archer Focus)
-
-Active buffs stack multiplicatively with anomaly modifiers.
-
-### Prestige / Ascension
-
-Once you've won 50 raids, you can **prestige** from the menu. This resets your keep and structures but grants permanent unlocks:
-
-| Level | Unlock | Effect |
-|------:|--------|--------|
-| 1 | War Chest | Start with 2x resources |
-| 2 | Veteran Builder | New structures start at Lv.2 |
-| 3 | Deep Wells | +3 faucet uses before diminishing |
-| 4 | Trade Routes | +50% passive income |
-| 5 | Oracle | Choose from 2 anomalies (coming soon) |
-
-Achievements, daily challenge scores, and lifetime stats are preserved across prestiges.
-
-### Daily Challenge
-
-Date-seeded escalating waves on a fixed grid. Compete for the best score each day.
-
----
-
-## Git Integration (optional)
-
-Wire your real repo so commits feed the coding event system:
-
-```bash
-cp /path/to/codekeep/packages/cli/scripts/hooks/post-commit .git/hooks/post-commit
-chmod +x .git/hooks/post-commit
-```
-
-**No git required:** the game is fully playable in **sim mode**. Press `f` to simulate a coding event.
-
----
-
-## CLI Flags
-
-```bash
-codekeep                  # Launch the game
-codekeep --tutorial       # Force tutorial replay
-codekeep --resume         # Skip menu, jump to keep
-codekeep --ascii          # Pure ASCII (no Unicode box drawing)
-codekeep --compact        # Compact layout for small terminals
-codekeep --no-save        # Dry-run mode (no save writes)
-codekeep --stats          # Print save file stats as JSON and exit
-```
-
----
-
-## Architecture
-
-| Package | Role |
-|---------|------|
-| **`packages/shared`** | Types, constants, balance tables — zero deps |
-| **`packages/server`** | Pure game engine: grid, raids, economy, prestige, NPC keeps |
-| **`packages/cli`** | Ink TUI: rendering, input, local-first gameplay |
-| **`packages/db`** | Database persistence (Turso/SQLite) |
-| **`packages/api`** | Hono HTTP API for future online PvP |
+| Key | Action |
+|-----|--------|
+| `1-9` | Select card |
+| `←→` or `h/l` | Target column |
+| `Enter` | Play selected card |
+| `Space` | End turn |
+| `e` | Toggle emplace mode |
+| `d` | View deck |
+| `q` | Quit / back |
 
 ## Development
 
 ```bash
-pnpm install   # Install all deps
-pnpm build     # Build all packages
-pnpm test      # Run all tests (Vitest)
-pnpm play      # Launch the game
-pnpm dev       # Watch mode
+pnpm install
+pnpm build
+pnpm test
+pnpm play      # launch the game
+pnpm dev       # watch mode
 ```
 
-Minimum terminal: 80×24. Tested on iTerm2, Terminal.app, Alacritty, Windows Terminal.
+### Architecture
 
----
+```
+packages/
+  shared/     — Types, constants, narrative data. Zero dependencies.
+  server/     — Pure game engine. No UI. All functions testable.
+  cli/        — Ink (React for CLI) TUI. Thin render layer.
+```
+
+### Testing
+
+```bash
+pnpm test              # all tests
+pnpm --filter @codekeep/server test   # engine only
+pnpm --filter codekeep test           # CLI only
+```
 
 ## License
 

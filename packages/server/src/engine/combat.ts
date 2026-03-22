@@ -3,6 +3,8 @@ import { COLUMNS, ROWS, HAND_SIZE, STARTING_GATE_HP, MAX_RESOLVE, getCardDef, ge
 import { mulberry32 } from './rng.js';
 import { shuffleDeck, drawCards } from './deck.js';
 import { spawnEnemy, rollEnemyIntent } from './enemies.js';
+import { placeEmplacement, triggerEmplacements } from './emplacements.js';
+import { tickStatusEffects, applyBurn, getDamageMult, getEnemyDamageMult, applyStatus } from './status.js';
 
 export function createCombatState(
   deck: CardInstance[],
@@ -63,7 +65,7 @@ function pushEvent(state: CombatState, type: CombatEvent['type'], data: Record<s
   state.events.push({ type, turn: state.turn, data });
 }
 
-export function playCard(state: CombatState, cardIndex: number, targetColumn?: number): CombatState {
+export function playCard(state: CombatState, cardIndex: number, targetColumn?: number, asEmplace: boolean = false): CombatState {
   if (state.phase !== 'player') return state;
 
   const card = state.hand[cardIndex];
@@ -71,17 +73,24 @@ export function playCard(state: CombatState, cardIndex: number, targetColumn?: n
 
   const def = getCardDef(card.defId);
   if (!def) return state;
-  if (def.cost > state.resolve) return state;
 
-  state.resolve -= def.cost;
-  state.hand.splice(cardIndex, 1);
-
-  for (const effect of def.effects) {
-    applyEffect(state, effect, targetColumn ?? 0);
+  if (asEmplace && def.type === 'emplace' && def.emplaceCost !== undefined) {
+    if (def.emplaceCost > state.resolve) return state;
+    state.resolve -= def.emplaceCost;
+    state.hand.splice(cardIndex, 1);
+    placeEmplacement(state, def, targetColumn ?? 0);
+    state.exhaustPile.push(card);
+  } else {
+    if (def.cost > state.resolve) return state;
+    state.resolve -= def.cost;
+    state.hand.splice(cardIndex, 1);
+    for (const effect of def.effects) {
+      applyEffect(state, effect, targetColumn ?? 0);
+    }
+    state.discardPile.push(card);
   }
 
-  state.discardPile.push(card);
-  pushEvent(state, 'card_played', { cardId: card.defId, targetColumn });
+  pushEvent(state, 'card_played', { cardId: card.defId, targetColumn, asEmplace });
 
   checkCombatEnd(state);
   return state;
@@ -136,12 +145,48 @@ function applyEffect(
     case 'resolve':
       state.resolve = Math.min(state.maxResolve + 5, state.resolve + effect.value);
       break;
+    case 'vulnerable': {
+      const col = state.columns[targetColumn];
+      if (col) {
+        for (const enemy of col.enemies) {
+          applyStatus(enemy, 'vulnerable', effect.value, 3);
+        }
+        pushEvent(state, 'status_applied', { type: 'vulnerable', value: effect.value, column: targetColumn });
+      }
+      break;
+    }
+    case 'weak': {
+      const col = state.columns[targetColumn];
+      if (col) {
+        for (const enemy of col.enemies) {
+          applyStatus(enemy, 'weak', effect.value, 3);
+        }
+        pushEvent(state, 'status_applied', { type: 'weak', value: effect.value, column: targetColumn });
+      }
+      break;
+    }
+    case 'burn': {
+      if (effect.target === 'all') {
+        for (const col of state.columns) {
+          for (const enemy of col.enemies) {
+            applyStatus(enemy, 'burn', effect.value, 99);
+          }
+        }
+      } else {
+        const col = state.columns[targetColumn];
+        if (col) {
+          for (const enemy of col.enemies) {
+            applyStatus(enemy, 'burn', effect.value, 99);
+          }
+        }
+      }
+      break;
+    }
   }
 }
 
 function applyDamageToEnemy(state: CombatState, enemy: EnemyInstance, damage: number): void {
-  const vuln = enemy.statusEffects.find((s) => s.type === 'vulnerable');
-  const mult = vuln ? 1.5 : 1;
+  const mult = getDamageMult(enemy);
   const actual = Math.floor(damage * mult);
   enemy.hp -= actual;
   pushEvent(state, 'damage_dealt', { targetId: enemy.instanceId, damage: actual });
@@ -189,6 +234,11 @@ function resolveEnemyTurn(state: CombatState): void {
   state.resolve = MAX_RESOLVE;
   state.gateBlock = 0;
 
+  triggerEmplacements(state);
+  removeDeadEnemies(state);
+  checkCombatEnd(state);
+  if (state.outcome !== 'undecided') return;
+
   state.discardPile.push(...state.hand);
   state.hand = [];
 
@@ -210,7 +260,10 @@ function resolveEnemyTurn(state: CombatState): void {
 
 function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: Intent): void {
   const tmpl = getEnemyTemplate(enemy.templateId);
-  const weakened = enemy.statusEffects.find((s) => s.type === 'weak');
+  const dmgMult = getEnemyDamageMult(enemy);
+
+  applyBurn(enemy);
+  tickStatusEffects(enemy);
 
   switch (intent.type) {
     case 'advance':
@@ -225,7 +278,7 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
             col.emplacement = null;
           }
         } else {
-          const dmg = weakened ? Math.floor((tmpl?.damage ?? 4) * 0.75) : (tmpl?.damage ?? 4);
+          const dmg = Math.floor((tmpl?.damage ?? 4) * dmgMult);
           const blocked = Math.min(state.gateBlock, dmg);
           state.gateBlock -= blocked;
           state.gateHp -= (dmg - blocked);
@@ -234,11 +287,34 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
       }
       break;
     case 'attack': {
-      const dmg = weakened ? Math.floor((tmpl?.damage ?? 4) * 0.75) : (tmpl?.damage ?? 4);
+      const dmg = Math.floor((tmpl?.damage ?? 4) * dmgMult);
       const blocked = Math.min(state.gateBlock, dmg);
       state.gateBlock -= blocked;
       state.gateHp -= (dmg - blocked);
       pushEvent(state, 'gate_hit', { enemyId: enemy.instanceId, damage: dmg - blocked, blocked });
+      break;
+    }
+    case 'buff':
+      applyStatus(enemy, 'empowered', intent.value, 3);
+      break;
+    case 'debuff': {
+      state.gateBlock = Math.max(0, state.gateBlock - intent.value * 2);
+      break;
+    }
+    case 'shield': {
+      const col = state.columns[enemy.column];
+      for (const e of col.enemies) {
+        applyStatus(e, 'fortified', intent.value, 2);
+      }
+      break;
+    }
+    case 'summon': {
+      const emptyCol = state.columns.findIndex((c) => c.enemies.length === 0);
+      if (emptyCol >= 0) {
+        const spawned = spawnEnemy('wisp', emptyCol);
+        state.columns[emptyCol].enemies.push(spawned);
+        spawned.intent = rollEnemyIntent(spawned, mulberry32(state.seed + state.turn * 97));
+      }
       break;
     }
   }

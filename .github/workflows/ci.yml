@@ -35,12 +35,8 @@ jobs:
       - name: Run all tests
         run: pnpm test
 
-      - name: Type check (shared + server)
-        run: pnpm --filter @codekeep/shared typecheck && pnpm --filter @codekeep/server typecheck
-
-      - name: Type check (cli)
-        run: pnpm --filter @codekeep/cli typecheck
-        continue-on-error: true
+      - name: Type check
+        run: pnpm typecheck
 
   publish:
     name: Publish to npm

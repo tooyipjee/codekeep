@@ -5,7 +5,7 @@ import React from 'react';
 import { App } from './app.js';
 import { loadGame, saveGame } from '@codekeep/server';
 
-export const CLI_VERSION = '0.4.0';
+export const CLI_VERSION = '0.5.0';
 (globalThis as any).__CODEKEEP_VERSION = CLI_VERSION;
 
 const program = new Command();

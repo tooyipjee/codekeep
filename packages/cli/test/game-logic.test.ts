@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { GameSave, PlacedStructure } from '@codekeep/shared';
-import { STARTING_RESOURCES, ALL_STRUCTURE_KINDS } from '@codekeep/shared';
+import type { GameSave, PlacedStructure, ActiveBuff, RaidAnomaly } from '@codekeep/shared';
+import { STARTING_RESOURCES, ALL_STRUCTURE_KINDS, REWARD_BUFF_DEFS } from '@codekeep/shared';
 import {
   raidDifficulty,
   buildProbeTypes,
@@ -10,6 +10,9 @@ import {
   checkAchievements,
   applyDiminishingReturns,
   ACHIEVEMENT_BONUSES,
+  generateRewardOptions,
+  tickDownBuffs,
+  buildAnomalyModifiers,
 } from '../src/lib/game-logic.js';
 
 function makeBaseSave(overrides?: Partial<GameSave>): GameSave {
@@ -70,9 +73,18 @@ describe('raidDifficulty', () => {
     expect(raidDifficulty(14)).toBe(4);
   });
 
-  it('returns 5 for 15+ raids', () => {
+  it('returns 5 for 15-19 raids', () => {
     expect(raidDifficulty(15)).toBe(5);
-    expect(raidDifficulty(100)).toBe(5);
+    expect(raidDifficulty(19)).toBe(5);
+  });
+
+  it('scales to 10 for 100+ raids', () => {
+    expect(raidDifficulty(20)).toBe(6);
+    expect(raidDifficulty(30)).toBe(7);
+    expect(raidDifficulty(45)).toBe(8);
+    expect(raidDifficulty(65)).toBe(9);
+    expect(raidDifficulty(100)).toBe(10);
+    expect(raidDifficulty(200)).toBe(10);
   });
 });
 
@@ -288,12 +300,12 @@ describe('applyDiminishingReturns', () => {
   const grants = { gold: 10, wood: 8, stone: 6 };
 
   it('returns unchanged grants below threshold', () => {
-    expect(applyDiminishingReturns(grants, 5)).toEqual(grants);
-    expect(applyDiminishingReturns(grants, 10)).toEqual(grants);
+    expect(applyDiminishingReturns(grants, 3)).toEqual(grants);
+    expect(applyDiminishingReturns(grants, 6)).toEqual(grants);
   });
 
   it('reduces grants above threshold', () => {
-    const result = applyDiminishingReturns(grants, 11);
+    const result = applyDiminishingReturns(grants, 7);
     expect(result.gold).toBeLessThan(grants.gold);
     expect(result.wood).toBeLessThan(grants.wood);
     expect(result.stone).toBeLessThan(grants.stone);
@@ -310,5 +322,161 @@ describe('applyDiminishingReturns', () => {
     const r1 = applyDiminishingReturns(grants, 15);
     const r2 = applyDiminishingReturns(grants, 25);
     expect(r2.gold).toBeLessThanOrEqual(r1.gold);
+  });
+});
+
+// === QA REWARD & BUFF TESTS ===
+
+describe('generateRewardOptions', () => {
+  it('returns exactly 3 options (gold, balanced, buff)', () => {
+    const rng = simpleRng(42);
+    const options = generateRewardOptions(3, rng);
+    expect(options).toHaveLength(3);
+    expect(options[0].type).toBe('resources');
+    expect(options[0].id).toBe('resources_gold');
+    expect(options[1].type).toBe('resources');
+    expect(options[1].id).toBe('resources_balanced');
+    expect(options[2].type).toBe('buff');
+    expect(options[2].id).toMatch(/^buff_/);
+  });
+
+  it('resource amounts scale with difficulty', () => {
+    const rng1 = simpleRng(42);
+    const rng2 = simpleRng(42);
+    const low = generateRewardOptions(1, rng1);
+    const high = generateRewardOptions(10, rng2);
+    expect(high[0].resources!.gold).toBeGreaterThan(low[0].resources!.gold);
+  });
+
+  it('buff option has valid ActiveBuff with raidsRemaining > 0', () => {
+    const rng = simpleRng(99);
+    const options = generateRewardOptions(5, rng);
+    const buffOpt = options.find((o) => o.type === 'buff')!;
+    expect(buffOpt.buff).toBeDefined();
+    expect(buffOpt.buff!.raidsRemaining).toBeGreaterThan(0);
+    expect(buffOpt.buff!.name).toBeTruthy();
+    expect(Object.keys(buffOpt.buff!.modifiers).length).toBeGreaterThan(0);
+  });
+
+  it('buff is a deep copy, not a reference to REWARD_BUFF_DEFS', () => {
+    const rng = simpleRng(42);
+    const options = generateRewardOptions(5, rng);
+    const buffOpt = options.find((o) => o.type === 'buff')!;
+    const originalBuff = REWARD_BUFF_DEFS.find((b) => b.id === buffOpt.buff!.id)!;
+    buffOpt.buff!.raidsRemaining = 999;
+    expect(originalBuff.raidsRemaining).not.toBe(999);
+  });
+});
+
+describe('tickDownBuffs', () => {
+  it('decrements raidsRemaining by 1', () => {
+    const buffs: ActiveBuff[] = [
+      { id: 'wall_fortify', name: 'Fortified Walls', raidsRemaining: 3, modifiers: { wallHpMult: 1.25 } },
+    ];
+    const result = tickDownBuffs(buffs);
+    expect(result).toHaveLength(1);
+    expect(result[0].raidsRemaining).toBe(2);
+  });
+
+  it('removes buff when raidsRemaining reaches 0', () => {
+    const buffs: ActiveBuff[] = [
+      { id: 'wall_fortify', name: 'Fortified Walls', raidsRemaining: 1, modifiers: { wallHpMult: 1.25 } },
+    ];
+    const result = tickDownBuffs(buffs);
+    expect(result).toHaveLength(0);
+  });
+
+  it('handles multiple buffs, removing only expired ones', () => {
+    const buffs: ActiveBuff[] = [
+      { id: 'wall_fortify', name: 'Fortified Walls', raidsRemaining: 1, modifiers: { wallHpMult: 1.25 } },
+      { id: 'archer_focus', name: 'Archer Focus', raidsRemaining: 3, modifiers: { archerDamageMult: 1.2 } },
+    ];
+    const result = tickDownBuffs(buffs);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('archer_focus');
+    expect(result[0].raidsRemaining).toBe(2);
+  });
+
+  it('handles empty array without error', () => {
+    expect(tickDownBuffs([])).toEqual([]);
+  });
+
+  it('does not mutate the original array', () => {
+    const buffs: ActiveBuff[] = [
+      { id: 'a', name: 'A', raidsRemaining: 2, modifiers: { wallHpMult: 1.5 } },
+    ];
+    const original = buffs[0].raidsRemaining;
+    tickDownBuffs(buffs);
+    expect(buffs[0].raidsRemaining).toBe(original);
+  });
+});
+
+describe('buildAnomalyModifiers', () => {
+  it('returns empty object for no anomalies and no buffs', () => {
+    const result = buildAnomalyModifiers([], []);
+    expect(result).toEqual({});
+  });
+
+  it('returns empty object for no anomalies and undefined buffs', () => {
+    const result = buildAnomalyModifiers([]);
+    expect(result).toEqual({});
+  });
+
+  it('applies single anomaly modifiers', () => {
+    const anomalies: RaidAnomaly[] = [
+      { id: 'fog', name: 'Fog', description: '', icon: '', modifiers: { watchtowerRangeMult: 0.5 } },
+    ];
+    const result = buildAnomalyModifiers(anomalies, []);
+    expect(result.watchtowerRangeMult).toBe(0.5);
+  });
+
+  it('applies single buff modifiers', () => {
+    const buffs: ActiveBuff[] = [
+      { id: 'wall_fortify', name: 'Fortified Walls', raidsRemaining: 3, modifiers: { wallHpMult: 1.25 } },
+    ];
+    const result = buildAnomalyModifiers([], buffs);
+    expect(result.wallHpMult).toBe(1.25);
+  });
+
+  it('stacks same modifier multiplicatively from anomaly + buff', () => {
+    const anomalies: RaidAnomaly[] = [
+      { id: 'ironwall', name: 'Iron Wall', description: '', icon: '', modifiers: { wallHpMult: 1.5 } },
+    ];
+    const buffs: ActiveBuff[] = [
+      { id: 'wall_fortify', name: 'Fortified Walls', raidsRemaining: 3, modifiers: { wallHpMult: 1.25 } },
+    ];
+    const result = buildAnomalyModifiers(anomalies, buffs);
+    expect(result.wallHpMult).toBeCloseTo(1.5 * 1.25);
+  });
+
+  it('stacks multiple buffs of same type multiplicatively', () => {
+    const buffs: ActiveBuff[] = [
+      { id: 'wall_fortify', name: 'Fortified Walls', raidsRemaining: 3, modifiers: { wallHpMult: 1.25 } },
+      { id: 'wall_fortify', name: 'Fortified Walls', raidsRemaining: 2, modifiers: { wallHpMult: 1.25 } },
+    ];
+    const result = buildAnomalyModifiers([], buffs);
+    expect(result.wallHpMult).toBeCloseTo(1.25 * 1.25);
+  });
+
+  it('handles singleEdge boolean via OR', () => {
+    const anomalies: RaidAnomaly[] = [
+      { id: 'flanking', name: 'Flanking', description: '', icon: '', modifiers: { singleEdge: true } },
+    ];
+    const result = buildAnomalyModifiers(anomalies, []);
+    expect(result.singleEdge).toBe(true);
+  });
+
+  it('combines multiple different modifiers from multiple sources', () => {
+    const anomalies: RaidAnomaly[] = [
+      { id: 'speed', name: 'Speed', description: '', icon: '', modifiers: { raiderSpeedMult: 1.5 } },
+    ];
+    const buffs: ActiveBuff[] = [
+      { id: 'archer_focus', name: 'Archer Focus', raidsRemaining: 3, modifiers: { archerDamageMult: 1.2 } },
+      { id: 'wall_fortify', name: 'Fortified Walls', raidsRemaining: 2, modifiers: { wallHpMult: 1.25 } },
+    ];
+    const result = buildAnomalyModifiers(anomalies, buffs);
+    expect(result.raiderSpeedMult).toBe(1.5);
+    expect(result.archerDamageMult).toBe(1.2);
+    expect(result.wallHpMult).toBe(1.25);
   });
 });

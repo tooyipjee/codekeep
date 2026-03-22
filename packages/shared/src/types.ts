@@ -109,7 +109,61 @@ export interface GameSave {
     bestWinStreak: number;
     achievements: string[];
     totalRaidersKilledByArcher: number;
+    dailyChallenges?: Record<string, { wavesCleared: number; score: number }>;
   };
+  activeBuffs?: ActiveBuff[];
+  prestige?: PrestigeData;
+}
+
+// === Roguelike Mechanics ===
+
+export interface RaidAnomaly {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  modifiers: RaidModifiers;
+}
+
+export interface RaidModifiers {
+  raiderHpMult?: number;
+  raiderSpeedMult?: number;
+  raiderDamageMult?: number;
+  raiderCountMult?: number;
+  wallHpMult?: number;
+  archerDamageMult?: number;
+  archerRangeMult?: number;
+  trapStunMult?: number;
+  wardMitigationMult?: number;
+  watchtowerRangeMult?: number;
+  lootMult?: number;
+  bruteChanceMult?: number;
+  singleEdge?: boolean;
+}
+
+export interface RewardOption {
+  id: string;
+  type: 'resources' | 'buff' | 'token';
+  name: string;
+  description: string;
+  icon: string;
+  resources?: Resources;
+  buff?: ActiveBuff;
+}
+
+export interface ActiveBuff {
+  id: string;
+  name: string;
+  raidsRemaining: number;
+  modifiers: RaidModifiers;
+}
+
+export interface PrestigeData {
+  ascensionLevel: number;
+  permanentUnlocks: string[];
+  lifetimeRaidsWon: number;
+  lifetimeRaidsLost: number;
+  lifetimeBestStreak: number;
 }
 
 export interface StructureStats {

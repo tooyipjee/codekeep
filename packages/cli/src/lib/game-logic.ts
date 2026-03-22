@@ -1,20 +1,28 @@
-import type { GameSave, Resources, ProbeType } from '@codekeep/shared';
-import { ALL_STRUCTURE_KINDS, FAUCET_BASE_USES, FAUCET_DIMINISH_FACTOR } from '@codekeep/shared';
+import type { GameSave, Resources, ProbeType, RaidAnomaly, RaidModifiers, ActiveBuff, RewardOption } from '@codekeep/shared';
+import { ALL_STRUCTURE_KINDS, FAUCET_BASE_USES, FAUCET_DIMINISH_FACTOR, ANOMALY_DEFS, ANOMALY_MIN_DIFFICULTY, ANOMALY_DOUBLE_CHANCE_DIFFICULTY, REWARD_BUFF_DEFS } from '@codekeep/shared';
 
 export function raidDifficulty(totalRaids: number): number {
   if (totalRaids <= 2) return 1;
   if (totalRaids <= 5) return 2;
   if (totalRaids <= 9) return 3;
   if (totalRaids <= 14) return 4;
-  return 5;
+  if (totalRaids <= 19) return 5;
+  if (totalRaids <= 29) return 6;
+  if (totalRaids <= 44) return 7;
+  if (totalRaids <= 64) return 8;
+  if (totalRaids <= 99) return 9;
+  return 10;
 }
 
-export function buildProbeTypes(count: number, difficulty: number, rng: () => number): ProbeType[] {
+export function buildProbeTypes(count: number, difficulty: number, rng: () => number, bruteChanceMult = 1): ProbeType[] {
+  const bruteChance = Math.min(0.8, (difficulty >= 8 ? 0.4 : difficulty >= 6 ? 0.3 : difficulty >= 3 ? 0.2 : 0) * bruteChanceMult);
+  const scoutChance = difficulty >= 2 ? 0.3 : 0;
   const types: ProbeType[] = [];
   for (let i = 0; i < count; i++) {
-    if (difficulty >= 3 && rng() < 0.2) {
+    const roll = rng();
+    if (roll < bruteChance) {
       types.push('brute');
-    } else if (difficulty >= 2 && rng() < 0.3) {
+    } else if (roll < bruteChance + scoutChance) {
       types.push('scout');
     } else {
       types.push('raider');
@@ -93,6 +101,143 @@ export function checkAchievements(save: GameSave): string[] {
   check('max_level', save.keep.grid.structures.some((s) => s.level === 3));
 
   return newOnes;
+}
+
+export interface SiegeForecast {
+  difficulty: number;
+  probeCount: number;
+  composition: { raiders: number; scouts: number; brutes: number };
+  vague: string;
+  detailed: string;
+}
+
+export function computeSiegeForecast(keepId: string, raidCount: number, watchtowerCount: number): SiegeForecast {
+  const nextTotal = raidCount;
+  const difficulty = raidDifficulty(nextTotal);
+  const probeCount = 3 + difficulty;
+
+  const seed = hashForecastSeed(keepId, raidCount);
+  const rng = simpleRng(seed);
+  const types = buildProbeTypes(probeCount, difficulty, rng);
+
+  const raiders = types.filter((t) => t === 'raider').length;
+  const scouts = types.filter((t) => t === 'scout').length;
+  const brutes = types.filter((t) => t === 'brute').length;
+
+  const composition = { raiders, scouts, brutes };
+
+  let vague: string;
+  if (probeCount <= 5) vague = 'Small force approaching';
+  else if (probeCount <= 8) vague = 'Moderate force approaching';
+  else if (probeCount <= 11) vague = 'Strong force approaching';
+  else vague = 'Massive force approaching';
+
+  const parts: string[] = [];
+  if (brutes > 0) parts.push(`${brutes}B`);
+  if (raiders > 0) parts.push(`${raiders}R`);
+  if (scouts > 0) parts.push(`${scouts}S`);
+  const detailed = `Next raid: ${parts.join(' ')} (Lv.${difficulty})`;
+
+  return { difficulty, probeCount, composition, vague, detailed };
+}
+
+function hashForecastSeed(keepId: string, raidCount: number): number {
+  const str = `${keepId}-forecast-${raidCount + 1}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return hash;
+}
+
+export function rollAnomalies(difficulty: number, rng: () => number): RaidAnomaly[] {
+  if (difficulty < ANOMALY_MIN_DIFFICULTY) return [];
+
+  const pool = ANOMALY_DEFS.filter((a) => {
+    if (a.id === 'siege' && difficulty < 4) return false;
+    if (a.id === 'piercing' && difficulty < 3) return false;
+    return true;
+  });
+
+  if (pool.length === 0) return [];
+
+  const anomalies: RaidAnomaly[] = [];
+  const idx1 = Math.floor(rng() * pool.length);
+  anomalies.push(pool[idx1]);
+
+  if (difficulty >= ANOMALY_DOUBLE_CHANCE_DIFFICULTY && rng() < 0.5) {
+    const remaining = pool.filter((_, i) => i !== idx1);
+    if (remaining.length > 0) {
+      anomalies.push(remaining[Math.floor(rng() * remaining.length)]);
+    }
+  }
+
+  return anomalies;
+}
+
+export function buildAnomalyModifiers(anomalies: RaidAnomaly[], buffs?: ActiveBuff[]): RaidModifiers {
+  const modSources = anomalies.map((a) => a.modifiers);
+  if (buffs) {
+    for (const b of buffs) modSources.push(b.modifiers);
+  }
+  const result: RaidModifiers = {};
+  for (const m of modSources) {
+    for (const [key, val] of Object.entries(m)) {
+      if (key === 'singleEdge') {
+        result.singleEdge = result.singleEdge || (val as boolean);
+      } else {
+        (result as Record<string, number>)[key] = ((result as Record<string, number>)[key] ?? 1) * (val as number);
+      }
+    }
+  }
+  return result;
+}
+
+export function generateRewardOptions(difficulty: number, rng: () => number): RewardOption[] {
+  const options: RewardOption[] = [];
+
+  const resourceMultiplier = 1 + (difficulty - 1) * 0.3;
+  const baseGold = Math.floor(15 * resourceMultiplier);
+  const baseWood = Math.floor(10 * resourceMultiplier);
+  const baseStone = Math.floor(8 * resourceMultiplier);
+
+  options.push({
+    id: 'resources_gold',
+    type: 'resources',
+    name: 'Gold Cache',
+    description: `+${baseGold * 2} gold`,
+    icon: '●',
+    resources: { gold: baseGold * 2, wood: 0, stone: 0 },
+  });
+
+  options.push({
+    id: 'resources_balanced',
+    type: 'resources',
+    name: 'Supply Crate',
+    description: `+${baseGold} gold, +${baseWood} wood, +${baseStone} stone`,
+    icon: '■',
+    resources: { gold: baseGold, wood: baseWood, stone: baseStone },
+  });
+
+  const buffPool = [...REWARD_BUFF_DEFS];
+  const buffIdx = Math.floor(rng() * buffPool.length);
+  const chosenBuff = { ...buffPool[buffIdx], modifiers: { ...buffPool[buffIdx].modifiers } };
+  options.push({
+    id: `buff_${chosenBuff.id}`,
+    type: 'buff',
+    name: chosenBuff.name,
+    description: `${chosenBuff.name} for ${chosenBuff.raidsRemaining} raids`,
+    icon: '★',
+    buff: chosenBuff,
+  });
+
+  return options;
+}
+
+export function tickDownBuffs(buffs: ActiveBuff[]): ActiveBuff[] {
+  return buffs
+    .map((b) => ({ ...b, raidsRemaining: b.raidsRemaining - 1 }))
+    .filter((b) => b.raidsRemaining > 0);
 }
 
 export function applyDiminishingReturns(

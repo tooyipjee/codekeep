@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
-import type { RaidReplay, KeepGridState, GridCoord, RaidTickEvent, Resources, ProbeType, PlacedStructure, StructureKind } from '@codekeep/shared';
+import type { RaidReplay, KeepGridState, GridCoord, RaidTickEvent, Resources, ProbeType, PlacedStructure, StructureKind, RaidAnomaly } from '@codekeep/shared';
 import { GRID_SIZE, STRUCTURE_SYMBOLS, EMPTY_CELL_SYMBOL, RESOURCE_ICONS, RAIDER_TYPES, WALL_HP, ARCHER_TOWER_HP, WATCHTOWER_HP, VAULT_HP, STRUCTURE_NAMES } from '@codekeep/shared';
 
 interface RaidSummary {
@@ -21,6 +21,7 @@ interface RaidViewProps {
   keepGrid: KeepGridState;
   raidType: 'attack' | 'defend';
   summary?: RaidSummary;
+  anomalies?: RaidAnomaly[];
   initialSpeed?: SpeedMultiplier;
   onSpeedChange?: (speed: SpeedMultiplier) => void;
   onDone: () => void;
@@ -98,7 +99,7 @@ const STRUCTURE_COLORS: Record<string, string> = {
   archerTower: 'redBright',
 };
 
-export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, onSpeedChange, onDone }: RaidViewProps) {
+export function RaidView({ replay, keepGrid, raidType, summary, anomalies, initialSpeed, onSpeedChange, onDone }: RaidViewProps) {
   const [currentTick, setCurrentTick] = useState(0);
   const [speed, setSpeedState] = useState<SpeedMultiplier>(initialSpeed ?? 1);
 
@@ -515,6 +516,12 @@ export function RaidView({ replay, keepGrid, raidType, summary, initialSpeed, on
         <Text>Speed: {speed}x</Text>
         <Text dimColor>{paused ? '[PAUSED]' : ''}</Text>
       </Box>
+      {anomalies && anomalies.length > 0 && (
+        <Text color="yellow" bold>
+          {'⚡ Anomalies: '}
+          {anomalies.map((a) => `${a.icon} ${a.name}`).join('  ')}
+        </Text>
+      )}
       <Text> </Text>
       <Box flexDirection="row">
         <Box flexDirection="column">

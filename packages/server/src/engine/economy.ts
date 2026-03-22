@@ -38,12 +38,14 @@ export function calculateOfflineResources(
   elapsedMs: number,
 ): Resources {
   const intervals = Math.min(Math.floor(elapsedMs / PASSIVE_INCOME_INTERVAL_MS), 60);
-  const treasuryCount = grid.structures.filter((s) => s.kind === 'treasury').length;
-  const watchtowerCount = grid.structures.filter((s) => s.kind === 'watchtower').length;
+  const treasuries = grid.structures.filter((s) => s.kind === 'treasury');
+  const watchtowers = grid.structures.filter((s) => s.kind === 'watchtower');
+  const treasuryLevelSum = treasuries.reduce((sum, s) => sum + s.level, 0);
+  const watchtowerLevelSum = watchtowers.reduce((sum, s) => sum + s.level, 0);
   return {
-    gold: intervals * (treasuryCount * PASSIVE_INCOME_PER_TREASURY.gold + watchtowerCount * PASSIVE_INCOME_PER_WATCHTOWER.gold),
-    wood: intervals * (treasuryCount * PASSIVE_INCOME_PER_TREASURY.wood + watchtowerCount * PASSIVE_INCOME_PER_WATCHTOWER.wood),
-    stone: intervals * (treasuryCount * PASSIVE_INCOME_PER_TREASURY.stone + watchtowerCount * PASSIVE_INCOME_PER_WATCHTOWER.stone),
+    gold: intervals * (treasuryLevelSum * PASSIVE_INCOME_PER_TREASURY.gold + watchtowerLevelSum * PASSIVE_INCOME_PER_WATCHTOWER.gold),
+    wood: intervals * (treasuryLevelSum * PASSIVE_INCOME_PER_TREASURY.wood + watchtowerLevelSum * PASSIVE_INCOME_PER_WATCHTOWER.wood),
+    stone: intervals * (treasuryLevelSum * PASSIVE_INCOME_PER_TREASURY.stone + watchtowerLevelSum * PASSIVE_INCOME_PER_WATCHTOWER.stone),
   };
 }
 

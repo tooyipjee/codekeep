@@ -141,7 +141,7 @@ export const KINGDOM_EVENT_NAMES: Record<string, string> = {
 export const BACKGROUND_RAID_INTERVAL_MS = 900_000;
 export const BACKGROUND_RAID_MAX = 5;
 
-export const FAUCET_BASE_USES = 10;
+export const FAUCET_BASE_USES = 6;
 export const FAUCET_DIMINISH_FACTOR = 0.5;
 
 export interface AchievementDef {
@@ -254,6 +254,54 @@ export const SEASON_REWARDS: Record<League, Resources> = {
   gold: { gold: 500, wood: 250, stone: 160 },
   diamond: { gold: 800, wood: 400, stone: 260 },
 };
+
+export interface SynergyDef {
+  id: string;
+  name: string;
+  description: string;
+  bonus: string;
+}
+
+export const SYNERGIES: SynergyDef[] = [
+  { id: 'killbox', name: 'Killbox', description: 'Trap + Archer Tower adjacent', bonus: '+30% archer damage to stunned' },
+  { id: 'fortress', name: 'Fortress', description: '3+ walls in a line', bonus: '+25% wall HP in line' },
+  { id: 'sanctum', name: 'Sanctum', description: 'Ward + Treasury + Watchtower adjacent', bonus: '2x treasury mitigation' },
+  { id: 'gauntlet', name: 'Gauntlet', description: '2+ traps within 3 tiles', bonus: '+2 stun ticks' },
+];
+
+export const ANOMALY_DEFS: import('./types.js').RaidAnomaly[] = [
+  { id: 'fog_of_war', name: 'Fog of War', description: 'Watchtower range halved', icon: '🌫', modifiers: { watchtowerRangeMult: 0.5 } },
+  { id: 'speed_raid', name: 'Speed Raid', description: 'Raiders move 50% faster', icon: '⚡', modifiers: { raiderSpeedMult: 1.5 } },
+  { id: 'fortified', name: 'Fortified', description: 'Raiders have +40% HP, double loot', icon: '🛡', modifiers: { raiderHpMult: 1.4, lootMult: 2 } },
+  { id: 'swarm', name: 'Swarm', description: '+50% raiders, −30% HP each', icon: '🐝', modifiers: { raiderCountMult: 1.5, raiderHpMult: 0.7 } },
+  { id: 'piercing', name: 'Piercing', description: 'Ward mitigation halved', icon: '🗡', modifiers: { wardMitigationMult: 0.5 } },
+  { id: 'siege', name: 'Siege', description: 'Double brute chance', icon: '🏰', modifiers: { bruteChanceMult: 2 } },
+  { id: 'flanking', name: 'Flanking', description: 'All raiders from one edge', icon: '➡', modifiers: { singleEdge: true } },
+  { id: 'ironwall', name: 'Iron Wall', description: 'Walls have +50% HP', icon: '🧱', modifiers: { wallHpMult: 1.5 } },
+  { id: 'sharpshooter', name: 'Sharpshooter', description: 'Archers deal +30% damage', icon: '🎯', modifiers: { archerDamageMult: 1.3 } },
+  { id: 'sticky_traps', name: 'Sticky Traps', description: 'Traps stun 50% longer', icon: '🕸', modifiers: { trapStunMult: 1.5 } },
+];
+
+export const ANOMALY_MIN_DIFFICULTY = 2;
+export const ANOMALY_DOUBLE_CHANCE_DIFFICULTY = 6;
+
+export const REWARD_BUFF_DEFS: import('./types.js').ActiveBuff[] = [
+  { id: 'wall_fortify', name: 'Fortified Walls', raidsRemaining: 3, modifiers: { wallHpMult: 1.25 } },
+  { id: 'archer_focus', name: 'Archer Focus', raidsRemaining: 3, modifiers: { archerDamageMult: 1.2 } },
+  { id: 'trap_mastery', name: 'Trap Mastery', raidsRemaining: 3, modifiers: { trapStunMult: 1.3 } },
+  { id: 'ward_power', name: 'Ward Power', raidsRemaining: 3, modifiers: { wardMitigationMult: 1.3 } },
+  { id: 'scout_shield', name: 'Scout Shield', raidsRemaining: 2, modifiers: { wallHpMult: 1.4, archerDamageMult: 1.15 } },
+];
+
+export const PRESTIGE_UNLOCKS: { id: string; name: string; description: string; ascensionLevel: number }[] = [
+  { id: 'starting_resources_boost', name: 'War Chest', description: 'Start with 2x resources', ascensionLevel: 1 },
+  { id: 'structures_lv2', name: 'Veteran Builder', description: 'New structures start at Lv.2', ascensionLevel: 2 },
+  { id: 'extra_faucet', name: 'Deep Wells', description: '+3 faucet uses before diminishing', ascensionLevel: 3 },
+  { id: 'passive_income_boost', name: 'Trade Routes', description: '+50% passive income', ascensionLevel: 4 },
+  { id: 'anomaly_choice', name: 'Oracle', description: 'Choose from 2 anomalies before each raid (coming soon)', ascensionLevel: 5 },
+];
+
+export const PRESTIGE_MIN_WINS = 50;
 
 export const DORMANT_THRESHOLD_MS = 14 * 24 * 60 * 60 * 1000;
 export const NEW_PLAYER_PROTECTION_MS = 48 * 60 * 60 * 1000;

@@ -90,6 +90,7 @@ export function manhattanDistance(a: GridCoord, b: GridCoord): number {
 export function getEffectiveMitigation(
   grid: KeepGridState,
   treasuryPos: GridCoord,
+  watchtowerRangeMult = 1,
 ): number {
   const wards = grid.structures.filter((s) => s.kind === 'ward');
   const watchtowers = grid.structures.filter((s) => s.kind === 'watchtower');
@@ -101,7 +102,7 @@ export function getEffectiveMitigation(
 
     for (const wt of watchtowers) {
       if (chebyshevDistance(w.pos, wt.pos) <= 1) {
-        effectiveRange = Math.max(effectiveRange, 1 + getWatchtowerRange(wt.level));
+        effectiveRange = Math.max(effectiveRange, 1 + Math.floor(getWatchtowerRange(wt.level) * watchtowerRangeMult));
       }
     }
 

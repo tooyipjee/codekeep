@@ -10,10 +10,12 @@ import {
   type ProbeType,
   type StructureKind,
   type RaidSpawnSpec,
+  type RaidModifiers,
   GRID_SIZE,
   TICK_RATE_HZ,
   MAX_RAID_TICKS,
   RAIDER_TYPES,
+  VAULT_PROTECTION,
 } from '@codekeep/shared';
 import {
   getWallHp,
@@ -29,6 +31,7 @@ import {
   getArcherCooldown,
   manhattanDistance,
 } from './structures.js';
+import { evaluateSynergies } from './synergies.js';
 
 export function mulberry32(seed: number): () => number {
   let s = seed | 0;
@@ -216,8 +219,8 @@ function findAdjacentSolid(state: RaidState, pos: GridCoord): SolidStructure | u
   );
 }
 
-function attackSolid(state: RaidState, raider: Raider, target: SolidStructure): void {
-  target.hp -= RAIDER_TYPES[raider.raiderType].damage;
+function attackSolid(state: RaidState, raider: Raider, target: SolidStructure, damageMult = 1): void {
+  target.hp -= Math.floor(RAIDER_TYPES[raider.raiderType].damage * damageMult);
   const destroyed = target.hp <= 0;
   if (destroyed) {
     target.destroyed = true;
@@ -314,23 +317,43 @@ export interface RaidConfig {
   seed: string;
   probeTypes?: ProbeType[];
   spawnSpecs?: RaidSpawnSpec[];
+  modifiers?: RaidModifiers;
+}
+
+export function mergeModifiers(...mods: (RaidModifiers | undefined)[]): RaidModifiers {
+  const result: RaidModifiers = {};
+  for (const m of mods) {
+    if (!m) continue;
+    for (const [key, val] of Object.entries(m)) {
+      if (key === 'singleEdge') {
+        result.singleEdge = result.singleEdge || (val as boolean);
+      } else {
+        (result as Record<string, number>)[key] = ((result as Record<string, number>)[key] ?? 1) * (val as number);
+      }
+    }
+  }
+  return result;
+}
+
+function mod(m: RaidModifiers, key: keyof RaidModifiers): number {
+  const v = m[key];
+  return typeof v === 'number' ? v : 1;
 }
 
 export function simulateRaid(config: RaidConfig): RaidReplay {
   const rng = mulberry32(hashSeed(config.seed));
   const { keepGrid } = config;
+  const mods = config.modifiers ?? {};
 
   const solidKinds: StructureKind[] = ['wall', 'archerTower', 'watchtower', 'vault'];
   const solids: SolidStructure[] = keepGrid.structures
     .filter((s) => solidKinds.includes(s.kind))
     .sort((a, b) => a.id.localeCompare(b.id))
-    .map((s) => ({
-      structureId: s.id,
-      kind: s.kind,
-      pos: { ...s.pos },
-      hp: getStructureHp(s.kind, s.level),
-      destroyed: false,
-    }));
+    .map((s) => {
+      let hp = getStructureHp(s.kind, s.level);
+      if (s.kind === 'wall') hp = Math.floor(hp * mod(mods, 'wallHpMult'));
+      return { structureId: s.id, kind: s.kind, pos: { ...s.pos }, hp, destroyed: false };
+    });
 
   const traps: TrapState[] = keepGrid.structures
     .filter((s) => s.kind === 'trap')
@@ -353,14 +376,18 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       destroyed: false,
     }));
 
-  let treasuries: TreasuryState[] = keepGrid.structures
-    .filter((s) => s.kind === 'treasury')
+  const vaults = keepGrid.structures.filter((s) => s.kind === 'vault');
+  const vaultProtectionTotal = vaults.reduce((sum, v) => sum + VAULT_PROTECTION[v.level].gold + VAULT_PROTECTION[v.level].wood + VAULT_PROTECTION[v.level].stone, 0);
+  const treasuryStructures = keepGrid.structures.filter((s) => s.kind === 'treasury');
+  const protectedPerTreasury = treasuryStructures.length > 0 ? Math.floor(vaultProtectionTotal / treasuryStructures.length) : 0;
+
+  let treasuries: TreasuryState[] = treasuryStructures
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((s) => ({
       structureId: s.id,
       pos: { ...s.pos },
       level: s.level,
-      storedResources: getTreasuryCapacity(s.level),
+      storedResources: Math.max(0, getTreasuryCapacity(s.level) - protectedPerTreasury),
     }));
 
   if (treasuries.length === 0) {
@@ -386,6 +413,17 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
 
   rebuildPassability(state);
 
+  const synergies = evaluateSynergies(keepGrid);
+  const killboxArcherIds = new Set(synergies.filter((s) => s.id === 'killbox').flatMap((s) => s.affectedStructureIds));
+  const gauntletTrapIds = new Set(synergies.filter((s) => s.id === 'gauntlet').flatMap((s) => s.affectedStructureIds));
+  const fortressWallIds = new Set(synergies.filter((s) => s.id === 'fortress').flatMap((s) => s.affectedStructureIds));
+
+  for (const solid of state.solids) {
+    if (solid.kind === 'wall' && fortressWallIds.has(solid.structureId)) {
+      solid.hp = Math.floor(solid.hp * 1.25);
+    }
+  }
+
   interface PendingSpawn {
     id: number;
     edge: Edge;
@@ -396,12 +434,15 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
 
   const pendingSpawns: PendingSpawn[] = [];
   const edges: Edge[] = ['N', 'S', 'E', 'W'];
+  const forcedEdge: Edge | null = mods.singleEdge ? edges[Math.floor(rng() * edges.length)] : null;
 
-  for (let i = 0; i < config.probeCount; i++) {
+  const effectiveProbeCount = Math.round(config.probeCount * mod(mods, 'raiderCountMult'));
+
+  for (let i = 0; i < effectiveProbeCount; i++) {
     const spec = config.spawnSpecs?.[i];
-    const edge: Edge = spec?.edge ?? edges[Math.floor(rng() * edges.length)];
+    const edge: Edge = forcedEdge ?? spec?.edge ?? edges[Math.floor(rng() * edges.length)];
     const offset = spec?.offset ?? Math.floor(rng() * GRID_SIZE);
-    const raiderType: ProbeType = spec?.raiderType ?? config.probeTypes?.[i] ?? 'raider';
+    const raiderType: ProbeType = spec?.raiderType ?? config.probeTypes?.[i % (config.probeTypes?.length || 1)] ?? 'raider';
     const spawnAtTick = spec?.waveDelay ?? 0;
 
     pendingSpawns.push({ id: i, edge, offset, raiderType, spawnAtTick });
@@ -420,10 +461,11 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       }
     }
 
+    const baseHp = Math.floor(RAIDER_TYPES[ps.raiderType].hp * mod(mods, 'raiderHpMult'));
     state.raiders.push({
       id: ps.id,
       pos: { ...pos },
-      hp: RAIDER_TYPES[ps.raiderType].hp,
+      hp: baseHp,
       raiderType: ps.raiderType,
       stunRemaining: 0,
       targetId: closestTreasury?.structureId ?? null,
@@ -438,7 +480,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
       edge: ps.edge,
       pos: { ...pos },
       raiderType: ps.raiderType,
-      maxHp: RAIDER_TYPES[ps.raiderType].hp,
+      maxHp: baseHp,
     });
   }
 
@@ -467,18 +509,17 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
     const hasPendingSpawns = pendingSpawns.some((ps) => ps.spawnAtTick > state.tick);
     if (aliveRaiders.length === 0 && !hasPendingSpawns) break;
 
-    // Archers fire (only non-destroyed archers)
     for (const ar of state.archers) {
       if (ar.destroyed || ar.cooldownRemaining > 0) continue;
-      const range = getArcherRange(ar.level);
-      const damage = getArcherDamage(ar.level);
+      const range = Math.floor(getArcherRange(ar.level) * mod(mods, 'archerRangeMult'));
+      const damage = Math.floor(getArcherDamage(ar.level) * mod(mods, 'archerDamageMult'));
       const inRange = aliveRaiders.filter(
         (r) => r.alive && manhattanDistance(ar.pos, r.pos) <= range,
       );
       const target = inRange.length === 0 ? undefined
         : inRange.sort((a, b) => {
-            const aStunned = a.stunRemaining > 0 ? 0 : 1;
-            const bStunned = b.stunRemaining > 0 ? 0 : 1;
+            const aStunned = a.stunRemaining > 0 ? 1 : 0;
+            const bStunned = b.stunRemaining > 0 ? 1 : 0;
             if (aStunned !== bStunned) return aStunned - bStunned;
             const aTreasury = state.treasuries.find(t => t.structureId === a.targetId);
             const bTreasury = state.treasuries.find(t => t.structureId === b.targetId);
@@ -487,13 +528,17 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
             return aDist - bDist;
           })[0];
       if (target) {
-        target.hp -= damage;
+        let effectiveDamage = damage;
+        if (killboxArcherIds.has(ar.structureId) && target.stunRemaining > 0) {
+          effectiveDamage = Math.floor(damage * 1.3);
+        }
+        target.hp -= effectiveDamage;
         ar.cooldownRemaining = getArcherCooldown(ar.level);
         if (target.hp <= 0) {
           target.alive = false;
           state.events.push({
             t: state.tick, type: 'arrow_hit', probeId: target.id,
-            archerId: ar.structureId, damage, hpRemaining: 0,
+            archerId: ar.structureId, damage: effectiveDamage, hpRemaining: 0,
           });
           state.events.push({
             t: state.tick, type: 'raider_destroyed', probeId: target.id, pos: { ...target.pos },
@@ -501,7 +546,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
         } else {
           state.events.push({
             t: state.tick, type: 'arrow_hit', probeId: target.id,
-            archerId: ar.structureId, damage, hpRemaining: target.hp,
+            archerId: ar.structureId, damage: effectiveDamage, hpRemaining: target.hp,
           });
         }
       }
@@ -516,7 +561,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
         continue;
       }
 
-      const moveCount = RAIDER_TYPES[raider.raiderType].speed;
+      const moveCount = Math.max(1, Math.round(RAIDER_TYPES[raider.raiderType].speed * mod(mods, 'raiderSpeedMult')));
       for (let move = 0; move < moveCount; move++) {
         if (!raider.alive) break;
 
@@ -526,7 +571,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
           if (defTarget) {
             // Adjacent? Attack it.
             if (manhattanDistance(raider.pos, defTarget.pos) === 1) {
-              attackSolid(state, raider, defTarget);
+              attackSolid(state, raider, defTarget, mod(mods, 'raiderDamageMult'));
               break;
             }
             // Try to pathfind toward the defense structure
@@ -536,7 +581,8 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
                 (tr) => tr.pos.x === raider.pos.x && tr.pos.y === raider.pos.y && tr.cooldownRemaining === 0,
               );
               if (trap) {
-                raider.stunRemaining = getTrapStunTicks(trap.level);
+                const baseStun = Math.floor(getTrapStunTicks(trap.level) * mod(mods, 'trapStunMult'));
+                raider.stunRemaining = gauntletTrapIds.has(trap.structureId) ? baseStun + 2 : baseStun;
                 trap.cooldownRemaining = getTrapCooldown(trap.level);
                 state.events.push({
                   t: state.tick, type: 'raider_stunned', probeId: raider.id,
@@ -549,7 +595,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
             // Can't reach — attack whatever is adjacent
             const adj = findAdjacentSolid(state, raider.pos);
             if (adj) {
-              attackSolid(state, raider, adj);
+              attackSolid(state, raider, adj, mod(mods, 'raiderDamageMult'));
               break;
             }
             // Nothing adjacent and no path — fall through to treasury targeting
@@ -579,8 +625,9 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
 
         // At treasury? Loot it.
         if (raider.pos.x === treasuryTarget.pos.x && raider.pos.y === treasuryTarget.pos.y) {
-          const mitigation = getEffectiveMitigation(keepGrid, treasuryTarget.pos);
-          const lootAmount = Math.max(1, Math.floor(RAIDER_TYPES[raider.raiderType].loot * treasuryTarget.level * (1 - mitigation)));
+          const baseMitigation = getEffectiveMitigation(keepGrid, treasuryTarget.pos, mod(mods, 'watchtowerRangeMult'));
+          const mitigation = Math.min(1, baseMitigation * mod(mods, 'wardMitigationMult'));
+          const lootAmount = Math.max(1, Math.floor(RAIDER_TYPES[raider.raiderType].loot * treasuryTarget.level * (1 - mitigation) * mod(mods, 'lootMult')));
           const actualLoot = Math.min(lootAmount, treasuryTarget.storedResources);
           treasuryTarget.storedResources -= actualLoot;
 
@@ -609,7 +656,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
           if (raider.raiderType === 'scout') {
             const weakest = scoutPickWeakestBlocker(state, raider);
             if (weakest) {
-              attackSolid(state, raider, weakest);
+              attackSolid(state, raider, weakest, mod(mods, 'raiderDamageMult'));
               break;
             }
           }
@@ -617,7 +664,7 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
           // Standard: attack any adjacent solid
           const adj = findAdjacentSolid(state, raider.pos);
           if (adj) {
-            attackSolid(state, raider, adj);
+            attackSolid(state, raider, adj, mod(mods, 'raiderDamageMult'));
           } else {
             // Not adjacent to anything — walk toward nearest solid
             const nearest = state.solids
@@ -643,7 +690,8 @@ export function simulateRaid(config: RaidConfig): RaidReplay {
           (tr) => tr.pos.x === raider.pos.x && tr.pos.y === raider.pos.y && tr.cooldownRemaining === 0,
         );
         if (trap) {
-          const stunTicks = getTrapStunTicks(trap.level);
+          const baseStunTicks = Math.floor(getTrapStunTicks(trap.level) * mod(mods, 'trapStunMult'));
+          const stunTicks = gauntletTrapIds.has(trap.structureId) ? baseStunTicks + 2 : baseStunTicks;
           raider.stunRemaining = stunTicks;
           trap.cooldownRemaining = getTrapCooldown(trap.level);
           state.events.push({

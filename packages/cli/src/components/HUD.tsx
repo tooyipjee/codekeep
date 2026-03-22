@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import type { Resources, StructureKind, PlacedStructure } from '@codekeep/shared';
+import type { Resources, StructureKind, PlacedStructure, RaidAnomaly, ActiveBuff } from '@codekeep/shared';
 import { STRUCTURE_NAMES, STRUCTURE_COSTS, RESOURCE_ICONS } from '@codekeep/shared';
 
 interface HUDProps {
@@ -11,6 +11,10 @@ interface HUDProps {
   structureAtCursor?: PlacedStructure | null;
   fragmentCount?: number;
   dryRun?: boolean;
+  siegeForecast?: string;
+  flowMultiplier?: number;
+  raidAnomalies?: RaidAnomaly[];
+  activeBuffs?: ActiveBuff[];
 }
 
 const COMPACT_NAMES: Record<StructureKind, string> = {
@@ -30,7 +34,7 @@ function formatCost(cost: Resources): string {
   return parts.join(' ');
 }
 
-export function HUD({ resources, selectedStructure, message, compact, structureAtCursor, fragmentCount = 0, dryRun }: HUDProps) {
+export function HUD({ resources, selectedStructure, message, compact, structureAtCursor, fragmentCount = 0, dryRun, siegeForecast, flowMultiplier, raidAnomalies, activeBuffs }: HUDProps) {
   if (compact) {
     const name = COMPACT_NAMES[selectedStructure];
     return (
@@ -77,8 +81,24 @@ export function HUD({ resources, selectedStructure, message, compact, structureA
           </>
         )}
       </Box>
-      <Text color={message.startsWith('!') ? 'red' : 'yellow'}>{message || ' '}</Text>
-      <Text dimColor>{cursorInfo || ' '}</Text>
+      <Box flexDirection="row" gap={1}>
+        <Text color={message.startsWith('!') ? 'red' : 'yellow'}>{message || ' '}</Text>
+        {flowMultiplier != null && flowMultiplier > 1 && (
+          <>
+            <Text dimColor>{'│'}</Text>
+            <Text color={flowMultiplier >= 2 ? 'magenta' : flowMultiplier >= 1.5 ? 'cyan' : 'green'} bold>
+              Flow: {flowMultiplier.toFixed(1)}x
+            </Text>
+          </>
+        )}
+      </Box>
+      <Text dimColor>{siegeForecast ? `${cursorInfo ? cursorInfo + '  │  ' : ''}${siegeForecast}` : cursorInfo || ' '}</Text>
+      {activeBuffs && activeBuffs.length > 0 && (
+        <Text color="cyan">
+          {'★ Buffs: '}
+          {activeBuffs.map((b) => `${b.name} (${b.raidsRemaining}r)`).join(', ')}
+        </Text>
+      )}
     </Box>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { GameSave } from '@codekeep/shared';
+import { raidDifficulty } from '../lib/game-logic.js';
 
 interface MenuProps {
   gameSave: GameSave;
@@ -10,6 +11,8 @@ interface MenuProps {
   onDefend: () => void;
   onFriendRaid: () => void;
   onPvp?: () => void;
+  onDailyChallenge: () => void;
+  onPrestige: () => void;
   onRaidLog: () => void;
   onSettings: () => void;
   onQuit: () => void;
@@ -27,6 +30,8 @@ function getMenuItems(online: boolean) {
     items.push({ key: 'pvp-locked', label: '⚔ PvP Arena', desc: 'Coming soon — use --online to connect', disabled: true });
   }
   items.push(
+    { key: 'dailyChallenge', label: '★ Daily Challenge', desc: 'Date-seeded escalating waves', disabled: false },
+    { key: 'prestige', label: '↑ Prestige', desc: 'Ascend — reset keep, gain permanents', disabled: false },
     { key: 'friendRaid', label: 'Raid Rival Keep', desc: "Plunder a rival lord's fortress", disabled: false },
     { key: 'raidLog', label: 'Raid Log', desc: 'View recent raid history', disabled: false },
     { key: 'settings', label: 'Settings', desc: 'Game options and reset', disabled: false },
@@ -35,7 +40,7 @@ function getMenuItems(online: boolean) {
   return items;
 }
 
-export function Menu({ gameSave, onlineMode, onKeep, onAttack, onDefend, onFriendRaid, onPvp, onRaidLog, onSettings, onQuit }: MenuProps) {
+export function Menu({ gameSave, onlineMode, onKeep, onAttack, onDefend, onFriendRaid, onPvp, onDailyChallenge, onPrestige, onRaidLog, onSettings, onQuit }: MenuProps) {
   const menuItems = getMenuItems(!!onlineMode);
   const [selected, setSelected] = useState(0);
 
@@ -59,6 +64,8 @@ export function Menu({ gameSave, onlineMode, onKeep, onAttack, onDefend, onFrien
       else if (item.key === 'defend') onDefend();
       else if (item.key === 'attack') onAttack();
       else if (item.key === 'pvp') onPvp?.();
+      else if (item.key === 'dailyChallenge') onDailyChallenge();
+      else if (item.key === 'prestige') onPrestige();
       else if (item.key === 'friendRaid') onFriendRaid();
       else if (item.key === 'raidLog') onRaidLog();
       else if (item.key === 'settings') onSettings();
@@ -89,8 +96,8 @@ export function Menu({ gameSave, onlineMode, onKeep, onAttack, onDefend, onFrien
       <Text> </Text>
       <Text dimColor>  {gameSave.player.displayName}'s Keep — {keepAgeDays}d old</Text>
       <Text dimColor>  {structCount} structures ({treasuryCount}$ {archerCount}!) · Raids {p.totalRaidsWon}W / {p.totalRaidsLost}L · Streak {p.currentWinStreak} (best {p.bestWinStreak})</Text>
-      <Text dimColor>  Difficulty: Lv.{totalRaids <= 2 ? 1 : totalRaids <= 5 ? 2 : totalRaids <= 9 ? 3 : totalRaids <= 14 ? 4 : 5}</Text>
-      <Text dimColor>  Achievements: {gameSave.progression.achievements?.length || 0}/{10}</Text>
+      <Text dimColor>  Difficulty: Lv.{raidDifficulty(totalRaids)}{gameSave.prestige ? `  ★ Ascension ${gameSave.prestige.ascensionLevel}` : ''}</Text>
+      <Text dimColor>  Achievements: {gameSave.progression.achievements?.length || 0}/{10}{gameSave.activeBuffs && gameSave.activeBuffs.length > 0 ? `  Buffs: ${gameSave.activeBuffs.length}` : ''}</Text>
       <Text> </Text>
 
       {menuItems.map((item, i) => (

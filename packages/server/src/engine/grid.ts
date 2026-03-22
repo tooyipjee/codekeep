@@ -45,6 +45,7 @@ export function placeStructure(
   keep: Keep,
   pos: GridCoord,
   kind: StructureKind,
+  options?: { startingLevel?: 1 | 2 },
 ): { ok: boolean; keep?: Keep; reason?: string } {
   const check = canPlaceStructure(keep.grid, pos, kind);
   if (!check.ok) return { ok: false, reason: check.reason };
@@ -54,10 +55,11 @@ export function placeStructure(
     return { ok: false, reason: shortageMessage(keep.resources, cost) };
   }
 
+  const level = options?.startingLevel ?? 1;
   const structure: PlacedStructure = {
     id: `${kind}-${pos.x}-${pos.y}-${Date.now()}`,
     kind,
-    level: 1,
+    level,
     pos: { ...pos },
     placedAtUnixMs: Date.now(),
   };

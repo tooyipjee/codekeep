@@ -119,7 +119,7 @@ describe('App component', () => {
       <App asciiMode={false} compact={false} forceTutorial={false} autoResume={false} />,
     );
     await delay(400);
-    await sendKeys(stdin, ['j', 'j', 'j', 'j', 'j', '\r']);
+    await sendKeys(stdin, ['j', 'j', 'j', 'j', 'j', 'j', 'j', '\r']);
     await delay(400);
     expect(lastFrame()).toContain('ASCII Mode');
   });
@@ -281,7 +281,7 @@ describe('App component', () => {
       <App asciiMode={false} compact={false} forceTutorial={false} autoResume={false} />,
     );
     await delay(500);
-    await sendKeys(stdin, ['j', 'j', 'j', '\r']);
+    await sendKeys(stdin, ['j', 'j', 'j', 'j', 'j', '\r']);
     await delay(600);
     expect(lastFrame()).toContain('Rival Keeps');
   });
@@ -291,7 +291,7 @@ describe('App component', () => {
       <App asciiMode={false} compact={false} forceTutorial={false} autoResume={false} />,
     );
     await delay(400);
-    await sendKeys(stdin, ['j', 'j', 'j', 'j', '\r']);
+    await sendKeys(stdin, ['j', 'j', 'j', 'j', 'j', 'j', '\r']);
     await delay(400);
     expect(lastFrame()).toContain('Raid Log');
   });
@@ -401,7 +401,7 @@ describe('App component', () => {
       <App asciiMode={false} compact={false} forceTutorial={false} autoResume={false} />,
     );
     await delay(500);
-    await sendKeys(stdin, ['j', 'j', 'j', 'j', 'j', '\r']);
+    await sendKeys(stdin, ['j', 'j', 'j', 'j', 'j', 'j', 'j', '\r']);
     await delay(600);
     expect(lastFrame()).toContain('ASCII Mode');
     stdin.write('\x1B');
@@ -414,7 +414,7 @@ describe('App component', () => {
       <App asciiMode={false} compact={false} forceTutorial={false} autoResume={false} />,
     );
     await delay(400);
-    await sendKeys(stdin, ['j', 'j', 'j', 'j', '\r']);
+    await sendKeys(stdin, ['j', 'j', 'j', 'j', 'j', 'j', '\r']);
     await delay(400);
     expect(lastFrame()).toContain('Raid Log');
     stdin.write('\x1B');
@@ -427,7 +427,7 @@ describe('App component', () => {
       <App asciiMode={false} compact={false} forceTutorial={false} autoResume={false} />,
     );
     await delay(400);
-    await sendKeys(stdin, ['j', 'j', 'j', '\r']);
+    await sendKeys(stdin, ['j', 'j', 'j', 'j', 'j', '\r']);
     await delay(400);
     expect(lastFrame()).toContain('Rival Keeps');
     stdin.write('\x1B');

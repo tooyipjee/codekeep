@@ -23,11 +23,44 @@ export const NPC_DIFFICULTIES: NpcDifficulty[] = [
   { level: 3, structureCount: 12, maxUpgradeLevel: 2, probeCount: 5 },
   { level: 4, structureCount: 16, maxUpgradeLevel: 2, probeCount: 6 },
   { level: 5, structureCount: 22, maxUpgradeLevel: 3, probeCount: 8 },
+  { level: 6, structureCount: 26, maxUpgradeLevel: 3, probeCount: 9 },
+  { level: 7, structureCount: 30, maxUpgradeLevel: 3, probeCount: 10 },
+  { level: 8, structureCount: 34, maxUpgradeLevel: 3, probeCount: 11 },
+  { level: 9, structureCount: 38, maxUpgradeLevel: 3, probeCount: 12 },
+  { level: 10, structureCount: 42, maxUpgradeLevel: 3, probeCount: 13 },
 ];
+
+export type NpcBiome = 'maze' | 'sniper_nest' | 'trap_garden' | 'fortress' | 'balanced';
+
+export const BIOME_NAMES: Record<NpcBiome, string> = {
+  maze: 'Maze',
+  sniper_nest: 'Sniper Nest',
+  trap_garden: 'Trap Garden',
+  fortress: 'Fortress',
+  balanced: 'Outpost',
+};
+
+interface BiomeWeights { wall: number; trap: number; ward: number; archer: number; watchtower: number }
+
+const BIOME_WEIGHTS: Record<NpcBiome, BiomeWeights> = {
+  maze:         { wall: 0.55, trap: 0.10, ward: 0.10, archer: 0.05, watchtower: 0.05 },
+  sniper_nest:  { wall: 0.15, trap: 0.10, ward: 0.10, archer: 0.35, watchtower: 0.10 },
+  trap_garden:  { wall: 0.15, trap: 0.40, ward: 0.10, archer: 0.05, watchtower: 0.10 },
+  fortress:     { wall: 0.30, trap: 0.10, ward: 0.20, archer: 0.10, watchtower: 0.05 },
+  balanced:     { wall: 0.35, trap: 0.20, ward: 0.15, archer: 0.10, watchtower: 0.05 },
+};
+
+const ALL_BIOMES: NpcBiome[] = ['maze', 'sniper_nest', 'trap_garden', 'fortress', 'balanced'];
+
+export function pickBiome(rng: () => number): NpcBiome {
+  return ALL_BIOMES[Math.floor(rng() * ALL_BIOMES.length)];
+}
 
 export function generateNpcKeep(seed: string, difficulty: number): Keep {
   const diff = NPC_DIFFICULTIES[Math.max(0, Math.min(difficulty - 1, NPC_DIFFICULTIES.length - 1))];
   const rng = mulberry32(hashSeed(seed));
+  const biome = pickBiome(rng);
+  const weights = BIOME_WEIGHTS[biome];
 
   const structures: PlacedStructure[] = [];
   const occupied = new Set<string>();
@@ -40,7 +73,9 @@ export function generateNpcKeep(seed: string, difficulty: number): Keep {
     occupied.add(`${pos.x},${pos.y}`);
   }
 
-  const wallCount = Math.floor(diff.structureCount * 0.35);
+  const budget = diff.structureCount - treasuryCount - VAULT_MAX_COUNT;
+
+  const wallCount = Math.max(0, Math.round(budget * weights.wall));
   for (let i = 0; i < wallCount; i++) {
     const pos = findFreeNearStructures(rng, occupied, structures);
     if (!pos) break;
@@ -48,7 +83,7 @@ export function generateNpcKeep(seed: string, difficulty: number): Keep {
     occupied.add(`${pos.x},${pos.y}`);
   }
 
-  const trapCount = Math.floor(diff.structureCount * 0.2);
+  const trapCount = Math.max(0, Math.round(budget * weights.trap));
   for (let i = 0; i < trapCount; i++) {
     const pos = findFreeNearEdge(rng, occupied);
     if (!pos) break;
@@ -56,7 +91,7 @@ export function generateNpcKeep(seed: string, difficulty: number): Keep {
     occupied.add(`${pos.x},${pos.y}`);
   }
 
-  const wardCount = Math.max(1, Math.floor(diff.structureCount * 0.15));
+  const wardCount = Math.max(1, Math.round(budget * weights.ward));
   for (let i = 0; i < wardCount; i++) {
     const allTreasuries = structures.filter((s) => s.kind === 'treasury');
     const treasury = allTreasuries.length > 0 ? allTreasuries[Math.floor(rng() * allTreasuries.length)] : undefined;
@@ -75,7 +110,7 @@ export function generateNpcKeep(seed: string, difficulty: number): Keep {
     }
   }
 
-  const archerCount = Math.max(0, Math.floor(diff.structureCount * 0.10));
+  const archerCount = Math.max(0, Math.round(budget * weights.archer));
   for (let i = 0; i < archerCount; i++) {
     const pos = findFreeNearStructures(rng, occupied, structures);
     if (!pos) break;
@@ -98,9 +133,10 @@ export function generateNpcKeep(seed: string, difficulty: number): Keep {
     occupied.add(`${pos.x},${pos.y}`);
   }
 
+  const biomeName = BIOME_NAMES[biome];
   return {
     id: `npc-${seed}-${difficulty}`,
-    name: `NPC Keep (Lv.${diff.level})`,
+    name: `${biomeName} (Lv.${diff.level})`,
     ownerPlayerId: 'npc',
     grid: { width: 16, height: 16, structures },
     resources: { ...STARTING_RESOURCES },

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import type { GameSave } from '@codekeep/shared';
-import { loadGame, saveGame, createNewGameSave, deleteSaveFile, simulateRaid } from '@codekeep/server';
+import { loadGame, saveGame, createNewGameSave, deleteSaveFile, simulateRaid, canPrestige, performPrestige, getPrestigeLevel } from '@codekeep/server';
 import { RESOURCE_ICONS } from '@codekeep/shared';
 import { KeepGrid } from './components/KeepGrid.js';
 import { HUD } from './components/HUD.js';
@@ -19,7 +19,12 @@ import { WarCampView } from './components/WarCampView.js';
 import { LeaderboardView } from './components/LeaderboardView.js';
 import { AuthView } from './components/AuthView.js';
 import { RaidPlanner } from './components/RaidPlanner.js';
+import { DailyChallenge } from './components/DailyChallenge.js';
+import { RewardChoice } from './components/RewardChoice.js';
+import { PrestigeView } from './components/PrestigeView.js';
 import { useGameState } from './hooks/useGameState.js';
+import { generatePostcard } from './lib/postcard.js';
+import { exec } from 'node:child_process';
 import { OnlineBackend } from './lib/online-backend.js';
 import type { MatchTarget, PvpProfile, LeaderboardEntry } from './lib/backend.js';
 import type { Keep, RaidReplay as RaidReplayType, KeepGridState, RaidRecord, ProbeType, WarCamp, RaidSpawnSpec } from '@codekeep/shared';
@@ -46,7 +51,7 @@ function useTerminalSize() {
   return size;
 }
 
-type Screen = 'menu' | 'keep' | 'raid' | 'friendList' | 'friendRaid' | 'tutorial' | 'raidLog' | 'settings' | 'pvp' | 'warcamp' | 'leaderboard' | 'auth' | 'raidPlanner';
+type Screen = 'menu' | 'keep' | 'raid' | 'friendList' | 'friendRaid' | 'tutorial' | 'raidLog' | 'settings' | 'pvp' | 'warcamp' | 'leaderboard' | 'auth' | 'raidPlanner' | 'dailyChallenge' | 'prestige';
 
 interface AppProps {
   asciiMode: boolean;
@@ -104,6 +109,7 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
     placeAtCursor,
     upgradeAtCursor,
     demolishAtCursor,
+    undoLastAction,
     collectAtCursor,
     startAttackRaid,
     startDefendRaid,
@@ -116,11 +122,31 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
     jumpToCoord,
     jumpToNextStructure,
     clearOfflineReport,
+    saveDailyChallengeScore,
+    showMessage,
+    siegeForecast,
+    flowMultiplier,
+    activeSynergies,
+    synergyStructureIds,
+    raidAnomalies,
+    pendingRewards,
+    claimReward,
+    dismissRewards,
+    applyExternalSave,
+    getSessionStats,
   } = useGameState(forceTutorial, dryRun);
 
+  const [sessionSummary, setSessionSummary] = useState<import('../hooks/useGameState.js').SessionStats | null>(null);
+
   const handleQuit = useCallback(() => {
-    exit();
-  }, [exit]);
+    const stats = getSessionStats();
+    if (stats && (stats.raidsWon + stats.raidsLost > 0 || stats.structuresBuilt > 0)) {
+      setSessionSummary(stats);
+      setTimeout(() => exit(), 3000);
+    } else {
+      exit();
+    }
+  }, [exit, getSessionStats]);
 
   const handleResetGame = useCallback(() => {
     deleteSaveFile();
@@ -199,6 +225,13 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
   }, []);
 
   useInput((input, key) => {
+    if (sessionSummary) {
+      exit();
+      return;
+    }
+
+    if (pendingRewards && screen === 'keep') return;
+
     if (showHelp) {
       setShowHelp(false);
       return;
@@ -237,9 +270,11 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
       return;
     }
 
-    // Offline bonus dismissal
     if (offlineReport && screen === 'keep') {
-      clearOfflineReport();
+      if (key.return || input === ' ') {
+        clearOfflineReport();
+      }
+      return;
     }
 
     if (screen === 'menu') {
@@ -262,7 +297,7 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
 
     if (screen === 'friendList' || screen === 'raidLog' || screen === 'settings'
         || screen === 'pvp' || screen === 'warcamp' || screen === 'leaderboard' || screen === 'auth'
-        || screen === 'raidPlanner') {
+        || screen === 'raidPlanner' || screen === 'dailyChallenge') {
       return;
     }
 
@@ -308,12 +343,46 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
       setCoordInput('');
     }
 
+    // Undo last placement
+    else if (input === 'z') undoLastAction();
+
+    // Keep postcard
+    else if (input === 'p' || input === 'P') {
+      if (gameSave) {
+        const card = generatePostcard(gameSave);
+        const copyCmd = process.platform === 'darwin' ? 'pbcopy' : process.platform === 'win32' ? 'clip' : 'xclip -selection clipboard';
+        const child = exec(copyCmd, () => {});
+        child.stdin?.write(card);
+        child.stdin?.end();
+        showMessage('Keep postcard copied to clipboard!');
+      }
+    }
+
     // Structure tabbing
     else if (key.tab) jumpToNextStructure(1);
 
     // Number keys for structure selection (1-6)
     else if (input >= '1' && input <= '6') selectStructure(parseInt(input) - 1);
   });
+
+  if (sessionSummary) {
+    const elapsed = Math.floor((Date.now() - sessionSummary.startedAt) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    return (
+      <Box flexDirection="column" paddingX={2} paddingY={1}>
+        <Text bold color="yellow">{'◆ Session Summary'}</Text>
+        <Text>Time played: <Text bold>{mins}m {secs}s</Text></Text>
+        <Text>Raids: <Text color="green" bold>{sessionSummary.raidsWon} won</Text> / <Text color="red" bold>{sessionSummary.raidsLost} lost</Text></Text>
+        <Text>Structures built: <Text bold>{sessionSummary.structuresBuilt}</Text></Text>
+        <Text>Resources earned: <Text color="yellow">{RESOURCE_ICONS.gold}{sessionSummary.resourcesEarned.gold}</Text> <Text color="green">{RESOURCE_ICONS.wood}{sessionSummary.resourcesEarned.wood}</Text> <Text color="white">{RESOURCE_ICONS.stone}{sessionSummary.resourcesEarned.stone}</Text></Text>
+        {sessionSummary.achievementsUnlocked > 0 && (
+          <Text color="magenta" bold>Achievements unlocked: {sessionSummary.achievementsUnlocked}</Text>
+        )}
+        <Text dimColor>(press any key to exit)</Text>
+      </Box>
+    );
+  }
 
   if (!gameSave) {
     return <Text>Loading...</Text>;
@@ -378,10 +447,30 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
           setScreen('raid');
         }}
         onPvp={() => setScreen('pvp')}
+        onDailyChallenge={() => setScreen('dailyChallenge')}
+        onPrestige={() => setScreen('prestige')}
         onFriendRaid={() => setScreen('friendList')}
         onRaidLog={() => setScreen('raidLog')}
         onSettings={() => setScreen('settings')}
         onQuit={handleQuit}
+      />
+    );
+  }
+
+  if (screen === 'prestige') {
+    const prestigeCheck = canPrestige(gameSave);
+    return (
+      <PrestigeView
+        gameSave={gameSave}
+        eligible={prestigeCheck.eligible}
+        reason={prestigeCheck.reason}
+        onPrestige={() => {
+          const newSave = performPrestige(gameSave);
+          applyExternalSave(newSave);
+          showMessage('★ Ascension complete! Your keep has been reborn.');
+          setScreen('menu');
+        }}
+        onBack={() => setScreen('menu')}
       />
     );
   }
@@ -409,6 +498,15 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
         onReplayTutorial={() => setScreen('tutorial')}
         asciiMode={asciiMode}
         onToggleAscii={() => setAsciiMode(a => !a)}
+      />
+    );
+  }
+
+  if (screen === 'dailyChallenge') {
+    return (
+      <DailyChallenge
+        onBack={() => setScreen('menu')}
+        onSaveScore={saveDailyChallengeScore}
       />
     );
   }
@@ -530,6 +628,7 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
         keepGrid={raidGrid}
         raidType={raidType || 'defend'}
         summary={raidSummary || undefined}
+        anomalies={raidAnomalies}
         initialSpeed={raidSpeedRef.current}
         onSpeedChange={(s) => { raidSpeedRef.current = s; }}
         onDone={() => {
@@ -557,6 +656,14 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
           <Text dimColor>(press any key to continue)</Text>
         </Box>
       )}
+      {pendingRewards && (
+        <RewardChoice
+          options={pendingRewards}
+          anomalyNames={raidAnomalies.map((a) => `${a.icon} ${a.name}`)}
+          onClaim={claimReward}
+          onDismiss={dismissRewards}
+        />
+      )}
       <HUD
         resources={gameSave.keep.resources}
         selectedStructure={selectedStructure}
@@ -565,6 +672,9 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
         structureAtCursor={structureAtCursor}
         fragmentCount={fragments.length}
         dryRun={dryRun}
+        siegeForecast={siegeForecast}
+        flowMultiplier={flowMultiplier}
+        activeBuffs={gameSave.activeBuffs}
       />
       <Box flexDirection="row">
         <KeepGrid
@@ -573,13 +683,22 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
           asciiMode={asciiMode}
           compact={isCompact}
           fragments={fragments}
+          synergyStructureIds={synergyStructureIds}
         />
         {!isCompact && (
           <Box flexDirection="column" marginLeft={2} width={28}>
             <StructurePicker selected={selectedStructure} />
+            {activeSynergies.length > 0 && (
+              <Box marginTop={1} flexDirection="column">
+                <Text bold color="magenta">Active Synergies:</Text>
+                {[...new Set(activeSynergies.map((s) => s.name))].map((name) => (
+                  <Text key={name} color="magenta">{' ★ '}{name}</Text>
+                ))}
+              </Box>
+            )}
             <Box marginTop={1}>
               <Text dimColor>
-                {'e place  u upgrade  x demo\n[ ] cycle  1-6 select\nr raid  v replay  f +res\ng jump  Tab next  ~ auto\n?help  Esc menu  q quit'}
+                {'e place  u upgrade  x demo\nz undo  p postcard\n[ ] cycle  1-6 select\nr raid  v replay  f +res\ng jump  Tab next  ~ auto\n?help  Esc menu  q quit'}
               </Text>
             </Box>
           </Box>

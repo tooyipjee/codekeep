@@ -12,6 +12,7 @@ interface KeepGridProps {
   asciiMode?: boolean;
   compact?: boolean;
   fragments?: DataFragment[];
+  synergyStructureIds?: Set<string>;
 }
 
 const STRUCTURE_COLORS: Record<StructureKind, string> = {
@@ -96,7 +97,7 @@ function computeRangeOverlay(
   return null;
 }
 
-export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [] }: KeepGridProps) {
+export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [], synergyStructureIds }: KeepGridProps) {
   const h = asciiMode ? '-' : '─';
   const v = asciiMode ? '|' : '│';
   const tl = asciiMode ? '+' : '┌';
@@ -147,10 +148,12 @@ export function KeepGrid({ grid, cursor, asciiMode, compact, fragments = [] }: K
 
       const fragment = fragmentMap.get(cellKey);
 
+      const hasSynergy = structure && synergyStructureIds?.has(structure.id);
+
       if (structure) {
         char = STRUCTURE_SYMBOLS[structure.kind];
         color = STRUCTURE_COLORS[structure.kind];
-        if (structure.level >= 2) bold = true;
+        if (structure.level >= 2 || hasSynergy) bold = true;
         if (structure.level === 3) color = BRIGHT_COLORS[structure.kind];
       } else if (fragment) {
         char = '~';

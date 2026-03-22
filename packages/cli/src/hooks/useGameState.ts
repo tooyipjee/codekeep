@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameSave, GridCoord, StructureKind, RaidReplay, Resources, KeepGridState, ProbeType, DataFragment } from '@codekeep/shared';
+import type { GameSave, GridCoord, StructureKind, RaidReplay, Resources, KeepGridState, ProbeType, DataFragment, RaidAnomaly, ActiveBuff, RewardOption, RaidModifiers } from '@codekeep/shared';
 import { GRID_SIZE, ALL_STRUCTURE_KINDS, BACKGROUND_RAID_INTERVAL_MS, BACKGROUND_RAID_MAX, FAUCET_BASE_USES, ACHIEVEMENTS, FRAGMENT_SPAWN_INTERVAL_MS, KINGDOM_EVENT_NAMES, RESOURCE_ICONS } from '@codekeep/shared';
 import {
   loadGame,
@@ -18,6 +18,8 @@ import {
   spawnFragments,
   collectFragment,
   decayFragments,
+  evaluateSynergies,
+  hasUnlock,
 } from '@codekeep/server';
 import { useCodingEvents } from './useCodingEvents.js';
 import {
@@ -28,10 +30,25 @@ import {
   getAchievementBonus,
   checkAchievements,
   applyDiminishingReturns,
+  computeSiegeForecast,
+  rollAnomalies,
+  buildAnomalyModifiers,
+  generateRewardOptions,
+  tickDownBuffs,
 } from '../lib/game-logic.js';
+import { processRaidOutcome } from '../lib/raid-outcome.js';
 
 const FAUCET_COOLDOWN_MS = 5000;
 const PASSIVE_TICK_MS = 60_000;
+
+export interface SessionStats {
+  startedAt: number;
+  raidsWon: number;
+  raidsLost: number;
+  structuresBuilt: number;
+  resourcesEarned: Resources;
+  achievementsUnlocked: number;
+}
 
 export interface RaidSummary {
   won: boolean;
@@ -107,9 +124,11 @@ function simulateBackgroundRaids(save: GameSave, elapsedMs: number): { save: Gam
       (e) => e.type === 'arrow_hit' && e.hpRemaining <= 0,
     ).length;
 
+    const raidersKilled = replay.events.filter((e) => e.type === 'raider_destroyed').length;
+    const killRatio = probeCount > 0 ? raidersKilled / probeCount : 0;
     const defenseBonus: Resources = won
       ? { gold: 10 + difficulty * 3, wood: 5 + difficulty * 2, stone: 5 + difficulty * 2 }
-      : { gold: 0, wood: 0, stone: 0 };
+      : { gold: Math.floor(killRatio * difficulty * 2), wood: Math.floor(killRatio * difficulty), stone: Math.floor(killRatio * difficulty) };
 
     const afterLoss = {
       gold: Math.max(0, current.keep.resources.gold - lootLost.gold),
@@ -161,6 +180,14 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
   const [raidReplay, setRaidReplay] = useState<RaidReplay | null>(null);
   const [raidGrid, setRaidGrid] = useState<KeepGridState | null>(null);
   const [raidType, setRaidType] = useState<'attack' | 'defend' | null>(null);
+  const sessionStartRef = useRef({
+    time: Date.now(),
+    raidsWon: 0,
+    raidsLost: 0,
+    structures: 0,
+    resources: { gold: 0, wood: 0, stone: 0 } as Resources,
+    achievements: 0,
+  });
   const [raidSummary, setRaidSummary] = useState<RaidSummary | null>(null);
   const [offlineReport, setOfflineReport] = useState<OfflineReport | null>(null);
   const [fragments, setFragments] = useState<DataFragment[]>([]);
@@ -175,10 +202,42 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
     summary: RaidSummary;
   } | null>(null);
   const pendingAutoCollectRef = useRef<GridCoord | null>(null);
+  const undoRef = useRef<{ save: GameSave; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const [flowMultiplier, setFlowMultiplier] = useState(1.0);
+  const codingEventTimesRef = useRef<number[]>([]);
+  const [raidAnomalies, setRaidAnomalies] = useState<RaidAnomaly[]>([]);
+  const [pendingRewards, setPendingRewards] = useState<RewardOption[] | null>(null);
+
+  const updateFlowState = useCallback(() => {
+    const now = Date.now();
+    codingEventTimesRef.current.push(now);
+    const cutoff = now - 30 * 60 * 1000;
+    codingEventTimesRef.current = codingEventTimesRef.current.filter((t) => t > cutoff);
+    const count = codingEventTimesRef.current.length;
+    if (count >= 6) setFlowMultiplier(2.0);
+    else if (count >= 3) setFlowMultiplier(1.5);
+    else if (count >= 1) setFlowMultiplier(1.2);
+    else setFlowMultiplier(1.0);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const cutoff = now - 30 * 60 * 1000;
+      codingEventTimesRef.current = codingEventTimesRef.current.filter((t) => t > cutoff);
+      const count = codingEventTimesRef.current.length;
+      if (count >= 6) setFlowMultiplier(2.0);
+      else if (count >= 3) setFlowMultiplier(1.5);
+      else if (count >= 1) setFlowMultiplier(1.2);
+      else setFlowMultiplier(1.0);
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const selectedStructure = ALL_STRUCTURE_KINDS[structureIndex];
 
   useCodingEvents((event) => {
+    updateFlowState();
     setGameSave((prev) => {
       if (!prev) return prev;
       const updatedKeep = grantCodingEventResources(prev.keep, event);
@@ -251,6 +310,16 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
 
     save = { ...save, lastPlayedAtUnixMs: Date.now() };
     if (forceTutorial) save = { ...save, tutorialCompleted: false };
+
+    sessionStartRef.current = {
+      time: Date.now(),
+      raidsWon: save.progression.totalRaidsWon,
+      raidsLost: save.progression.totalRaidsLost,
+      structures: save.keep.grid.structures.length,
+      resources: { ...save.keep.resources },
+      achievements: save.progression.achievements.length,
+    };
+
     setGameSave(save);
     if (!dryRun) saveGame(save);
   }, []);
@@ -260,7 +329,10 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
     passiveTimerRef.current = setInterval(() => {
       setGameSave((prev) => {
         if (!prev || prev.keep.grid.structures.length === 0) return prev;
-        const bonus = calculateOfflineResources(prev.keep.grid, PASSIVE_TICK_MS);
+        let bonus = calculateOfflineResources(prev.keep.grid, PASSIVE_TICK_MS);
+        if (hasUnlock(prev, 'passive_income_boost')) {
+          bonus = { gold: Math.floor(bonus.gold * 1.5), wood: Math.floor(bonus.wood * 1.5), stone: Math.floor(bonus.stone * 1.5) };
+        }
         if (bonus.gold === 0 && bonus.wood === 0 && bonus.stone === 0) return prev;
         const updated = {
           ...prev,
@@ -369,43 +441,67 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
     if (index >= 0 && index < ALL_STRUCTURE_KINDS.length) setStructureIndex(index);
   }, []);
 
+  const saveUndo = useCallback((save: GameSave) => {
+    if (undoRef.current) clearTimeout(undoRef.current.timer);
+    const timer = setTimeout(() => { undoRef.current = null; }, 10_000);
+    undoRef.current = { save, timer };
+  }, []);
+
   const placeAtCursor = useCallback(() => {
     if (!gameSave) return;
-    const result = placeStructure(gameSave.keep, cursor, selectedStructure);
+    const startLv = hasUnlock(gameSave, 'structures_lv2') ? 2 as const : undefined;
+    const result = placeStructure(gameSave.keep, cursor, selectedStructure, startLv ? { startingLevel: startLv } : undefined);
     if (result.ok && result.keep) {
+      saveUndo(gameSave);
       const updated = {
         ...gameSave,
         keep: result.keep,
         progression: { ...gameSave.progression, totalStructuresPlaced: gameSave.progression.totalStructuresPlaced + 1 },
       };
       persist(updated);
-      showMessage(`Placed ${selectedStructure}`);
+      showMessage(`Placed ${selectedStructure} [z undo]`);
     } else {
       showMessage(`!${result.reason}`);
     }
-  }, [gameSave, cursor, selectedStructure, persist, showMessage]);
+  }, [gameSave, cursor, selectedStructure, persist, showMessage, saveUndo]);
 
   const upgradeAtCursor = useCallback(() => {
     if (!gameSave) return;
     const result = upgradeStructure(gameSave.keep, cursor);
     if (result.ok && result.keep) {
+      saveUndo(gameSave);
       persist({ ...gameSave, keep: result.keep });
-      showMessage('Upgraded!');
+      showMessage('Upgraded! [z undo]');
     } else {
       showMessage(`!${result.reason}`);
     }
-  }, [gameSave, cursor, persist, showMessage]);
+  }, [gameSave, cursor, persist, showMessage, saveUndo]);
 
   const demolishAtCursor = useCallback(() => {
     if (!gameSave) return;
     const result = demolishStructure(gameSave.keep, cursor);
     if (result.ok && result.keep) {
+      saveUndo(gameSave);
       persist({ ...gameSave, keep: result.keep });
-      showMessage('Demolished (50% refund)');
+      showMessage('Demolished (50% refund) [z undo]');
     } else {
       showMessage(`!${result.reason}`);
     }
   }, [gameSave, cursor, persist, showMessage]);
+
+  const prepareRaidModifiers = useCallback((difficulty: number, rng: () => number): { anomalies: RaidAnomaly[]; modifiers: RaidModifiers } => {
+    const anomalies = rollAnomalies(difficulty, rng);
+    const buffs = gameSave?.activeBuffs ?? [];
+    const modifiers = buildAnomalyModifiers(anomalies, buffs);
+    setRaidAnomalies(anomalies);
+    return { anomalies, modifiers };
+  }, [gameSave]);
+
+  const handlePostRaidBuffs = useCallback((save: GameSave): GameSave => {
+    const current = save.activeBuffs ?? [];
+    if (current.length === 0) return save;
+    return { ...save, activeBuffs: tickDownBuffs(current) };
+  }, []);
 
   const startAttackRaid = useCallback(() => {
     if (!gameSave) return;
@@ -415,51 +511,28 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
     const npcKeep = generateNpcKeep(seed, difficulty);
     const probeCount = 3 + difficulty;
     const rng = simpleRng(Date.now());
-    const probeTypes = buildProbeTypes(probeCount, difficulty, rng);
-    const replay = simulateRaid({ probeCount, keepGrid: npcKeep.grid, seed, probeTypes });
+    const { anomalies, modifiers } = prepareRaidModifiers(difficulty, rng);
+    const bruteMult = modifiers.bruteChanceMult ?? 1;
+    const probeTypes = buildProbeTypes(probeCount, difficulty, rng, bruteMult);
+    const replay = simulateRaid({ probeCount, keepGrid: npcKeep.grid, seed, probeTypes, modifiers });
     setRaidReplay(replay);
     setRaidGrid(npcKeep.grid);
     setRaidType('attack');
 
-    const lastEvent = replay.events[replay.events.length - 1];
-    if (lastEvent?.type === 'raid_end') {
-      const won = lastEvent.outcome !== 'defense_win';
-      const lootGained = replay.events
-        .filter((e): e is Extract<typeof e, { type: 'treasury_breach' }> => e.type === 'treasury_breach')
-        .reduce((sum, e) => ({ gold: sum.gold + e.lootTaken.gold, wood: sum.wood + e.lootTaken.wood, stone: sum.stone + e.lootTaken.stone }), { gold: 0, wood: 0, stone: 0 });
-
-      const raidersKilled = replay.events.filter((e) => e.type === 'raider_destroyed').length;
-      const wallsDestroyed = replay.events.filter((e) => e.type === 'wall_damaged' && e.destroyed).length;
-
-      setRaidSummary({
-        won, raidType: 'attack', outcome: lastEvent.outcome, lootGained,
-        lootLost: { gold: 0, wood: 0, stone: 0 }, raidersKilled, raidersTotal: probeCount,
-        wallsDestroyed, archersActive: npcKeep.grid.structures.filter((s) => s.kind === 'archerTower').length, difficulty,
-      });
-
-      const updatedResources = won ? capResources(addResources(gameSave.keep.resources, lootGained)) : gameSave.keep.resources;
-      const newWinStreak = won ? gameSave.progression.currentWinStreak + 1 : 0;
-      const raidRecord = {
-        id: seed, seed, rulesVersion: 1, attackerId: gameSave.player.id, defenderKeepId: npcKeep.id,
-        startedAtUnixMs: Date.now(), resolvedAtUnixMs: Date.now(), outcome: lastEvent.outcome,
-        lootLost: { gold: 0, wood: 0, stone: 0 },
-        lootGained: won ? lootGained : { gold: 0, wood: 0, stone: 0 }, replay,
-        defenderGrid: npcKeep.grid,
-      };
-      persist({
-        ...gameSave,
-        keep: { ...gameSave.keep, resources: updatedResources },
-        raidHistory: [...gameSave.raidHistory.slice(-19), raidRecord],
-        progression: {
-          ...gameSave.progression,
-          totalRaidsWon: gameSave.progression.totalRaidsWon + (won ? 1 : 0),
-          totalRaidsLost: gameSave.progression.totalRaidsLost + (won ? 0 : 1),
-          currentWinStreak: newWinStreak,
-          bestWinStreak: Math.max(gameSave.progression.bestWinStreak, newWinStreak),
-        },
-      });
+    const result = processRaidOutcome({
+      gameSave, replay, raidType: 'attack', seed, difficulty, probeCount,
+      attackerId: gameSave.player.id, defenderKeepId: npcKeep.id, defenderGrid: npcKeep.grid,
+    });
+    if (result) {
+      setRaidSummary(result.summary);
+      const updated = handlePostRaidBuffs(result.updatedSave);
+      if (result.won) {
+        const rewardRng = simpleRng(Date.now() + 1);
+        setPendingRewards(generateRewardOptions(difficulty, rewardRng));
+      }
+      persist(updated);
     }
-  }, [gameSave, persist]);
+  }, [gameSave, persist, prepareRaidModifiers, handlePostRaidBuffs]);
 
   const startDefendRaid = useCallback(() => {
     if (!gameSave) return;
@@ -468,59 +541,28 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
     const seed = `defend-${Date.now()}-${Math.random()}`;
     const probeCount = 3 + difficulty;
     const rng = simpleRng(Date.now());
-    const probeTypes = buildProbeTypes(probeCount, difficulty, rng);
-    const replay = simulateRaid({ probeCount, keepGrid: gameSave.keep.grid, seed, probeTypes });
+    const { anomalies, modifiers } = prepareRaidModifiers(difficulty, rng);
+    const bruteMult = modifiers.bruteChanceMult ?? 1;
+    const probeTypes = buildProbeTypes(probeCount, difficulty, rng, bruteMult);
+    const replay = simulateRaid({ probeCount, keepGrid: gameSave.keep.grid, seed, probeTypes, modifiers });
     setRaidReplay(replay);
     setRaidGrid(gameSave.keep.grid);
     setRaidType('defend');
 
-    const lastEvent = replay.events[replay.events.length - 1];
-    if (lastEvent?.type === 'raid_end') {
-      const won = lastEvent.outcome === 'defense_win';
-      const lootLost = replay.events
-        .filter((e): e is Extract<typeof e, { type: 'treasury_breach' }> => e.type === 'treasury_breach')
-        .reduce((sum, e) => ({ gold: sum.gold + e.lootTaken.gold, wood: sum.wood + e.lootTaken.wood, stone: sum.stone + e.lootTaken.stone }), { gold: 0, wood: 0, stone: 0 });
-      const raidersKilled = replay.events.filter((e) => e.type === 'raider_destroyed').length;
-      const wallsDestroyed = replay.events.filter((e) => e.type === 'wall_damaged' && e.destroyed).length;
-      const archerKills = replay.events.filter((e) => e.type === 'arrow_hit' && e.hpRemaining <= 0).length;
-
-      const defenseBonus: Resources = won
-        ? { gold: 10 + difficulty * 3, wood: 5 + difficulty * 2, stone: 5 + difficulty * 2 }
-        : { gold: 0, wood: 0, stone: 0 };
-
-      setRaidSummary({
-        won, raidType: 'defend', outcome: lastEvent.outcome, lootGained: defenseBonus, lootLost,
-        raidersKilled, raidersTotal: probeCount, wallsDestroyed,
-        archersActive: gameSave.keep.grid.structures.filter((s) => s.kind === 'archerTower').length, difficulty,
-      });
-
-      const afterLoss = {
-        gold: Math.max(0, gameSave.keep.resources.gold - lootLost.gold),
-        wood: Math.max(0, gameSave.keep.resources.wood - lootLost.wood),
-        stone: Math.max(0, gameSave.keep.resources.stone - lootLost.stone),
-      };
-      const updatedResources = capResources(addResources(afterLoss, defenseBonus));
-      const newWinStreak = won ? gameSave.progression.currentWinStreak + 1 : 0;
-      const raidRecord = {
-        id: seed, seed, rulesVersion: 1, attackerId: 'npc', defenderKeepId: gameSave.keep.id,
-        startedAtUnixMs: Date.now(), resolvedAtUnixMs: Date.now(), outcome: lastEvent.outcome,
-        lootLost, lootGained: defenseBonus, replay,
-      };
-      persist({
-        ...gameSave,
-        keep: { ...gameSave.keep, resources: updatedResources },
-        raidHistory: [...gameSave.raidHistory.slice(-19), raidRecord],
-        progression: {
-          ...gameSave.progression,
-          totalRaidsWon: gameSave.progression.totalRaidsWon + (won ? 1 : 0),
-          totalRaidsLost: gameSave.progression.totalRaidsLost + (won ? 0 : 1),
-          currentWinStreak: newWinStreak,
-          bestWinStreak: Math.max(gameSave.progression.bestWinStreak, newWinStreak),
-          totalRaidersKilledByArcher: gameSave.progression.totalRaidersKilledByArcher + archerKills,
-        },
-      });
+    const result = processRaidOutcome({
+      gameSave, replay, raidType: 'defend', seed, difficulty, probeCount,
+      attackerId: 'npc', defenderKeepId: gameSave.keep.id,
+    });
+    if (result) {
+      setRaidSummary(result.summary);
+      const updated = handlePostRaidBuffs(result.updatedSave);
+      if (result.won) {
+        const rewardRng = simpleRng(Date.now() + 1);
+        setPendingRewards(generateRewardOptions(difficulty, rewardRng));
+      }
+      persist(updated);
     }
-  }, [gameSave, persist]);
+  }, [gameSave, persist, prepareRaidModifiers, handlePostRaidBuffs]);
 
   const quickDefend = useCallback(() => {
     if (!gameSave) return;
@@ -529,70 +571,31 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
     const seed = `quick-${Date.now()}-${Math.random()}`;
     const probeCount = 3 + difficulty;
     const rng = simpleRng(Date.now());
-    const probeTypes = buildProbeTypes(probeCount, difficulty, rng);
-    const replay = simulateRaid({ probeCount, keepGrid: gameSave.keep.grid, seed, probeTypes });
+    const { modifiers } = prepareRaidModifiers(difficulty, rng);
+    const bruteMult = modifiers.bruteChanceMult ?? 1;
+    const probeTypes = buildProbeTypes(probeCount, difficulty, rng, bruteMult);
+    const replay = simulateRaid({ probeCount, keepGrid: gameSave.keep.grid, seed, probeTypes, modifiers });
 
-    const lastEvent = replay.events[replay.events.length - 1];
-    if (lastEvent?.type === 'raid_end') {
-      const won = lastEvent.outcome === 'defense_win';
-      const lootLost = replay.events
-        .filter((e): e is Extract<typeof e, { type: 'treasury_breach' }> => e.type === 'treasury_breach')
-        .reduce((sum, e) => ({ gold: sum.gold + e.lootTaken.gold, wood: sum.wood + e.lootTaken.wood, stone: sum.stone + e.lootTaken.stone }), { gold: 0, wood: 0, stone: 0 });
-      const archerKills = replay.events.filter((e) => e.type === 'arrow_hit' && e.hpRemaining <= 0).length;
+    const result = processRaidOutcome({
+      gameSave, replay, raidType: 'defend', seed, difficulty, probeCount,
+      attackerId: 'npc', defenderKeepId: gameSave.keep.id,
+    });
+    if (result) {
+      const updated = handlePostRaidBuffs(result.updatedSave);
+      persist(updated);
+      lastQuickRaidRef.current = { replay, grid: gameSave.keep.grid, summary: result.summary };
 
-      const defenseBonus: Resources = won
-        ? { gold: 10 + difficulty * 3, wood: 5 + difficulty * 2, stone: 5 + difficulty * 2 }
-        : { gold: 0, wood: 0, stone: 0 };
-
-      const afterLoss = {
-        gold: Math.max(0, gameSave.keep.resources.gold - lootLost.gold),
-        wood: Math.max(0, gameSave.keep.resources.wood - lootLost.wood),
-        stone: Math.max(0, gameSave.keep.resources.stone - lootLost.stone),
-      };
-      const updatedResources = capResources(addResources(afterLoss, defenseBonus));
-      const newWinStreak = won ? gameSave.progression.currentWinStreak + 1 : 0;
-      const raidRecord = {
-        id: seed, seed, rulesVersion: 1, attackerId: 'npc', defenderKeepId: gameSave.keep.id,
-        startedAtUnixMs: Date.now(), resolvedAtUnixMs: Date.now(), outcome: lastEvent.outcome,
-        lootLost, lootGained: defenseBonus, replay,
-      };
-      persist({
-        ...gameSave,
-        keep: { ...gameSave.keep, resources: updatedResources },
-        raidHistory: [...gameSave.raidHistory.slice(-19), raidRecord],
-        progression: {
-          ...gameSave.progression,
-          totalRaidsWon: gameSave.progression.totalRaidsWon + (won ? 1 : 0),
-          totalRaidsLost: gameSave.progression.totalRaidsLost + (won ? 0 : 1),
-          currentWinStreak: newWinStreak,
-          bestWinStreak: Math.max(gameSave.progression.bestWinStreak, newWinStreak),
-          totalRaidersKilledByArcher: gameSave.progression.totalRaidersKilledByArcher + archerKills,
-        },
-      });
-
-      const raidersKilled = replay.events.filter((e) => e.type === 'raider_destroyed').length;
-      const wallsDestroyed = replay.events.filter((e) => e.type === 'wall_damaged' && e.destroyed).length;
-
-      lastQuickRaidRef.current = {
-        replay,
-        grid: gameSave.keep.grid,
-        summary: {
-          won, raidType: 'defend', outcome: lastEvent.outcome,
-          lootGained: defenseBonus, lootLost, raidersKilled, raidersTotal: probeCount,
-          wallsDestroyed,
-          archersActive: gameSave.keep.grid.structures.filter((s) => s.kind === 'archerTower').length,
-          difficulty,
-        },
-      };
-
-      if (won) {
-        showMessage(`Defense WIN! +${defenseBonus.gold}${RESOURCE_ICONS.gold} +${defenseBonus.wood}${RESOURCE_ICONS.wood} +${defenseBonus.stone}${RESOURCE_ICONS.stone}  [v] view`);
+      if (result.won) {
+        const b = result.lootGained;
+        const rewardRng = simpleRng(Date.now() + 1);
+        setPendingRewards(generateRewardOptions(difficulty, rewardRng));
+        showMessage(`Defense WIN! +${b.gold}${RESOURCE_ICONS.gold} +${b.wood}${RESOURCE_ICONS.wood} +${b.stone}${RESOURCE_ICONS.stone}  [v] view`);
       } else {
-        const total = lootLost.gold + lootLost.wood + lootLost.stone;
-        showMessage(`Defense BREACH! Lost ${total} res  [v] view`);
+        const total = result.lootLost.gold + result.lootLost.wood + result.lootLost.stone;
+        showMessage(`Defense BREACH! Lost ${total} res (+${result.lootGained.gold}${RESOURCE_ICONS.gold} salvage)  [v] view`);
       }
     }
-  }, [gameSave, persist, showMessage]);
+  }, [gameSave, persist, showMessage, prepareRaidModifiers, handlePostRaidBuffs]);
 
   const watchLastRaid = useCallback((): boolean => {
     const last = lastQuickRaidRef.current;
@@ -658,13 +661,16 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
     }
     lastFaucetTimeRef.current = now;
     faucetUsesRef.current++;
+    updateFlowState();
 
     const event = simulateFaucetEvent();
-    const grants = applyDiminishingReturns({ ...event.grants }, faucetUsesRef.current);
+    const extraFaucet = hasUnlock(gameSave, 'extra_faucet') ? 3 : 0;
+    const grants = applyDiminishingReturns({ ...event.grants }, Math.max(0, faucetUsesRef.current - extraFaucet));
 
     const updatedKeep = grantCodingEventResources(gameSave.keep, { ...event, grants });
     persist({ ...gameSave, keep: updatedKeep });
-    const dimNote = faucetUsesRef.current > FAUCET_BASE_USES ? ' (diminished)' : '';
+    const effectiveBase = FAUCET_BASE_USES + extraFaucet;
+    const dimNote = faucetUsesRef.current > effectiveBase ? ' (diminished)' : '';
     showMessage(`+${grants.gold}${RESOURCE_ICONS.gold} +${grants.wood}${RESOURCE_ICONS.wood} +${grants.stone}${RESOURCE_ICONS.stone} (${KINGDOM_EVENT_NAMES[event.type] ?? event.type})${dimNote}`);
   }, [gameSave, persist, showMessage]);
 
@@ -684,12 +690,80 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
     setCursor({ x: next.pos.x, y: next.pos.y });
   }, [gameSave, cursor]);
 
+  const undoLastAction = useCallback(() => {
+    if (!undoRef.current) {
+      showMessage('!Nothing to undo');
+      return;
+    }
+    const prev = undoRef.current.save;
+    clearTimeout(undoRef.current.timer);
+    undoRef.current = null;
+    persist(prev);
+    showMessage('Undone!');
+  }, [persist, showMessage]);
+
+  const saveDailyChallengeScore = useCallback((dateKey: string, wavesCleared: number, score: number) => {
+    if (!gameSave) return;
+    persist({
+      ...gameSave,
+      progression: {
+        ...gameSave.progression,
+        dailyChallenges: {
+          ...gameSave.progression.dailyChallenges,
+          [dateKey]: { wavesCleared, score },
+        },
+      },
+    });
+  }, [gameSave, persist]);
+
   const clearOfflineReport = useCallback(() => { setOfflineReport(null); }, []);
 
-  // Get structure at cursor for HUD display
+  const applyExternalSave = useCallback((save: GameSave) => {
+    if (!dryRun) saveGame(save);
+    setGameSave(save);
+    faucetUsesRef.current = 0;
+  }, [dryRun]);
+
+  const claimReward = useCallback((rewardId: string) => {
+    if (!gameSave || !pendingRewards) return;
+    const reward = pendingRewards.find((r) => r.id === rewardId);
+    if (!reward) return;
+
+    let updated = { ...gameSave };
+    if (reward.type === 'resources' && reward.resources) {
+      updated = {
+        ...updated,
+        keep: {
+          ...updated.keep,
+          resources: capResources(addResources(updated.keep.resources, reward.resources)),
+        },
+      };
+      showMessage(`Claimed ${reward.name}!`);
+    } else if (reward.type === 'buff' && reward.buff) {
+      const existing = updated.activeBuffs ?? [];
+      updated = { ...updated, activeBuffs: [...existing, { ...reward.buff }] };
+      showMessage(`${reward.buff.name} active for ${reward.buff.raidsRemaining} raids!`);
+    }
+
+    setPendingRewards(null);
+    persist(updated);
+  }, [gameSave, pendingRewards, persist, showMessage]);
+
+  const dismissRewards = useCallback(() => { setPendingRewards(null); }, []);
+
   const structureAtCursor = gameSave?.keep.grid.structures.find(
     (s) => s.pos.x === cursor.x && s.pos.y === cursor.y,
   ) ?? null;
+
+  const activeSynergies = gameSave ? evaluateSynergies(gameSave.keep.grid) : [];
+  const synergyStructureIds = new Set(activeSynergies.flatMap((s) => s.affectedStructureIds));
+
+  const siegeForecast = gameSave ? (() => {
+    const totalRaids = gameSave.progression.totalRaidsWon + gameSave.progression.totalRaidsLost;
+    const watchtowerCount = gameSave.keep.grid.structures.filter((s) => s.kind === 'watchtower').length;
+    const fc = computeSiegeForecast(gameSave.keep.id, totalRaids, watchtowerCount);
+    return watchtowerCount >= 2 ? fc.detailed : fc.vague;
+  })() : undefined;
 
   return {
     gameSave,
@@ -709,6 +783,7 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
     placeAtCursor,
     upgradeAtCursor,
     demolishAtCursor,
+    undoLastAction,
     collectAtCursor,
     startAttackRaid,
     startDefendRaid,
@@ -721,5 +796,32 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
     jumpToCoord,
     jumpToNextStructure,
     clearOfflineReport,
+    saveDailyChallengeScore,
+    showMessage,
+    siegeForecast,
+    flowMultiplier,
+    activeSynergies,
+    synergyStructureIds,
+    raidAnomalies,
+    pendingRewards,
+    claimReward,
+    dismissRewards,
+    applyExternalSave,
+    getSessionStats: (): SessionStats | null => {
+      if (!gameSave) return null;
+      const s = sessionStartRef.current;
+      return {
+        startedAt: s.time,
+        raidsWon: gameSave.progression.totalRaidsWon - s.raidsWon,
+        raidsLost: gameSave.progression.totalRaidsLost - s.raidsLost,
+        structuresBuilt: gameSave.keep.grid.structures.length - s.structures,
+        resourcesEarned: {
+          gold: Math.max(0, gameSave.keep.resources.gold - s.resources.gold),
+          wood: Math.max(0, gameSave.keep.resources.wood - s.resources.wood),
+          stone: Math.max(0, gameSave.keep.resources.stone - s.resources.stone),
+        },
+        achievementsUnlocked: gameSave.progression.achievements.length - s.achievements,
+      };
+    },
   };
 }

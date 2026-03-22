@@ -77,7 +77,7 @@ export function createCombatState(
   for (const col of columns) {
     for (const enemy of col.enemies) {
       const colHasEmplacement = col.emplacement !== null;
-      enemy.intent = rollEnemyIntent(enemy, rng, 1, colHasEmplacement);
+      enemy.intent = rollEnemyIntent(enemy, rng, 1, colHasEmplacement, state);
     }
   }
 
@@ -256,12 +256,18 @@ function applyEffect(
             applyStatus(enemy, 'burn', effect.value, 99);
           }
         }
-      } else {
+      } else if (effect.target === 'column') {
         const col = state.columns[targetColumn];
         if (col) {
           for (const enemy of col.enemies) {
             applyStatus(enemy, 'burn', effect.value, 99);
           }
+        }
+      } else {
+        const col = state.columns[targetColumn];
+        if (col && col.enemies.length > 0) {
+          const front = col.enemies.reduce((a, b) => (a.row >= b.row ? a : b));
+          applyStatus(front, 'burn', effect.value, 99);
         }
       }
       break;
@@ -318,8 +324,12 @@ function applyEffect(
       if (col && col.enemies.length > 0) {
         const front = col.enemies.reduce((a, b) => (a.row >= b.row ? a : b));
         const isVulnerable = hasStatus(front, 'vulnerable') > 0;
-        const dmg = isVulnerable ? effect.value * 2 : effect.value;
-        applyDamageToEnemy(state, front, dmg);
+        const baseDmg = isVulnerable ? effect.value * 2 : effect.value;
+        const fortMult = hasStatus(front, 'fortified') > 0
+          ? Math.max(0.25, 1 - hasStatus(front, 'fortified') * 0.15) : 1;
+        const actual = Math.max(0, Math.floor(baseDmg * fortMult));
+        front.hp -= actual;
+        pushEvent(state, 'damage_dealt', { targetId: front.instanceId, damage: actual });
       }
       break;
     }
@@ -522,7 +532,7 @@ function resolveEnemyTurn(state: CombatState): void {
   for (const col of state.columns) {
     for (const enemy of col.enemies) {
       const colHasEmplacement = col.emplacement !== null;
-      enemy.intent = rollEnemyIntent(enemy, rng, state.turn, colHasEmplacement);
+      enemy.intent = rollEnemyIntent(enemy, rng, state.turn, colHasEmplacement, state);
     }
   }
 
@@ -569,7 +579,8 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
         } else {
           const col = state.columns[enemy.column];
           if (col.emplacement) {
-            col.emplacement.hp -= (tmpl?.damage ?? 4);
+            const empDmg = Math.floor((tmpl?.damage ?? 4) * dmgMult * diffDmgMult);
+            col.emplacement.hp -= empDmg;
             if (col.emplacement.hp <= 0) {
               pushEvent(state, 'emplacement_destroyed', { column: enemy.column });
               col.emplacement = null;
@@ -614,9 +625,10 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
       break;
     }
     case 'shield': {
-      const col = state.columns[enemy.column];
-      for (const e of col.enemies) {
-        applyStatus(e, 'fortified', intent.value, 2);
+      for (let c = Math.max(0, enemy.column - 1); c <= Math.min(COLUMNS - 1, enemy.column + 1); c++) {
+        for (const e of state.columns[c].enemies) {
+          applyStatus(e, 'fortified', intent.value, 2);
+        }
       }
       break;
     }
@@ -625,7 +637,7 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
       if (emptyCol >= 0) {
         const spawned = spawnEnemy('wisp', emptyCol);
         state.columns[emptyCol].enemies.push(spawned);
-        spawned.intent = rollEnemyIntent(spawned, mulberry32(state.seed + state.turn * 97));
+        spawned.intent = rollEnemyIntent(spawned, mulberry32(state.seed + state.turn * 97), state.turn, false, state);
       }
       break;
     }

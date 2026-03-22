@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type { CombatState, CardInstance, PotionDef, DifficultyModifiers } from '@codekeep/shared';
 import { getCardDef, HAND_SIZE } from '@codekeep/shared';
-import { createCombatState, playCard, endPlayerTurn, createStarterDeck, mulberry32, drawCards } from '@codekeep/server';
+import { createCombatState, playCard, endPlayerTurn, createStarterDeck, mulberry32, drawCards, hasFirstCardFree } from '@codekeep/server';
 
 export interface UseCombatStateReturn {
   combat: CombatState | null;
@@ -68,7 +68,12 @@ export function useCombatState(): UseCombatStateReturn {
     const card = combatRef.current.hand[index];
     const def = getCardDef(card.defId);
     if (!def) return;
-    if (def.cost > combatRef.current.resolve) {
+    const isFirstCardThisTurn = !combatRef.current.events.some(
+      (e) => e.type === 'card_played' && e.turn === combatRef.current!.turn,
+    );
+    const firstCardFree = hasFirstCardFree(combatRef.current.relics) && isFirstCardThisTurn;
+    const effectiveCost = firstCardFree ? 0 : def.cost;
+    if (effectiveCost > combatRef.current.resolve) {
       setMessage(`Not enough Resolve for ${def.name} (costs ${def.cost}).`);
       return;
     }
@@ -101,10 +106,10 @@ export function useCombatState(): UseCombatStateReturn {
     const def = getCardDef(card.defId);
     if (!def) return;
 
-    const handBefore = state.hand.length;
+    const eventsBefore = state.events.length;
     playCard(state, selectedCard, targetColumn, emplaceMode);
 
-    if (state.hand.length === handBefore) {
+    if (state.events.length === eventsBefore) {
       setMessage(`Cannot play ${def.name}. Not enough Resolve.`);
       return;
     }

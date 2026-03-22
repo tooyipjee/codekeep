@@ -1,4 +1,4 @@
-import type { EnemyInstance, Intent } from '@codekeep/shared';
+import type { EnemyInstance, Intent, CombatState } from '@codekeep/shared';
 import { getEnemyTemplate, COLUMNS } from '@codekeep/shared';
 import { getBossDef, getBossIntent } from './bosses.js';
 
@@ -24,6 +24,7 @@ export function rollEnemyIntent(
   rng: () => number,
   turn: number = 1,
   columnHasEmplacement: boolean = false,
+  state?: CombatState,
 ): Intent {
   const tmpl = getEnemyTemplate(enemy.templateId);
   if (!tmpl) return { type: 'advance', value: 1 };
@@ -31,7 +32,7 @@ export function rollEnemyIntent(
   const bossDef = getBossDef(tmpl.act);
   if (bossDef && bossDef.templateId === enemy.templateId) {
     const hpPercent = enemy.hp / enemy.maxHp;
-    return getBossIntent(bossDef, hpPercent, turn);
+    return getBossIntent(bossDef, hpPercent, turn, state, enemy);
   }
 
   const roll = rng();

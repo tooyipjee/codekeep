@@ -112,11 +112,32 @@ export function getBossDef(act: number): BossDef | undefined {
   return BOSS_DEFS.find((b) => b.act === act);
 }
 
-export function getBossIntent(boss: BossDef, hpPercent: number, turn: number): Intent {
-  let phase = boss.phases[0];
-  for (const p of boss.phases) {
-    if (hpPercent <= p.hpThreshold) phase = p;
+export function getBossPhaseIndex(boss: BossDef, hpPercent: number): number {
+  let phaseIdx = 0;
+  for (let i = 0; i < boss.phases.length; i++) {
+    if (hpPercent <= boss.phases[i].hpThreshold) phaseIdx = i;
   }
+  return phaseIdx;
+}
+
+export function getBossIntent(
+  boss: BossDef,
+  hpPercent: number,
+  turn: number,
+  state?: CombatState,
+  enemy?: EnemyInstance,
+): Intent {
+  const phaseIdx = getBossPhaseIndex(boss, hpPercent);
+
+  if (boss.onPhaseChange && state && enemy) {
+    const lastPhase = enemy.bossPhase ?? 0;
+    if (phaseIdx > lastPhase) {
+      boss.onPhaseChange(state, enemy, phaseIdx);
+      enemy.bossPhase = phaseIdx;
+    }
+  }
+
+  const phase = boss.phases[phaseIdx];
   const idx = (turn - 1) % phase.intentPattern.length;
   return phase.intentPattern[idx];
 }

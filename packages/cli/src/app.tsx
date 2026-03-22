@@ -146,12 +146,14 @@ function AppContent({ dryRun }: AppProps) {
         save.keep.npcs = createDefaultNpcs();
       }
       saveGame(save);
+      setCachedSave(save);
+    } else if (!cachedSave) {
+      if (save.keep.npcs.length === 0) {
+        save.keep.npcs = createDefaultNpcs();
+      }
+      setCachedSave(save);
     }
-    if (save.keep.npcs.length === 0) {
-      save.keep.npcs = createDefaultNpcs();
-    }
-    setCachedSave(save);
-    return save;
+    return JSON.parse(JSON.stringify(save));
   }, [cachedSave]);
 
   const doSave = useCallback((r: RunState | null) => {
@@ -555,7 +557,7 @@ function AppContent({ dryRun }: AppProps) {
             break;
           }
           case 'fragments': r = gainFragments(r, choice.effect.value); break;
-          case 'max_hp': r = { ...r, gateMaxHp: r.gateMaxHp + choice.effect.value, gateHp: r.gateHp + choice.effect.value }; break;
+          case 'max_hp': r = { ...r, gateMaxHp: r.gateMaxHp + choice.effect.value }; break;
           case 'card_reward': {
             const hpMatch = choice.label.match(/lose\s+(\d+)\s*hp/i);
             if (hpMatch) r = { ...r, gateHp: Math.max(1, r.gateHp - parseInt(hpMatch[1])) };
@@ -570,6 +572,7 @@ function AppContent({ dryRun }: AppProps) {
           case 'remove_card': {
             setRun(r);
             doSave(r);
+            setRemoveIndex(0);
             setScreen('deck_remove');
             return;
           }

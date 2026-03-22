@@ -41,9 +41,10 @@ export function removeCardFromRunDeck(run: RunState, instanceId: string): RunSta
 }
 
 export function visitNode(run: RunState, nodeId: string): RunState {
-  const node = getNodeById(run.map, nodeId);
-  if (node) node.visited = true;
-  return { ...run, currentNodeId: nodeId };
+  const newNodes = run.map.nodes.map(n =>
+    n.id === nodeId ? { ...n, visited: true } : n,
+  );
+  return { ...run, currentNodeId: nodeId, map: { ...run.map, nodes: newNodes } };
 }
 
 export function healGate(run: RunState, amount: number): RunState {

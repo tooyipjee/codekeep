@@ -1,5 +1,6 @@
 import type { CombatState, Emplacement, CardDef, CardEffect, EnemyInstance } from '@codekeep/shared';
 import { getCardDef } from '@codekeep/shared';
+import { getDamageMult } from './status.js';
 
 export function placeEmplacement(state: CombatState, cardDef: CardDef, column: number, hpBonus: number = 0): boolean {
   if (column < 0 || column >= state.columns.length) return false;
@@ -41,7 +42,7 @@ export function triggerEmplacements(state: CombatState): void {
       for (const effect of col.emplacement.effects) {
         if (effect.type === 'damage') {
           for (const enemy of col.enemies) {
-            enemy.hp -= adjacencyBonus;
+            applyEmplacementDamage(enemy, adjacencyBonus);
           }
         }
         if (effect.type === 'block') {
@@ -50,16 +51,21 @@ export function triggerEmplacements(state: CombatState): void {
       }
     }
 
-    if (emplacementCount >= 3) {
-      state.gateBlock += emplacementCount;
-    }
-
     state.events.push({
       type: 'emplacement_triggered',
       turn: state.turn,
       data: { column: col.index, cardId: col.emplacement.cardDefId, adjacencyBonus },
     });
   }
+
+  if (emplacementCount >= 3) {
+    state.gateBlock += emplacementCount;
+  }
+}
+
+function applyEmplacementDamage(enemy: EnemyInstance, baseDmg: number): void {
+  const mult = getDamageMult(enemy);
+  enemy.hp -= Math.max(0, Math.floor(baseDmg * mult));
 }
 
 function applyEmplacementEffect(state: CombatState, column: number, effect: CardEffect): void {
@@ -68,17 +74,17 @@ function applyEmplacementEffect(state: CombatState, column: number, effect: Card
     case 'damage': {
       if (effect.target === 'column') {
         for (const enemy of col.enemies) {
-          enemy.hp -= effect.value;
+          applyEmplacementDamage(enemy, effect.value);
         }
       } else if (effect.target === 'adjacent') {
         for (let c = Math.max(0, column - 1); c <= Math.min(state.columns.length - 1, column + 1); c++) {
           for (const enemy of state.columns[c].enemies) {
-            enemy.hp -= effect.value;
+            applyEmplacementDamage(enemy, effect.value);
           }
         }
       } else {
         for (const enemy of col.enemies) {
-          enemy.hp -= effect.value;
+          applyEmplacementDamage(enemy, effect.value);
         }
       }
       break;

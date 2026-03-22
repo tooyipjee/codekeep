@@ -66,6 +66,7 @@ export interface EnemyInstance {
   row: number;
   intent: Intent | null;
   statusEffects: StatusEffect[];
+  bossPhase?: number;
 }
 
 // ── Status Effects ──

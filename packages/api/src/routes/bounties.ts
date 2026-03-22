@@ -32,13 +32,16 @@ function getCurrentDay(): number {
 export const bountyRoutes = new Hono<Env>();
 bountyRoutes.use('*', requireAuth);
 
-bountyRoutes.get('/', (c) => {
+bountyRoutes.get('/', async (c) => {
   const db = c.get('db');
   const playerId = c.get('playerId');
   const today = getCurrentDay();
 
-  let bounties = db.prepare('SELECT * FROM bounties WHERE player_id = ? AND day = ?')
-    .all(playerId, today) as BountyRow[];
+  let result = await db.execute({
+    sql: 'SELECT * FROM bounties WHERE player_id = ? AND day = ?',
+    args: [playerId, today],
+  });
+  let bounties = result.rows as unknown as BountyRow[];
 
   if (bounties.length === 0) {
     const shuffled = [...BOUNTY_TEMPLATES].sort(() => Math.random() - 0.5);
@@ -47,12 +50,17 @@ bountyRoutes.get('/', (c) => {
 
     for (const template of picked) {
       const id = `b_${randomUUID().slice(0, 8)}`;
-      db.prepare('INSERT INTO bounties (id, player_id, type, description, reward, completed, day, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)')
-        .run(id, playerId, template.type, template.description, JSON.stringify(template.reward), today, now);
+      await db.execute({
+        sql: 'INSERT INTO bounties (id, player_id, type, description, reward, completed, day, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)',
+        args: [id, playerId, template.type, template.description, JSON.stringify(template.reward), today, now],
+      });
     }
 
-    bounties = db.prepare('SELECT * FROM bounties WHERE player_id = ? AND day = ?')
-      .all(playerId, today) as BountyRow[];
+    const refreshed = await db.execute({
+      sql: 'SELECT * FROM bounties WHERE player_id = ? AND day = ?',
+      args: [playerId, today],
+    });
+    bounties = refreshed.rows as unknown as BountyRow[];
   }
 
   return c.json({
@@ -66,20 +74,23 @@ bountyRoutes.get('/', (c) => {
   });
 });
 
-bountyRoutes.post('/:id/claim', (c) => {
+bountyRoutes.post('/:id/claim', async (c) => {
   const db = c.get('db');
   const playerId = c.get('playerId');
   const bountyId = c.req.param('id');
 
-  const bounty = db.prepare('SELECT * FROM bounties WHERE id = ? AND player_id = ?')
-    .get(bountyId, playerId) as BountyRow | undefined;
+  const result = await db.execute({
+    sql: 'SELECT * FROM bounties WHERE id = ? AND player_id = ?',
+    args: [bountyId, playerId],
+  });
+  const bounty = result.rows[0] as unknown as BountyRow | undefined;
   if (!bounty) return c.json({ error: 'Bounty not found' }, 404);
   if (bounty.completed === 1) return c.json({ error: 'Already claimed' }, 400);
 
-  db.prepare('UPDATE bounties SET completed = 1 WHERE id = ?').run(bountyId);
+  await db.execute({ sql: 'UPDATE bounties SET completed = 1 WHERE id = ?', args: [bountyId] });
 
   const reward: Resources = JSON.parse(bounty.reward);
-  const keep = findKeepByPlayerId(db, playerId);
+  const keep = await findKeepByPlayerId(db, playerId);
   if (keep) {
     const resources: Resources = JSON.parse(keep.resources);
     const updated: Resources = {
@@ -87,7 +98,7 @@ bountyRoutes.post('/:id/claim', (c) => {
       wood: resources.wood + reward.wood,
       stone: resources.stone + reward.stone,
     };
-    updateKeepResources(db, keep.id, JSON.stringify(updated));
+    await updateKeepResources(db, keep.id, JSON.stringify(updated));
   }
 
   return c.json({ reward });

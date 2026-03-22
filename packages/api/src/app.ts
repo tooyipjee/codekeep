@@ -21,8 +21,20 @@ export type Env = {
   };
 };
 
-const dbPath = process.env.CODEKEEP_DB_PATH ?? './codekeep.db';
-const db = createDatabase(dbPath);
+function getDbUrl(): string {
+  if (process.env.TURSO_DATABASE_URL) return process.env.TURSO_DATABASE_URL;
+  const path = process.env.CODEKEEP_DB_PATH ?? './codekeep.db';
+  return `file:${path}`;
+}
+
+let dbPromise: Promise<Database> | null = null;
+
+export function initDb(): Promise<Database> {
+  if (!dbPromise) {
+    dbPromise = createDatabase(getDbUrl(), process.env.TURSO_AUTH_TOKEN);
+  }
+  return dbPromise;
+}
 
 export const app = new Hono<Env>();
 
@@ -31,20 +43,20 @@ app.use('*', cors());
 app.use('*', errorHandler);
 
 app.use('*', async (c, next) => {
-  c.set('db', db);
+  c.set('db', await initDb());
   await next();
 });
 
 const startedAt = Date.now();
 
-app.get('/healthz', (c) => {
+app.get('/healthz', async (c) => {
   const db = c.get('db');
   let dbOk = false;
   let playerCount = 0;
   try {
-    const row = db.prepare('SELECT COUNT(*) as cnt FROM players').get() as { cnt: number };
+    const result = await db.execute('SELECT COUNT(*) as cnt FROM players');
     dbOk = true;
-    playerCount = row.cnt;
+    playerCount = result.rows[0]?.cnt as number ?? 0;
   } catch {
     dbOk = false;
   }
@@ -60,10 +72,10 @@ app.get('/healthz', (c) => {
   });
 });
 
-app.get('/readyz', (c) => {
+app.get('/readyz', async (c) => {
   const db = c.get('db');
   try {
-    db.prepare('SELECT 1').get();
+    await db.execute('SELECT 1');
     return c.json({ ready: true });
   } catch {
     return c.json({ ready: false }, 503);

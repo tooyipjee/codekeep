@@ -17,7 +17,7 @@ economyRoutes.post('/coding-event', async (c) => {
   const grants = CODING_EVENT_GRANTS[body.type];
   if (!grants) return c.json({ error: 'Unknown event type' }, 400);
 
-  const keep = findKeepByPlayerId(db, playerId);
+  const keep = await findKeepByPlayerId(db, playerId);
   if (!keep) return c.json({ error: 'Keep not found' }, 404);
 
   const resources: Resources = JSON.parse(keep.resources);
@@ -26,15 +26,15 @@ economyRoutes.post('/coding-event', async (c) => {
     wood: resources.wood + grants.wood,
     stone: resources.stone + grants.stone,
   };
-  updateKeepResources(db, keep.id, JSON.stringify(updated));
+  await updateKeepResources(db, keep.id, JSON.stringify(updated));
 
   return c.json({ grants, resources: updated, message: KINGDOM_EVENT_NAMES[body.type] ?? 'Event recorded' });
 });
 
-economyRoutes.post('/faucet', (c) => {
+economyRoutes.post('/faucet', async (c) => {
   const db = c.get('db');
   const playerId = c.get('playerId');
-  const keep = findKeepByPlayerId(db, playerId);
+  const keep = await findKeepByPlayerId(db, playerId);
   if (!keep) return c.json({ error: 'Keep not found' }, 404);
 
   const grants: Resources = { gold: 5, wood: 5, stone: 10 };
@@ -44,7 +44,7 @@ economyRoutes.post('/faucet', (c) => {
     wood: resources.wood + grants.wood,
     stone: resources.stone + grants.stone,
   };
-  updateKeepResources(db, keep.id, JSON.stringify(updated));
+  await updateKeepResources(db, keep.id, JSON.stringify(updated));
 
   return c.json({ grants, resources: updated });
 });

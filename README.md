@@ -116,9 +116,11 @@ Monorepo layout:
 
 | Package | Role |
 |---------|------|
-| **`packages/shared`** | Shared types, constants, balance tables — no runtime deps; imported by server and CLI. |
-| **`packages/server`** | Pure game engine: grid, raids, economy, NPC keeps, persistence. No UI, no network. |
-| **`packages/cli`** | Ink-based TUI: rendering and input; calls server code directly (local-first). |
+| **`packages/shared`** | Shared types, constants, balance tables — no runtime deps; imported by all packages. |
+| **`packages/server`** | Pure game engine: grid, raids, economy, NPC keeps. No UI, no network. |
+| **`packages/db`** | SQLite persistence: players, keeps, raids, matchmaking, sessions. |
+| **`packages/api`** | Hono HTTP API: auth, PvP, matchmaking, leaderboard, feedback. |
+| **`packages/cli`** | Ink-based TUI: rendering and input; local-first or online via `--online`. |
 
 Game rules and mutations stay in **`server`**; the CLI stays a thin client.
 
@@ -133,9 +135,39 @@ pnpm build   # turbo build across packages
 
 ---
 
-## Local simulation note
+## Online PvP
 
-This is the **local-first** build: raids are against **NPC-generated keeps**, saves live on disk, and there is **no** networked multiplayer yet. **Async multiplayer is planned for v2.**
+CodeKeep supports async PvP over the internet. A shared server handles matchmaking, raids, leaderboards, and war camp.
+
+### Connect to a server
+
+```bash
+pnpm play -- --online https://your-server.up.railway.app
+```
+
+Or set the `CODEKEEP_SERVER` env var and just `pnpm play`.
+
+### Host your own (free on Vercel + Turso)
+
+1. Create a database: `turso db create codekeep && turso db tokens create codekeep`
+2. Link your repo at [Vercel](https://vercel.com)
+3. Set env vars in Vercel: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `JWT_SECRET`, `NODE_ENV=production`
+4. Auto-deploys on push — share the URL with friends
+
+### Quick PvP (no signup)
+
+```bash
+docker compose up                              # Terminal 1: start API
+cloudflared tunnel --url http://localhost:3000  # Terminal 2: expose to internet
+```
+
+Share the tunnel URL. Done.
+
+See `docs/SERVICES.md` for full setup details, Docker self-hosting, and optional integrations.
+
+### Local / offline mode
+
+Without `--online`, the game runs in **local-first** mode: raids against NPC keeps, saves on disk, no server needed.
 
 ---
 

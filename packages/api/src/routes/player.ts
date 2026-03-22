@@ -9,15 +9,15 @@ export const playerRoutes = new Hono<Env>();
 
 playerRoutes.use('*', requireAuth);
 
-playerRoutes.get('/', (c) => {
+playerRoutes.get('/', async (c) => {
   const db = c.get('db');
   const playerId = c.get('playerId');
-  const player = findPlayerById(db, playerId);
+  const player = await findPlayerById(db, playerId);
   if (!player) return c.json({ error: 'Player not found' }, 404);
 
-  updatePlayerLastSeen(db, playerId);
-  const keep = findKeepByPlayerId(db, playerId);
-  const progression = findProgression(db, playerId);
+  await updatePlayerLastSeen(db, playerId);
+  const keep = await findKeepByPlayerId(db, playerId);
+  const progression = await findProgression(db, playerId);
 
   return c.json({
     player: {

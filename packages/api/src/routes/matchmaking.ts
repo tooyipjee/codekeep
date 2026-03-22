@@ -12,57 +12,59 @@ export const matchmakingRoutes = new Hono<Env>();
 
 matchmakingRoutes.use('*', requireAuth);
 
-matchmakingRoutes.post('/find', (c) => {
+matchmakingRoutes.post('/find', async (c) => {
   const db = c.get('db');
   const playerId = c.get('playerId');
-  const player = findPlayerById(db, playerId);
+  const player = await findPlayerById(db, playerId);
   if (!player) return c.json({ error: 'Player not found' }, 404);
 
   const minTrophies = Math.max(0, player.trophies - MATCHMAKING_TROPHY_RANGE);
   const maxTrophies = player.trophies + MATCHMAKING_TROPHY_RANGE;
 
-  const candidates = findMatchCandidates(db, playerId, minTrophies, maxTrophies, 10);
+  const candidates = await findMatchCandidates(db, playerId, minTrophies, maxTrophies, 10);
 
-  const viable = candidates.filter((cand) => {
-    const defender = findPlayerById(db, cand.player_id);
-    if (!defender) return false;
-    if (defender.shield_expires_at && defender.shield_expires_at > Date.now()) return false;
-    if (hasRecentAttack(db, playerId, cand.keep_id, ATTACKER_COOLDOWN_MS)) return false;
-    return true;
-  });
+  const viable: typeof candidates = [];
+  for (const cand of candidates) {
+    const defender = await findPlayerById(db, cand.player_id);
+    if (!defender) continue;
+    if (defender.shield_expires_at && defender.shield_expires_at > Date.now()) continue;
+    if (await hasRecentAttack(db, playerId, cand.keep_id, ATTACKER_COOLDOWN_MS)) continue;
+    viable.push(cand);
+  }
 
   const picks = viable.slice(0, 3);
   if (picks.length === 0) {
     return c.json({ targets: [], message: 'No opponents found. Try again later or raid an NPC.' });
   }
 
-  const targets = picks.map((p) => {
-    const keep = findKeepByPlayerId(db, p.player_id);
-    const defender = findPlayerById(db, p.player_id);
+  const targets = [];
+  for (const p of picks) {
+    const keep = await findKeepByPlayerId(db, p.player_id);
+    const defender = await findPlayerById(db, p.player_id);
     const grid: KeepGridState = keep ? JSON.parse(keep.grid_state) : { width: 16, height: 16, structures: [] };
-    return {
+    targets.push({
       playerId: p.player_id,
       displayName: defender?.display_name ?? 'Unknown',
       trophies: p.trophies,
       structureCount: p.structure_count,
       grid,
-    };
-  });
+    });
+  }
 
   return c.json({ targets });
 });
 
-matchmakingRoutes.post('/register', (c) => {
+matchmakingRoutes.post('/register', async (c) => {
   const db = c.get('db');
   const playerId = c.get('playerId');
-  const player = findPlayerById(db, playerId);
+  const player = await findPlayerById(db, playerId);
   if (!player) return c.json({ error: 'Player not found' }, 404);
 
-  const keep = findKeepByPlayerId(db, playerId);
+  const keep = await findKeepByPlayerId(db, playerId);
   if (!keep) return c.json({ error: 'Keep not found' }, 404);
 
   const grid: KeepGridState = JSON.parse(keep.grid_state);
-  upsertMatchmakingEntry(db, {
+  await upsertMatchmakingEntry(db, {
     player_id: playerId,
     keep_id: keep.id,
     trophies: player.trophies,

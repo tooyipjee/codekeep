@@ -40,7 +40,7 @@ COPY package.json pnpm-workspace.yaml ./
 ENV NODE_ENV=production
 ENV CODEKEEP_PORT=8080
 ENV CODEKEEP_HOST=0.0.0.0
-ENV CODEKEEP_DB_PATH=/data/codekeep.db
+ENV TURSO_DATABASE_URL=file:/data/codekeep.db
 
 EXPOSE 8080
 

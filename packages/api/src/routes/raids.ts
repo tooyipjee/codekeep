@@ -42,17 +42,17 @@ raidRoutes.post('/launch', async (c) => {
     spawnSpecs?: RaidSpawnSpec[];
   }>();
 
-  const defenderKeep = findKeepByPlayerId(db, body.defenderPlayerId);
+  const defenderKeep = await findKeepByPlayerId(db, body.defenderPlayerId);
   if (!defenderKeep) return c.json({ error: 'Defender keep not found' }, 404);
 
-  const defender = findPlayerById(db, body.defenderPlayerId);
+  const defender = await findPlayerById(db, body.defenderPlayerId);
   if (!defender) return c.json({ error: 'Defender not found' }, 404);
 
   if (defender.shield_expires_at && defender.shield_expires_at > Date.now()) {
     return c.json({ error: 'Defender is shielded' }, 400);
   }
 
-  const attackerKeep = findKeepByPlayerId(db, attackerId);
+  const attackerKeep = await findKeepByPlayerId(db, attackerId);
   const defenderGrid: KeepGridState = JSON.parse(defenderKeep.grid_state);
   const defenderResources: Resources = JSON.parse(defenderKeep.resources);
   const seed = `pvp-${Date.now()}-${randomUUID().slice(0, 8)}`;
@@ -77,20 +77,18 @@ raidRoutes.post('/launch', async (c) => {
     }
   }
 
-  // Cap loot at PVP_LOOT_CAP_PERCENT of defender's actual resources
   const lootGained: Resources = {
     gold: Math.min(rawLoot.gold, Math.floor(defenderResources.gold * PVP_LOOT_CAP_PERCENT)),
     wood: Math.min(rawLoot.wood, Math.floor(defenderResources.wood * PVP_LOOT_CAP_PERCENT)),
     stone: Math.min(rawLoot.stone, Math.floor(defenderResources.stone * PVP_LOOT_CAP_PERCENT)),
   };
 
-  // Transfer resources: deduct from defender, add to attacker
   const newDefenderResources: Resources = {
     gold: Math.max(0, defenderResources.gold - lootGained.gold),
     wood: Math.max(0, defenderResources.wood - lootGained.wood),
     stone: Math.max(0, defenderResources.stone - lootGained.stone),
   };
-  updateKeepResources(db, defenderKeep.id, JSON.stringify(newDefenderResources));
+  await updateKeepResources(db, defenderKeep.id, JSON.stringify(newDefenderResources));
 
   if (attackerKeep) {
     const attackerResources: Resources = JSON.parse(attackerKeep.resources);
@@ -99,25 +97,25 @@ raidRoutes.post('/launch', async (c) => {
       wood: attackerResources.wood + lootGained.wood,
       stone: attackerResources.stone + lootGained.stone,
     };
-    updateKeepResources(db, attackerKeep.id, JSON.stringify(newAttackerResources));
+    await updateKeepResources(db, attackerKeep.id, JSON.stringify(newAttackerResources));
   }
 
   const attackerDelta = computeTrophyDelta(outcome, true);
   const defenderDelta = computeTrophyDelta(outcome, false);
 
-  const attacker = findPlayerById(db, attackerId)!;
+  const attacker = (await findPlayerById(db, attackerId))!;
   const newAttackerTrophies = Math.max(TROPHY_CONFIG.minTrophies, attacker.trophies + attackerDelta);
   const newDefenderTrophies = Math.max(TROPHY_CONFIG.minTrophies, defender.trophies + defenderDelta);
 
-  updatePlayerTrophies(db, attackerId, newAttackerTrophies, getLeague(newAttackerTrophies));
-  updatePlayerTrophies(db, body.defenderPlayerId, newDefenderTrophies, getLeague(newDefenderTrophies));
+  await updatePlayerTrophies(db, attackerId, newAttackerTrophies, getLeague(newAttackerTrophies));
+  await updatePlayerTrophies(db, body.defenderPlayerId, newDefenderTrophies, getLeague(newDefenderTrophies));
 
   const shieldMs = SHIELD_DURATION_MS[outcome];
-  updatePlayerShield(db, body.defenderPlayerId, Date.now() + shieldMs);
-  updatePlayerShield(db, attackerId, null);
+  await updatePlayerShield(db, body.defenderPlayerId, Date.now() + shieldMs);
+  await updatePlayerShield(db, attackerId, null);
 
   const raidId = `r_${randomUUID().slice(0, 8)}`;
-  createRaid(db, {
+  await createRaid(db, {
     id: raidId,
     seed,
     rules_version: RULES_VERSION,
@@ -145,13 +143,13 @@ raidRoutes.post('/launch', async (c) => {
   });
 });
 
-raidRoutes.get('/history', (c) => {
+raidRoutes.get('/history', async (c) => {
   const db = c.get('db');
   const playerId = c.get('playerId');
-  const keep = findKeepByPlayerId(db, playerId);
+  const keep = await findKeepByPlayerId(db, playerId);
 
-  const attacks = findRaidsByAttacker(db, playerId);
-  const defenses = keep ? findRaidsByDefender(db, keep.id) : [];
+  const attacks = await findRaidsByAttacker(db, playerId);
+  const defenses = keep ? await findRaidsByDefender(db, keep.id) : [];
 
   const all = [...attacks, ...defenses]
     .sort((a, b) => b.created_at - a.created_at)
@@ -169,14 +167,14 @@ raidRoutes.get('/history', (c) => {
   return c.json({ raids: all });
 });
 
-raidRoutes.get('/incoming', (c) => {
+raidRoutes.get('/incoming', async (c) => {
   const db = c.get('db');
   const playerId = c.get('playerId');
-  const keep = findKeepByPlayerId(db, playerId);
+  const keep = await findKeepByPlayerId(db, playerId);
   if (!keep) return c.json({ raids: [] });
 
   const since = parseInt(c.req.query('since') ?? '0', 10);
-  const raids = findIncomingRaids(db, keep.id, since);
+  const raids = await findIncomingRaids(db, keep.id, since);
   return c.json({
     raids: raids.map((r) => ({
       id: r.id,
@@ -188,9 +186,9 @@ raidRoutes.get('/incoming', (c) => {
   });
 });
 
-raidRoutes.get('/:id', (c) => {
+raidRoutes.get('/:id', async (c) => {
   const db = c.get('db');
-  const raid = findRaidById(db, c.req.param('id'));
+  const raid = await findRaidById(db, c.req.param('id'));
   if (!raid) return c.json({ error: 'Raid not found' }, 404);
 
   return c.json({

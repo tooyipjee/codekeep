@@ -1,8 +1,13 @@
 import { Hono } from 'hono';
+import { requireAuth } from '../middleware/auth.js';
+import { rateLimit } from '../middleware/rate-limit.js';
 import type { Env } from '../app.js';
 import { log } from '../middleware/request-logger.js';
 
 export const feedbackRoutes = new Hono<Env>();
+
+feedbackRoutes.use('*', requireAuth);
+feedbackRoutes.use('*', rateLimit({ windowMs: 60 * 60 * 1000, max: 5, keyPrefix: 'feedback' }));
 
 feedbackRoutes.post('/bug', async (c) => {
   const body = await c.req.json<{

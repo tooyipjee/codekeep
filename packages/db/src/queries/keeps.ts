@@ -11,25 +11,31 @@ export interface KeepRow {
   updated_at: number;
 }
 
-export function findKeepByPlayerId(db: Database, playerId: string): KeepRow | undefined {
-  return db.prepare('SELECT * FROM keeps WHERE player_id = ?').get(playerId) as KeepRow | undefined;
+export async function findKeepByPlayerId(db: Database, playerId: string): Promise<KeepRow | undefined> {
+  const result = await db.execute({ sql: 'SELECT * FROM keeps WHERE player_id = ?', args: [playerId] });
+  return result.rows[0] as unknown as KeepRow | undefined;
 }
 
-export function createKeep(db: Database, keep: Omit<KeepRow, 'created_at' | 'updated_at' | 'version'>): KeepRow {
+export async function createKeep(db: Database, keep: Omit<KeepRow, 'created_at' | 'updated_at' | 'version'>): Promise<KeepRow> {
   const now = Date.now();
-  db.prepare(`INSERT INTO keeps (id, player_id, name, grid_state, resources, version, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, 1, ?, ?)`).run(
-    keep.id, keep.player_id, keep.name, keep.grid_state, keep.resources, now, now,
-  );
+  await db.execute({
+    sql: `INSERT INTO keeps (id, player_id, name, grid_state, resources, version, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+    args: [keep.id, keep.player_id, keep.name, keep.grid_state, keep.resources, now, now],
+  });
   return { ...keep, version: 1, created_at: now, updated_at: now };
 }
 
-export function updateKeepGrid(db: Database, id: string, gridState: string, resources: string): void {
-  db.prepare('UPDATE keeps SET grid_state = ?, resources = ?, version = version + 1, updated_at = ? WHERE id = ?')
-    .run(gridState, resources, Date.now(), id);
+export async function updateKeepGrid(db: Database, id: string, gridState: string, resources: string): Promise<void> {
+  await db.execute({
+    sql: 'UPDATE keeps SET grid_state = ?, resources = ?, version = version + 1, updated_at = ? WHERE id = ?',
+    args: [gridState, resources, Date.now(), id],
+  });
 }
 
-export function updateKeepResources(db: Database, id: string, resources: string): void {
-  db.prepare('UPDATE keeps SET resources = ?, updated_at = ? WHERE id = ?')
-    .run(resources, Date.now(), id);
+export async function updateKeepResources(db: Database, id: string, resources: string): Promise<void> {
+  await db.execute({
+    sql: 'UPDATE keeps SET resources = ?, updated_at = ? WHERE id = ?',
+    args: [resources, Date.now(), id],
+  });
 }

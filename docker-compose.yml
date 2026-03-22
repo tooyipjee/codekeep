@@ -8,7 +8,7 @@ services:
     environment:
       - CODEKEEP_PORT=8080
       - CODEKEEP_HOST=0.0.0.0
-      - CODEKEEP_DB_PATH=/data/codekeep.db
+      - TURSO_DATABASE_URL=file:/data/codekeep.db
       - JWT_SECRET=${JWT_SECRET:-codekeep-self-hosted-secret}
       - NODE_ENV=production
     volumes:

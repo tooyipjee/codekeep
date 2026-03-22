@@ -1,0 +1,7 @@
+{
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm build",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api" }
+  ]
+}

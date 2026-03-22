@@ -3,7 +3,15 @@ import * as jose from 'jose';
 import { findPlayerByApiKey } from '@codekeep/db';
 import type { Env } from '../app.js';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? 'codekeep-dev-secret-change-me');
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set in production. Generate one with: openssl rand -hex 32');
+  }
+  return new TextEncoder().encode(secret ?? 'codekeep-dev-secret-do-not-use-in-prod');
+}
+
+const JWT_SECRET = getJwtSecret();
 
 export async function signJwt(playerId: string): Promise<string> {
   return new jose.SignJWT({ sub: playerId })
@@ -37,7 +45,7 @@ export const requireAuth = createMiddleware<Env>(async (c, next) => {
   if (authHeader?.startsWith('ApiKey ')) {
     const apiKey = authHeader.slice(7);
     const db = c.get('db');
-    const player = findPlayerByApiKey(db, apiKey);
+    const player = await findPlayerByApiKey(db, apiKey);
     if (player) {
       c.set('playerId', player.id);
       return next();

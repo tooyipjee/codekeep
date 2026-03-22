@@ -1,6 +1,6 @@
 {
   "name": "codekeep",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Async tower defense terminal game — build ASCII fortresses powered by your coding activity",
   "license": "MIT",

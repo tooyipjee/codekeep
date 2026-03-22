@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name('codekeep')
   .description('Async tower defense terminal game powered by your coding activity')
-  .version('0.1.0')
+  .version('0.2.0')
   .option('--ascii', 'Force ASCII-only rendering (no Unicode box drawing)')
   .option('--compact', 'Compact layout for narrow terminals')
   .option('--tutorial', 'Replay the tutorial')

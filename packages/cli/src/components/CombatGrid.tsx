@@ -40,8 +40,8 @@ function statusIcons(enemy: EnemyInstance): string {
 }
 
 function hpBar(current: number, max: number, width: number): string {
-  const filled = Math.max(0, Math.round((current / max) * width));
-  return '█'.repeat(filled) + '░'.repeat(width - filled);
+  const filled = Math.max(0, Math.min(width, Math.round((current / max) * width)));
+  return '█'.repeat(filled) + '░'.repeat(Math.max(0, width - filled));
 }
 
 function enemyDisplay(enemy: EnemyInstance): string {
@@ -52,40 +52,54 @@ function enemyDisplay(enemy: EnemyInstance): string {
 
 export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxHp, gateBlock }: CombatGridProps) {
   const colWidth = 14;
-  const totalWidth = colWidth * columns.length + (columns.length - 1);
+  const numCols = columns.length;
 
-  const gatePercent = Math.round((gateHp / gateMaxHp) * 100);
+  const gatePercent = gateMaxHp > 0 ? Math.round((gateHp / gateMaxHp) * 100) : 0;
   const gateColor = gatePercent > 60 ? 'green' : gatePercent > 30 ? 'yellow' : 'red';
+
+  const colSep = (ch: string) => columns.map((_, i) => {
+    const label = `  Col ${i + 1}  `;
+    const pad = colWidth - label.length;
+    return '─'.repeat(Math.max(0, Math.floor(pad / 2))) + label + '─'.repeat(Math.max(0, Math.ceil(pad / 2)));
+  }).join(ch);
+
+  const bottomBorder = '└' + columns.map((_, i) =>
+    '─'.repeat(colWidth) + (i < numCols - 1 ? '┴' : '')
+  ).join('') + '┘';
 
   return (
     <Box flexDirection="column">
-      <Text dimColor>{'┌' + columns.map((_, i) => {
-        const isTarget = showTarget && i === targetColumn;
-        const label = isTarget ? `  Col ${i + 1}  ` : `  Col ${i + 1}  `;
-        return '─'.repeat(Math.floor((colWidth - label.length) / 2)) + label + '─'.repeat(Math.ceil((colWidth - label.length) / 2));
-      }).join('┬') + '┐'}</Text>
+      {/* Header */}
+      <Text dimColor>{'┌' + colSep('┬') + '┐'}</Text>
 
+      {/* Target indicator row */}
       {showTarget && (
         <Text>
+          <Text dimColor>{'│'}</Text>
           {columns.map((_, i) => {
             const isTarget = i === targetColumn;
-            const content = isTarget ? '  ▼ TARGET ▼  ' : ' '.repeat(colWidth);
+            const content = isTarget ? ' ▼ TARGET ▼ ' : '';
             return (
-              <Text key={i} color={isTarget ? 'yellow' : undefined} bold={isTarget}>
-                {i === 0 ? '│' : ''}{content.slice(0, colWidth)}{i < columns.length - 1 ? '│' : '│'}
-              </Text>
+              <React.Fragment key={i}>
+                <Text color={isTarget ? 'yellow' : undefined} bold={isTarget}>
+                  {content.padEnd(colWidth).slice(0, colWidth)}
+                </Text>
+                <Text dimColor>{'│'}</Text>
+              </React.Fragment>
             );
           })}
         </Text>
       )}
 
+      {/* Grid rows */}
       {Array.from({ length: ROWS }, (_, r) => (
         <Text key={r}>
+          <Text dimColor>{'│'}</Text>
           {columns.map((col, i) => {
             const enemies = col.enemies.filter((e) => e.row === r);
             let cell: string;
             if (enemies.length === 0) {
-              cell = r === ROWS - 1 ? '─ ─ ─ ─ ─ ─' : '·'.padStart(Math.floor((colWidth + 1) / 2)).padEnd(colWidth);
+              cell = '·'.padStart(Math.floor((colWidth + 1) / 2)).padEnd(colWidth);
             } else {
               const display = enemies.map((e) => {
                 const intent = intentLabel(e.intent);
@@ -99,11 +113,12 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
             }
             const isTarget = showTarget && i === targetColumn;
             return (
-              <Text key={i} color={isTarget && enemies.length > 0 ? 'yellow' : undefined}>
-                {i === 0 ? <Text dimColor>{'│'}</Text> : null}
-                {cell}
+              <React.Fragment key={i}>
+                <Text color={isTarget && enemies.length > 0 ? 'yellow' : undefined}>
+                  {cell}
+                </Text>
                 <Text dimColor>{'│'}</Text>
-              </Text>
+              </React.Fragment>
             );
           })}
         </Text>
@@ -111,27 +126,25 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
 
       {/* Emplacements row */}
       <Text>
+        <Text dimColor>{'│'}</Text>
         {columns.map((col, i) => {
-          let cell: string;
-          if (col.emplacement) {
-            cell = ` ◇${col.emplacement.hp}hp `.padEnd(colWidth);
-          } else {
-            cell = ' '.repeat(colWidth);
-          }
+          const cell = col.emplacement
+            ? ` ◇${col.emplacement.hp}hp `.padEnd(colWidth).slice(0, colWidth)
+            : ' '.repeat(colWidth);
           return (
-            <Text key={i} color={col.emplacement ? 'cyan' : undefined}>
-              {i === 0 ? <Text dimColor>{'│'}</Text> : null}
-              {cell}
+            <React.Fragment key={i}>
+              <Text color={col.emplacement ? 'cyan' : undefined}>{cell}</Text>
               <Text dimColor>{'│'}</Text>
-            </Text>
+            </React.Fragment>
           );
         })}
       </Text>
 
-      <Text dimColor>{'└' + '─'.repeat(totalWidth) + '┘'}</Text>
+      {/* Bottom border with column separators */}
+      <Text dimColor>{bottomBorder}</Text>
 
       {/* Gate HP bar */}
-      <Box paddingX={1} marginTop={0}>
+      <Box paddingX={1}>
         <Text bold color={gateColor}>
           {'◆ Gate '}
           {hpBar(gateHp, gateMaxHp, 20)}

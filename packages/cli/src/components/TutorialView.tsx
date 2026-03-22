@@ -134,8 +134,8 @@ const TUTORIAL_PAGES = [
 ];
 
 function progressBar(current: number, total: number, width: number): string {
-  const filled = Math.round((current / total) * width);
-  return '█'.repeat(filled) + '░'.repeat(width - filled);
+  const filled = Math.max(0, Math.min(width, Math.round((current / total) * width)));
+  return '█'.repeat(filled) + '░'.repeat(Math.max(0, width - filled));
 }
 
 export function TutorialView({ page, totalPages }: TutorialViewProps) {

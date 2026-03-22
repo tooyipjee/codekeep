@@ -44,8 +44,8 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
         <Text>
           Turn <Text bold color="white">{combat.turn}</Text>
           {'  '}
-          <Text color="cyan">{'◆'.repeat(combat.resolve)}</Text>
-          <Text dimColor>{'◇'.repeat(combat.maxResolve - combat.resolve)}</Text>
+          <Text color="cyan">{'◆'.repeat(Math.max(0, combat.resolve))}</Text>
+          <Text dimColor>{'◇'.repeat(Math.max(0, combat.maxResolve - combat.resolve))}</Text>
           {'  '}
           Enemies <Text bold color="red">{totalEnemies}</Text>
           {'  '}
@@ -99,7 +99,7 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
 
       {combat.phase === 'player' && (
         <Text dimColor>
-          {'  '}1-{combat.hand.length} card  ←→ column  Enter play  e emplace  p potion  Space end  d deck  q quit
+          {'  '}{combat.hand.length > 0 ? `1-${combat.hand.length} card  ` : ''}←→ column  Enter play  e emplace  p potion  Space end  d deck  q quit
         </Text>
       )}
 

@@ -369,8 +369,8 @@ function AppContent({ dryRun }: AppProps) {
 
   useInput((input, key) => {
     if (screen === 'tutorial') {
-      if (key.rightArrow || input === 'l') setTutorialPage(p => Math.min(TUTORIAL_PAGE_COUNT - 1, p + 1));
-      else if (key.leftArrow || input === 'h') setTutorialPage(p => Math.max(0, p - 1));
+      if (key.rightArrow) setTutorialPage(p => Math.min(TUTORIAL_PAGE_COUNT - 1, p + 1));
+      else if (key.leftArrow) setTutorialPage(p => Math.max(0, p - 1));
       else if (key.return) {
         if (tutorialPage === TUTORIAL_PAGE_COUNT - 1) {
           beginRun();
@@ -389,8 +389,8 @@ function AppContent({ dryRun }: AppProps) {
 
     if (screen === 'settings') {
       const settingsItems = ['ascii', 'hints', 'log', 'tutorial', 'controls', 'reset', 'back'];
-      if (key.upArrow || input === 'k') { setSettingsIndex(i => Math.max(0, i - 1)); setConfirmingReset(false); }
-      else if (key.downArrow || input === 'j') { setSettingsIndex(i => Math.min(settingsItems.length - 1, i + 1)); setConfirmingReset(false); }
+      if (key.upArrow) { setSettingsIndex(i => Math.max(0, i - 1)); setConfirmingReset(false); }
+      else if (key.downArrow) { setSettingsIndex(i => Math.min(settingsItems.length - 1, i + 1)); setConfirmingReset(false); }
       else if (input === 'q' || key.escape) { setScreen('menu'); setConfirmingReset(false); }
       else if (key.return) {
         const item = settingsItems[settingsIndex];
@@ -426,8 +426,8 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'relic_reward') {
-      if (key.upArrow || input === 'k') setRelicIndex(i => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setRelicIndex(i => Math.min(relicChoices.length, i + 1));
+      if (key.upArrow) setRelicIndex(i => Math.max(0, i - 1));
+      else if (key.downArrow) setRelicIndex(i => Math.min(relicChoices.length, i + 1));
       else if (input === 's') pickRelic(null);
       else if (key.return) {
         pickRelic(relicIndex < relicChoices.length ? relicChoices[relicIndex] : null);
@@ -436,8 +436,8 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'menu') {
-      if (key.upArrow || input === 'k') setMenuIndex((i) => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setMenuIndex((i) => Math.min(menuItems.length - 1, i + 1));
+      if (key.upArrow) setMenuIndex((i) => Math.max(0, i - 1));
+      else if (key.downArrow) setMenuIndex((i) => Math.min(menuItems.length - 1, i + 1));
       else if (key.return) {
         const action = menuItems[menuIndex]?.action;
         if (action === 'keep') goToKeep();
@@ -458,8 +458,8 @@ function AppContent({ dryRun }: AppProps) {
 
     if (screen === 'map' && run) {
       const reachable = getReachable();
-      if (key.upArrow || input === 'k') setSelectedNodeIdx((i) => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setSelectedNodeIdx((i) => Math.min(reachable.length - 1, i + 1));
+      if (key.upArrow) setSelectedNodeIdx((i) => Math.max(0, i - 1));
+      else if (key.downArrow) setSelectedNodeIdx((i) => Math.min(reachable.length - 1, i + 1));
       else if (key.return && reachable[selectedNodeIdx]) enterNode(reachable[selectedNodeIdx]);
       else if (input === 'd') setScreen('deck');
       else if (input === 'q') { doSave(run); setScreen('menu'); }
@@ -468,8 +468,8 @@ function AppContent({ dryRun }: AppProps) {
 
     if (screen === 'reward') {
       const maxIdx = rewardCards.length;
-      if (key.upArrow || input === 'k') setRewardIndex((i) => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setRewardIndex((i) => Math.min(maxIdx, i + 1));
+      if (key.upArrow) setRewardIndex((i) => Math.max(0, i - 1));
+      else if (key.downArrow) setRewardIndex((i) => Math.min(maxIdx, i + 1));
       else if (input === 's') pickReward(null);
       else if (key.return) {
         pickReward(rewardIndex < rewardCards.length ? rewardCards[rewardIndex] : null);
@@ -478,8 +478,8 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'shop' && run) {
-      if (key.upArrow || input === 'k') setShopIndex((i) => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setShopIndex((i) => Math.min(shopItems.length - 1, i + 1));
+      if (key.upArrow) setShopIndex((i) => Math.max(0, i - 1));
+      else if (key.downArrow) setShopIndex((i) => Math.min(shopItems.length - 1, i + 1));
       else if (input === 'q' || key.escape) {
         setSelectedNodeIdx(0);
         setScreen('map');
@@ -515,8 +515,8 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'event' && currentEvent && run) {
-      if (key.upArrow || input === 'k') setEventChoice((i) => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setEventChoice((i) => Math.min(currentEvent.choices.length - 1, i + 1));
+      if (key.upArrow) setEventChoice((i) => Math.max(0, i - 1));
+      else if (key.downArrow) setEventChoice((i) => Math.min(currentEvent.choices.length - 1, i + 1));
       else if (key.return) {
         const choice = currentEvent.choices[eventChoice];
         let r = run;
@@ -558,8 +558,8 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'rest' && run) {
-      if (key.upArrow || input === 'k') setRestChoice((i) => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setRestChoice((i) => Math.min(2, i + 1));
+      if (key.upArrow) setRestChoice((i) => Math.max(0, i - 1));
+      else if (key.downArrow) setRestChoice((i) => Math.min(2, i + 1));
       else if (key.return) {
         let r = run;
         if (restChoice === 0) {
@@ -583,8 +583,8 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'deck_remove' && run) {
-      if (key.upArrow || input === 'k') setRemoveIndex((i) => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setRemoveIndex((i) => Math.min(run.deck.length - 1, i + 1));
+      if (key.upArrow) setRemoveIndex((i) => Math.max(0, i - 1));
+      else if (key.downArrow) setRemoveIndex((i) => Math.min(run.deck.length - 1, i + 1));
       else if (key.escape || input === 'q') {
         setSelectedNodeIdx(0);
         setScreen('map');
@@ -603,8 +603,8 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'shop_remove' && run) {
-      if (key.upArrow || input === 'k') setRemoveIndex((i) => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setRemoveIndex((i) => Math.min(run.deck.length - 1, i + 1));
+      if (key.upArrow) setRemoveIndex((i) => Math.max(0, i - 1));
+      else if (key.downArrow) setRemoveIndex((i) => Math.min(run.deck.length - 1, i + 1));
       else if (key.escape || input === 'q') setScreen('shop');
       else if (key.return && run.deck.length > 5) {
         const card = run.deck[removeIndex];
@@ -619,10 +619,10 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'keep' && keep) {
-      if (key.leftArrow || key.upArrow || input === 'h' || input === 'k') {
+      if (key.leftArrow || key.upArrow) {
         setKeepIndex(i => (i - 1 + KEEP_ENTITIES.length) % KEEP_ENTITIES.length);
         setKeepMessage('');
-      } else if (key.rightArrow || key.downArrow || input === 'l' || input === 'j') {
+      } else if (key.rightArrow || key.downArrow) {
         setKeepIndex(i => (i + 1) % KEEP_ENTITIES.length);
         setKeepMessage('');
       } else if (input === 'q') setScreen('menu');
@@ -692,10 +692,10 @@ function AppContent({ dryRun }: AppProps) {
         return;
       }
       if (inspectMode) {
-        if (key.leftArrow || input === 'h') setInspectCol(c => Math.max(0, c - 1));
-        else if (key.rightArrow || input === 'l') setInspectCol(c => Math.min(4, c + 1));
-        else if (key.upArrow || input === 'k') setInspectEnemy(e => Math.max(0, e - 1));
-        else if (key.downArrow || input === 'j') {
+        if (key.leftArrow) setInspectCol(c => Math.max(0, c - 1));
+        else if (key.rightArrow) setInspectCol(c => Math.min(4, c + 1));
+        else if (key.upArrow) setInspectEnemy(e => Math.max(0, e - 1));
+        else if (key.downArrow) {
           const maxE = (combat.columns[inspectCol]?.enemies.length ?? 1) - 1;
           setInspectEnemy(e => Math.min(Math.max(0, maxE), e + 1));
         }
@@ -719,8 +719,8 @@ function AppContent({ dryRun }: AppProps) {
         return;
       }
       if (input >= '1' && input <= '9') { selectCard(parseInt(input) - 1); return; }
-      if (key.leftArrow || input === 'h') { selectTarget(Math.max(0, targetColumn - 1)); return; }
-      if (key.rightArrow || input === 'l') { selectTarget(Math.min(4, targetColumn + 1)); return; }
+      if (key.leftArrow) { selectTarget(Math.max(0, targetColumn - 1)); return; }
+      if (key.rightArrow) { selectTarget(Math.min(4, targetColumn + 1)); return; }
       if (key.return && selectedCard >= 0) { confirmPlay(); return; }
       if (input === ' ') { endTurn(); return; }
       if (key.escape) { selectCard(-1); return; }

@@ -27,7 +27,7 @@ import { MapView } from './components/MapView.js';
 import { ShopView } from './components/ShopView.js';
 import { EventView } from './components/EventView.js';
 import { RestView } from './components/RestView.js';
-import { KeepView, isWalkable, getEntityAt } from './components/KeepView.js';
+import { KeepView, KEEP_ENTITIES } from './components/KeepView.js';
 import { TutorialView, TUTORIAL_PAGE_COUNT } from './components/TutorialView.js';
 import { SettingsView, DEFAULT_SETTINGS } from './components/SettingsView.js';
 import type { GameSettings } from './components/SettingsView.js';
@@ -88,8 +88,7 @@ function AppContent({ dryRun }: AppProps) {
 
   // Keep state
   const [keep, setKeep] = useState<KeepState | null>(null);
-  const [keepCursorRow, setKeepCursorRow] = useState(9);
-  const [keepCursorCol, setKeepCursorCol] = useState(25);
+  const [keepIndex, setKeepIndex] = useState(0);
   const [keepMessage, setKeepMessage] = useState('');
   const [runWon, setRunWon] = useState(false);
 
@@ -187,8 +186,7 @@ function AppContent({ dryRun }: AppProps) {
     const save = ensureSave();
     setCachedSave(save);
     setKeep(save.keep);
-    setKeepCursorRow(9);
-    setKeepCursorCol(25);
+    setKeepIndex(0);
     setKeepMessage('');
     setScreen('keep');
   }, [ensureSave]);
@@ -621,26 +619,16 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'keep' && keep) {
-      const tryMove = (dr: number, dc: number) => {
-        const nr = keepCursorRow + dr;
-        const nc = keepCursorCol + dc;
-        if (isWalkable(nr, nc)) {
-          setKeepCursorRow(nr);
-          setKeepCursorCol(nc);
-          setKeepMessage('');
-        }
-      };
-      if (key.upArrow || input === 'k' || input === 'w') tryMove(-1, 0);
-      else if (key.downArrow || input === 'j' || input === 's') tryMove(1, 0);
-      else if (key.leftArrow || input === 'h' || input === 'a') tryMove(0, -1);
-      else if (key.rightArrow || input === 'l' || input === 'd') tryMove(0, 1);
-      else if (input === 'q') setScreen('menu');
+      if (key.leftArrow || key.upArrow || input === 'h' || input === 'k') {
+        setKeepIndex(i => (i - 1 + KEEP_ENTITIES.length) % KEEP_ENTITIES.length);
+        setKeepMessage('');
+      } else if (key.rightArrow || key.downArrow || input === 'l' || input === 'j') {
+        setKeepIndex(i => (i + 1) % KEEP_ENTITIES.length);
+        setKeepMessage('');
+      } else if (input === 'q') setScreen('menu');
       else if (key.return) {
-        const entity = getEntityAt(keepCursorRow, keepCursorCol);
-        if (!entity) {
-          setKeepMessage('Nothing here to interact with.');
-          return;
-        }
+        const entity = KEEP_ENTITIES[keepIndex];
+        if (!entity) return;
         if (entity.type === 'structure') {
           const struct = KEEP_STRUCTURES.find(s => s.id === entity.id);
           if (!struct) return;
@@ -803,7 +791,7 @@ function AppContent({ dryRun }: AppProps) {
   }
 
   if (screen === 'keep' && keep) {
-    return <KeepView keep={keep} cursorRow={keepCursorRow} cursorCol={keepCursorCol} message={keepMessage} />;
+    return <KeepView keep={keep} selectedId={KEEP_ENTITIES[keepIndex]?.id ?? 'forge'} message={keepMessage} />;
   }
 
   if ((screen === 'deck_remove' || screen === 'shop_remove') && run) {

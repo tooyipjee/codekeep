@@ -3,46 +3,35 @@ import { Box, Text } from 'ink';
 import type { KeepState } from '@codekeep/shared';
 import { KEEP_STRUCTURES, getStructureLevel } from '@codekeep/server';
 
-const GRID_ROWS = 17;
-const GRID_COLS = 56;
-const WALL_TOP = 1;
-const WALL_BOT = 15;
-const WALL_LEFT = 3;
-const WALL_RIGHT = 52;
-
 export type KeepEntityType = 'structure' | 'npc' | 'gate';
 export interface KeepEntity {
   type: KeepEntityType;
   id: string;
   name: string;
   symbol: string;
-  row: number;
-  col: number;
-  width: number;
-  height: number;
 }
 
 const STRUCTURE_ENTITIES: KeepEntity[] = [
-  { type: 'structure', id: 'forge',        name: 'Forge',   symbol: '#', row: 3,  col: 6,  width: 11, height: 3 },
-  { type: 'structure', id: 'archive',      name: 'Archive', symbol: '%', row: 3,  col: 20, width: 11, height: 3 },
-  { type: 'structure', id: 'foundry',      name: 'Foundry', symbol: '&', row: 3,  col: 34, width: 11, height: 3 },
-  { type: 'structure', id: 'beacon_tower', name: 'Beacon',  symbol: '^', row: 10, col: 6,  width: 11, height: 3 },
-  { type: 'structure', id: 'sanctum_hall', name: 'Sanctum', symbol: '+', row: 10, col: 20, width: 11, height: 3 },
+  { type: 'structure', id: 'forge',        name: 'Forge',   symbol: '#' },
+  { type: 'structure', id: 'archive',      name: 'Archive', symbol: '%' },
+  { type: 'structure', id: 'foundry',      name: 'Foundry', symbol: '&' },
+  { type: 'structure', id: 'beacon_tower', name: 'Beacon',  symbol: '^' },
+  { type: 'structure', id: 'sanctum_hall', name: 'Sanctum', symbol: '+' },
 ];
 
 const NPC_ENTITIES: KeepEntity[] = [
-  { type: 'npc', id: 'wren',         name: 'Wren',         symbol: 'W', row: 8,  col: 11, width: 1, height: 1 },
-  { type: 'npc', id: 'sable',        name: 'Sable',        symbol: 'S', row: 8,  col: 25, width: 1, height: 1 },
-  { type: 'npc', id: 'duskmar',      name: 'Duskmar',      symbol: 'D', row: 8,  col: 39, width: 1, height: 1 },
-  { type: 'npc', id: 'mott',         name: 'Mott',         symbol: 'M', row: 9,  col: 44, width: 1, height: 1 },
-  { type: 'npc', id: 'pale_visitor', name: 'Pale Visitor', symbol: '?', row: 13, col: 46, width: 1, height: 1 },
+  { type: 'npc', id: 'wren',         name: 'Wren',         symbol: 'W' },
+  { type: 'npc', id: 'sable',        name: 'Sable',        symbol: 'S' },
+  { type: 'npc', id: 'duskmar',      name: 'Duskmar',      symbol: 'D' },
+  { type: 'npc', id: 'mott',         name: 'Mott',         symbol: 'M' },
+  { type: 'npc', id: 'pale_visitor', name: 'Pale Visitor', symbol: '?' },
 ];
 
 const GATE_ENTITY: KeepEntity = {
-  type: 'gate', id: 'gate', name: 'The Gate', symbol: '>', row: WALL_BOT, col: 19, width: 18, height: 1,
+  type: 'gate', id: 'gate', name: 'The Gate', symbol: '>',
 };
 
-const ALL_ENTITIES: KeepEntity[] = [...STRUCTURE_ENTITIES, ...NPC_ENTITIES, GATE_ENTITY];
+export const KEEP_ENTITIES: KeepEntity[] = [...STRUCTURE_ENTITIES, ...NPC_ENTITIES, GATE_ENTITY];
 
 const NPC_FULL_NAMES: Record<string, string> = {
   wren: 'Wren, the Steward',
@@ -60,33 +49,31 @@ const NPC_FLAVOR: Record<string, string> = {
   pale_visitor: 'Speaks in riddles from beyond',
 };
 
-function isSolid(row: number, col: number): boolean {
-  if (row <= WALL_TOP || row >= WALL_BOT) return true;
-  if (col <= WALL_LEFT || col >= WALL_RIGHT) return true;
+// Grid positions for rendering only
+const GRID_ROWS = 17;
+const GRID_COLS = 56;
+const WALL_TOP = 1;
+const WALL_BOT = 15;
+const WALL_LEFT = 3;
+const WALL_RIGHT = 52;
 
-  for (const ent of STRUCTURE_ENTITIES) {
-    if (row >= ent.row && row < ent.row + ent.height &&
-        col >= ent.col && col < ent.col + ent.width) return true;
-  }
+type BuildingPos = { row: number; col: number; width: number };
+const BUILDING_POS: Record<string, BuildingPos> = {
+  forge:        { row: 3,  col: 6,  width: 11 },
+  archive:      { row: 3,  col: 20, width: 11 },
+  foundry:      { row: 3,  col: 34, width: 11 },
+  beacon_tower: { row: 10, col: 6,  width: 11 },
+  sanctum_hall: { row: 10, col: 20, width: 11 },
+};
 
-  return false;
-}
-
-export function isWalkable(row: number, col: number): boolean {
-  return !isSolid(row, col);
-}
-
-export function getEntityAt(cursorRow: number, cursorCol: number): KeepEntity | null {
-  for (const ent of ALL_ENTITIES) {
-    const nearRow = cursorRow >= ent.row - 1 && cursorRow <= ent.row + ent.height;
-    const nearCol = cursorCol >= ent.col - 1 && cursorCol <= ent.col + ent.width;
-    if (nearRow && nearCol) return ent;
-  }
-  return null;
-}
-
-export const KEEP_START_ROW = 9;
-export const KEEP_START_COL = 25;
+type NpcPos = { row: number; col: number };
+const NPC_POS: Record<string, NpcPos> = {
+  wren:         { row: 8,  col: 11 },
+  sable:        { row: 8,  col: 25 },
+  duskmar:      { row: 8,  col: 39 },
+  mott:         { row: 9,  col: 44 },
+  pale_visitor: { row: 13, col: 46 },
+};
 
 function structureColor(level: number, maxLevel: number): string {
   if (level >= maxLevel) return 'green';
@@ -114,19 +101,16 @@ function levelBar(level: number, max: number, color: string): React.ReactNode[] 
 
 interface KeepViewProps {
   keep: KeepState;
-  cursorRow: number;
-  cursorCol: number;
+  selectedId: string;
   message: string;
 }
 
-export function KeepView({ keep, cursorRow, cursorCol, message }: KeepViewProps) {
-  const nearby = getEntityAt(cursorRow, cursorCol);
-
+export function KeepView({ keep, selectedId, message }: KeepViewProps) {
   type CellMeta = { color: string; bold: boolean; dim: boolean };
   const grid: string[][] = [];
   const meta: CellMeta[][] = [];
 
-  // --- 1. Fill everything with Pale mist ---
+  // --- 1. Fill with Pale mist ---
   for (let r = 0; r < GRID_ROWS; r++) {
     const row: string[] = [];
     const mrow: CellMeta[] = [];
@@ -138,7 +122,6 @@ export function KeepView({ keep, cursorRow, cursorCol, message }: KeepViewProps)
     meta.push(mrow);
   }
 
-  // Embed "the pale" in the mist bands
   const paleStr = 'the  pale';
   const paleStart = Math.floor((GRID_COLS - paleStr.length) / 2);
   for (let i = 0; i < paleStr.length; i++) {
@@ -146,47 +129,38 @@ export function KeepView({ keep, cursorRow, cursorCol, message }: KeepViewProps)
     grid[GRID_ROWS - 1][paleStart + i] = paleStr[i];
   }
 
-  // --- 2. Draw fortress walls (double-line) ---
-  grid[WALL_TOP][WALL_LEFT] = '╔';
-  grid[WALL_TOP][WALL_RIGHT] = '╗';
-  grid[WALL_BOT][WALL_LEFT] = '╚';
-  grid[WALL_BOT][WALL_RIGHT] = '╝';
-
+  // --- 2. Fortress walls ---
+  grid[WALL_TOP][WALL_LEFT] = '╔'; grid[WALL_TOP][WALL_RIGHT] = '╗';
+  grid[WALL_BOT][WALL_LEFT] = '╚'; grid[WALL_BOT][WALL_RIGHT] = '╝';
   for (let c = WALL_LEFT + 1; c < WALL_RIGHT; c++) {
-    grid[WALL_TOP][c] = '═';
-    grid[WALL_BOT][c] = '═';
+    grid[WALL_TOP][c] = '═'; grid[WALL_BOT][c] = '═';
     meta[WALL_TOP][c] = { color: 'white', bold: false, dim: true };
     meta[WALL_BOT][c] = { color: 'white', bold: false, dim: true };
   }
   for (let r = WALL_TOP + 1; r < WALL_BOT; r++) {
-    grid[r][WALL_LEFT] = '║';
-    grid[r][WALL_RIGHT] = '║';
+    grid[r][WALL_LEFT] = '║'; grid[r][WALL_RIGHT] = '║';
     meta[r][WALL_LEFT] = { color: 'white', bold: false, dim: true };
     meta[r][WALL_RIGHT] = { color: 'white', bold: false, dim: true };
   }
-  meta[WALL_TOP][WALL_LEFT] = { color: 'white', bold: false, dim: true };
-  meta[WALL_TOP][WALL_RIGHT] = { color: 'white', bold: false, dim: true };
-  meta[WALL_BOT][WALL_LEFT] = { color: 'white', bold: false, dim: true };
-  meta[WALL_BOT][WALL_RIGHT] = { color: 'white', bold: false, dim: true };
+  for (const corner of [[WALL_TOP, WALL_LEFT], [WALL_TOP, WALL_RIGHT], [WALL_BOT, WALL_LEFT], [WALL_BOT, WALL_RIGHT]]) {
+    meta[corner[0]][corner[1]] = { color: 'white', bold: false, dim: true };
+  }
 
-  // Battlements (▲) along the walls
-  const topBattlements = [WALL_LEFT + 1, 8, 14, 38, 44, WALL_RIGHT - 1];
-  const botBattlements = [WALL_LEFT + 1, 8, 14, 42, 48, WALL_RIGHT - 1];
-
-  for (const bc of topBattlements) {
+  // Battlements
+  for (const bc of [WALL_LEFT + 1, 8, 14, 38, 44, WALL_RIGHT - 1]) {
     if (bc > WALL_LEFT && bc < WALL_RIGHT) {
       grid[WALL_TOP][bc] = '▲';
       meta[WALL_TOP][bc] = { color: 'white', bold: true, dim: false };
     }
   }
-  for (const bc of botBattlements) {
+  for (const bc of [WALL_LEFT + 1, 8, 14, 42, 48, WALL_RIGHT - 1]) {
     if (bc > WALL_LEFT && bc < WALL_RIGHT && grid[WALL_BOT][bc] === '═') {
       grid[WALL_BOT][bc] = '▲';
       meta[WALL_BOT][bc] = { color: 'white', bold: true, dim: false };
     }
   }
 
-  // Title banner in top wall
+  // Title
   const title = ' THE KEEP ';
   const titleStart = WALL_LEFT + 1 + Math.floor(((WALL_RIGHT - WALL_LEFT - 1) - title.length) / 2);
   for (let i = 0; i < title.length; i++) {
@@ -194,7 +168,7 @@ export function KeepView({ keep, cursorRow, cursorCol, message }: KeepViewProps)
     meta[WALL_TOP][titleStart + i] = { color: 'yellow', bold: true, dim: false };
   }
 
-  // --- 3. Clear interior to courtyard floor ---
+  // --- 3. Clear interior ---
   for (let r = WALL_TOP + 1; r < WALL_BOT; r++) {
     for (let c = WALL_LEFT + 1; c < WALL_RIGHT; c++) {
       grid[r][c] = ' ';
@@ -202,109 +176,79 @@ export function KeepView({ keep, cursorRow, cursorCol, message }: KeepViewProps)
     }
   }
 
-  // --- 4. Wall torches (flames in the corners) ---
-  const torches = [
-    [WALL_TOP + 1, WALL_LEFT + 1],
-    [WALL_TOP + 1, WALL_RIGHT - 1],
-    [WALL_BOT - 1, WALL_LEFT + 1],
-    [WALL_BOT - 1, WALL_RIGHT - 1],
-  ];
-  for (const [tr, tc] of torches) {
+  // --- 4. Torches ---
+  for (const [tr, tc] of [[WALL_TOP + 1, WALL_LEFT + 1], [WALL_TOP + 1, WALL_RIGHT - 1], [WALL_BOT - 1, WALL_LEFT + 1], [WALL_BOT - 1, WALL_RIGHT - 1]]) {
     grid[tr][tc] = '*';
     meta[tr][tc] = { color: 'yellow', bold: true, dim: false };
   }
 
-  // --- 5. Courtyard cobblestone paths ---
-  // Main horizontal path through the courtyard
+  // --- 5. Paths ---
   for (let c = WALL_LEFT + 2; c < WALL_RIGHT - 1; c++) {
-    if (grid[8][c] === ' ') {
-      grid[8][c] = '·';
-      meta[8][c] = { color: 'white', bold: false, dim: true };
-    }
+    if (grid[8][c] === ' ') { grid[8][c] = '·'; meta[8][c] = { color: 'white', bold: false, dim: true }; }
   }
-
-  // Vertical paths connecting upper & lower buildings
   for (const vc of [11, 25, 39]) {
     for (let r = 6; r <= (vc === 39 ? 8 : 10); r++) {
-      if (grid[r][vc] === ' ') {
-        grid[r][vc] = '·';
-        meta[r][vc] = { color: 'white', bold: false, dim: true };
-      }
+      if (grid[r][vc] === ' ') { grid[r][vc] = '·'; meta[r][vc] = { color: 'white', bold: false, dim: true }; }
     }
   }
-
-  // Gate approach road (center path to the gate)
   for (let r = 9; r < WALL_BOT; r++) {
-    if (grid[r][28] === ' ') {
-      grid[r][28] = '·';
-      meta[r][28] = { color: 'white', bold: false, dim: true };
-    }
+    if (grid[r][28] === ' ') { grid[r][28] = '·'; meta[r][28] = { color: 'white', bold: false, dim: true }; }
   }
-
-  // Scattered courtyard stones for atmosphere
-  const stones = [
-    [7, 16], [7, 34], [7, 48],
-    [9, 8], [9, 18], [9, 36],
-    [13, 8], [13, 18], [13, 36],
-  ];
-  for (const [sr, sc] of stones) {
+  for (const [sr, sc] of [[7, 16], [7, 34], [7, 48], [9, 8], [9, 18], [9, 36], [13, 8], [13, 18], [13, 36]]) {
     if (sr > WALL_TOP && sr < WALL_BOT && grid[sr][sc] === ' ') {
-      grid[sr][sc] = '·';
-      meta[sr][sc] = { color: 'white', bold: false, dim: true };
+      grid[sr][sc] = '·'; meta[sr][sc] = { color: 'white', bold: false, dim: true };
     }
   }
 
-  // --- 6. Draw buildings ---
+  // --- 6. Buildings ---
   for (const ent of STRUCTURE_ENTITIES) {
+    const pos = BUILDING_POS[ent.id];
+    if (!pos) continue;
     const def = KEEP_STRUCTURES.find(s => s.id === ent.id);
     const level = getStructureLevel(keep, ent.id);
     const maxLvl = def?.maxLevel ?? 3;
-    const color = structureColor(level, maxLvl);
-    const bold = level >= maxLvl;
-    const dim = level === 0;
+    const isSelected = ent.id === selectedId;
+    const color = isSelected ? 'yellow' : structureColor(level, maxLvl);
+    const bold = isSelected || level >= maxLvl;
+    const dim = !isSelected && level === 0;
 
-    const r = ent.row;
-    const c = ent.col;
-    const w = ent.width;
+    const r = pos.row;
+    const c = pos.col;
+    const w = pos.width;
     const inner = w - 2;
-
-    // Name centered in the top border with ─ padding
     const padL = Math.ceil((inner - ent.name.length) / 2);
     const padR = inner - ent.name.length - padL;
 
-    grid[r][c] = '┌';
+    grid[r][c] = isSelected ? '┏' : '┌';
     let p = c + 1;
-    for (let i = 0; i < padL; i++) { grid[r][p] = '─'; p++; }
+    for (let i = 0; i < padL; i++) { grid[r][p] = isSelected ? '━' : '─'; p++; }
     for (let i = 0; i < ent.name.length; i++) { grid[r][p] = ent.name[i]; p++; }
-    for (let i = 0; i < padR; i++) { grid[r][p] = '─'; p++; }
-    grid[r][c + w - 1] = '┐';
+    for (let i = 0; i < padR; i++) { grid[r][p] = isSelected ? '━' : '─'; p++; }
+    grid[r][c + w - 1] = isSelected ? '┓' : '┐';
 
-    // Middle row: │    sym    │
-    grid[r + 1][c] = '│';
+    grid[r + 1][c] = isSelected ? '┃' : '│';
     for (let i = 1; i < w - 1; i++) grid[r + 1][c + i] = ' ';
     grid[r + 1][c + Math.floor(w / 2)] = ent.symbol;
-    grid[r + 1][c + w - 1] = '│';
+    grid[r + 1][c + w - 1] = isSelected ? '┃' : '│';
 
-    // Bottom border
-    grid[r + 2][c] = '└';
-    for (let i = 1; i < w - 1; i++) grid[r + 2][c + i] = '─';
-    grid[r + 2][c + w - 1] = '┘';
+    grid[r + 2][c] = isSelected ? '┗' : '└';
+    for (let i = 1; i < w - 1; i++) grid[r + 2][c + i] = isSelected ? '━' : '─';
+    grid[r + 2][c + w - 1] = isSelected ? '┛' : '┘';
 
-    // Color all building cells
     for (let dr = 0; dr < 3; dr++) {
       for (let dc = 0; dc < w; dc++) {
         meta[r + dr][c + dc] = { color, bold, dim };
       }
     }
 
-    // Level pips below building
+    // Level pips
     const pipRow = r + 3;
     if (pipRow > WALL_TOP && pipRow < WALL_BOT) {
       const pipStart = c + Math.floor((w - maxLvl) / 2);
       for (let i = 0; i < maxLvl; i++) {
         grid[pipRow][pipStart + i] = i < level ? '◆' : '◇';
         meta[pipRow][pipStart + i] = {
-          color: i < level ? color : 'white',
+          color: i < level ? (isSelected ? 'yellow' : structureColor(level, maxLvl)) : 'white',
           bold: i < level,
           dim: i >= level,
         };
@@ -312,52 +256,66 @@ export function KeepView({ keep, cursorRow, cursorCol, message }: KeepViewProps)
     }
   }
 
-  // --- 7. Draw NPCs ---
+  // --- 7. NPCs ---
   for (const npc of NPC_ENTITIES) {
+    const pos = NPC_POS[npc.id];
+    if (!pos) continue;
     const npcState = keep.npcs.find(n => n.id === npc.id);
     const tier = npcState?.tier ?? 0;
-    const color = npcColor(tier);
-    grid[npc.row][npc.col] = npc.symbol;
-    meta[npc.row][npc.col] = { color, bold: tier >= 3, dim: false };
+    const isSelected = npc.id === selectedId;
+    const color = isSelected ? 'yellow' : npcColor(tier);
+
+    if (isSelected) {
+      // Draw selection brackets around NPC
+      if (pos.col - 1 > WALL_LEFT) {
+        grid[pos.row][pos.col - 1] = '[';
+        meta[pos.row][pos.col - 1] = { color: 'yellow', bold: true, dim: false };
+      }
+      if (pos.col + 1 < WALL_RIGHT) {
+        grid[pos.row][pos.col + 1] = ']';
+        meta[pos.row][pos.col + 1] = { color: 'yellow', bold: true, dim: false };
+      }
+    }
+
+    grid[pos.row][pos.col] = npc.symbol;
+    meta[pos.row][pos.col] = { color, bold: isSelected || tier >= 3, dim: false };
   }
 
-  // --- 8. Gate inscription on the bottom wall ---
-  const gateLabel = '╡ ENTER THE PALE ╞';
-  const gateStart = WALL_LEFT + 1 + Math.floor(((WALL_RIGHT - WALL_LEFT - 1) - gateLabel.length) / 2);
-  for (let i = 0; i < gateLabel.length; i++) {
-    grid[WALL_BOT][gateStart + i] = gateLabel[i];
-    meta[WALL_BOT][gateStart + i] = { color: 'green', bold: true, dim: false };
+  // --- 8. Gate ---
+  {
+    const isSelected = selectedId === 'gate';
+    const gateLabel = isSelected ? '┤ ENTER THE PALE ├' : '╡ ENTER THE PALE ╞';
+    const gateStart = WALL_LEFT + 1 + Math.floor(((WALL_RIGHT - WALL_LEFT - 1) - gateLabel.length) / 2);
+    for (let i = 0; i < gateLabel.length; i++) {
+      grid[WALL_BOT][gateStart + i] = gateLabel[i];
+      meta[WALL_BOT][gateStart + i] = { color: isSelected ? 'yellow' : 'green', bold: true, dim: false };
+    }
   }
 
-  // --- 9. The Pale creeping at the right edge (atmospheric mist inside) ---
+  // --- 9. Pale creep on right side ---
   for (let r = 11; r <= 14; r++) {
     for (let c = 48; c < WALL_RIGHT; c++) {
-      if (grid[r][c] === ' ') {
+      if (grid[r][c] === ' ' || grid[r][c] === '·') {
         grid[r][c] = '~';
         meta[r][c] = { color: 'white', bold: false, dim: true };
       }
     }
   }
 
-  // --- 10. Draw player cursor ---
-  if (cursorRow > 0 && cursorRow < GRID_ROWS && cursorCol > 0 && cursorCol < GRID_COLS) {
-    grid[cursorRow][cursorCol] = '@';
-    meta[cursorRow][cursorCol] = { color: 'yellow', bold: true, dim: false };
-  }
-
-  // --- Build proximity info ---
+  // --- Build info panel for selected entity ---
+  const selected = KEEP_ENTITIES.find(e => e.id === selectedId);
   let infoName = '';
   let infoDetail = '';
   let infoColor = 'cyan';
   let infoLevel: React.ReactNode | null = null;
 
-  if (nearby) {
-    if (nearby.type === 'structure') {
-      const def = KEEP_STRUCTURES.find(s => s.id === nearby.id);
-      const level = getStructureLevel(keep, nearby.id);
+  if (selected) {
+    if (selected.type === 'structure') {
+      const def = KEEP_STRUCTURES.find(s => s.id === selected.id);
+      const level = getStructureLevel(keep, selected.id);
       const maxLvl = def?.maxLevel ?? 3;
       infoColor = structureColor(level, maxLvl);
-      infoName = nearby.name;
+      infoName = selected.name;
       if (level >= maxLvl) {
         infoDetail = `${def?.description ?? ''} (fully upgraded)`;
       } else {
@@ -365,14 +323,14 @@ export function KeepView({ keep, cursorRow, cursorCol, message }: KeepViewProps)
         infoDetail = `${def?.description ?? ''} — ${cost} Echoes to upgrade`;
       }
       infoLevel = <Text>{' '}{levelBar(level, maxLvl, infoColor)}</Text>;
-    } else if (nearby.type === 'npc') {
-      const npcState = keep.npcs.find(n => n.id === nearby.id);
+    } else if (selected.type === 'npc') {
+      const npcState = keep.npcs.find(n => n.id === selected.id);
       const tier = npcState?.tier ?? 0;
       infoColor = npcColor(tier);
-      infoName = NPC_FULL_NAMES[nearby.id] ?? nearby.id;
-      infoDetail = NPC_FLAVOR[nearby.id] ?? '';
+      infoName = NPC_FULL_NAMES[selected.id] ?? selected.id;
+      infoDetail = NPC_FLAVOR[selected.id] ?? '';
       infoLevel = <Text>{' '}{levelBar(tier, 5, infoColor)}</Text>;
-    } else if (nearby.type === 'gate') {
+    } else if (selected.type === 'gate') {
       infoColor = 'green';
       infoName = 'The Gate';
       infoDetail = 'Step beyond the walls. Face the Pale.';
@@ -407,7 +365,7 @@ export function KeepView({ keep, cursorRow, cursorCol, message }: KeepViewProps)
       </Box>
 
       <Box flexDirection="column" paddingX={1}>
-        {nearby ? (
+        {selected ? (
           <Box flexDirection="column">
             <Box>
               <Text bold color={infoColor}>{infoName}</Text>
@@ -416,10 +374,10 @@ export function KeepView({ keep, cursorRow, cursorCol, message }: KeepViewProps)
             <Text dimColor>{infoDetail}</Text>
           </Box>
         ) : (
-          <Text dimColor italic>Explore the Keep. Walk near a building or NPC.</Text>
+          <Text dimColor italic>Select a building or NPC.</Text>
         )}
         {message ? <Text color="yellow" bold>{message}</Text> : null}
-        <Text dimColor>{'arrow/hjkl move  Enter interact  q menu'}</Text>
+        <Text dimColor>{'←→ select  Enter interact  q menu'}</Text>
       </Box>
     </Box>
   );

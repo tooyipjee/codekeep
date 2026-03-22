@@ -27,7 +27,7 @@ import { MapView } from './components/MapView.js';
 import { ShopView } from './components/ShopView.js';
 import { EventView } from './components/EventView.js';
 import { RestView } from './components/RestView.js';
-import { KeepView } from './components/KeepView.js';
+import { KeepView, isWalkable, getEntityAt } from './components/KeepView.js';
 import { TutorialView, TUTORIAL_PAGE_COUNT } from './components/TutorialView.js';
 import { SettingsView, DEFAULT_SETTINGS } from './components/SettingsView.js';
 import type { GameSettings } from './components/SettingsView.js';
@@ -88,7 +88,8 @@ function AppContent({ dryRun }: AppProps) {
 
   // Keep state
   const [keep, setKeep] = useState<KeepState | null>(null);
-  const [keepIndex, setKeepIndex] = useState(0);
+  const [keepCursorRow, setKeepCursorRow] = useState(7);
+  const [keepCursorCol, setKeepCursorCol] = useState(17);
   const [keepMessage, setKeepMessage] = useState('');
   const [runWon, setRunWon] = useState(false);
 
@@ -186,7 +187,8 @@ function AppContent({ dryRun }: AppProps) {
     const save = ensureSave();
     setCachedSave(save);
     setKeep(save.keep);
-    setKeepIndex(0);
+    setKeepCursorRow(7);
+    setKeepCursorCol(17);
     setKeepMessage('');
     setScreen('keep');
   }, [ensureSave]);
@@ -619,28 +621,45 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'keep' && keep) {
-      const totalItems = KEEP_STRUCTURES.length + keep.npcs.length + 2;
-      if (key.upArrow || input === 'k') setKeepIndex((i) => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setKeepIndex((i) => Math.min(totalItems - 1, i + 1));
+      const tryMove = (dr: number, dc: number) => {
+        const nr = keepCursorRow + dr;
+        const nc = keepCursorCol + dc;
+        if (isWalkable(nr, nc)) {
+          setKeepCursorRow(nr);
+          setKeepCursorCol(nc);
+          setKeepMessage('');
+        }
+      };
+      if (key.upArrow || input === 'k' || input === 'w') tryMove(-1, 0);
+      else if (key.downArrow || input === 'j' || input === 's') tryMove(1, 0);
+      else if (key.leftArrow || input === 'h' || input === 'a') tryMove(0, -1);
+      else if (key.rightArrow || input === 'l' || input === 'd') tryMove(0, 1);
       else if (input === 'q') setScreen('menu');
       else if (key.return) {
-        if (keepIndex < KEEP_STRUCTURES.length) {
-          const struct = KEEP_STRUCTURES[keepIndex];
+        const entity = getEntityAt(keepCursorRow, keepCursorCol);
+        if (!entity) {
+          setKeepMessage('Nothing here to interact with.');
+          return;
+        }
+        if (entity.type === 'structure') {
+          const struct = KEEP_STRUCTURES.find(s => s.id === entity.id);
+          if (!struct) return;
           const result = upgradeStructure(keep, struct.id);
           if (result) {
             setKeep(result);
             const save = ensureSave();
             save.keep = result;
             saveGame(save);
+            setCachedSave(save);
             setKeepMessage(`Upgraded ${struct.name}!`);
           } else {
             const level = getStructureLevel(keep, struct.id);
             if (level >= struct.maxLevel) setKeepMessage(`${struct.name} is already max level.`);
             else setKeepMessage(`Not enough Echoes to upgrade ${struct.name}.`);
           }
-        } else if (keepIndex < KEEP_STRUCTURES.length + keep.npcs.length) {
-          const npcIdx = keepIndex - KEEP_STRUCTURES.length;
-          const npc = keep.npcs[npcIdx];
+        } else if (entity.type === 'npc') {
+          const npc = keep.npcs.find(n => n.id === entity.id);
+          if (!npc) return;
           const dialogue = getNextDialogue(npc.id, keep);
           if (dialogue) {
             const newKeep = markDialogueSeen(keep, npc.id, dialogue.dialogueId);
@@ -648,11 +667,12 @@ function AppContent({ dryRun }: AppProps) {
             const save = ensureSave();
             save.keep = newKeep;
             saveGame(save);
+            setCachedSave(save);
             setKeepMessage(`${dialogue.speaker}: "${dialogue.text}"`);
           } else {
             setKeepMessage('(No new dialogue)');
           }
-        } else if (keepIndex === KEEP_STRUCTURES.length + keep.npcs.length) {
+        } else if (entity.type === 'gate') {
           beginRun();
         }
       }
@@ -778,12 +798,7 @@ function AppContent({ dryRun }: AppProps) {
   }
 
   if (screen === 'keep' && keep) {
-    return (
-      <Box flexDirection="column">
-        <KeepView keep={keep} selectedIndex={keepIndex} />
-        {keepMessage && <Text color="cyan" bold>  {keepMessage}</Text>}
-      </Box>
-    );
+    return <KeepView keep={keep} cursorRow={keepCursorRow} cursorCol={keepCursorCol} message={keepMessage} />;
   }
 
   if ((screen === 'deck_remove' || screen === 'shop_remove') && run) {

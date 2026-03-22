@@ -15,6 +15,9 @@ import {
   getCurrentStoryLayer,
 } from '@codekeep/server';
 import type { ShopItem, GameEvent } from '@codekeep/server';
+import {
+  deleteSaveFile, hasSaveFile,
+} from '@codekeep/server';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { CombatView } from './components/CombatView.js';
 import { CardReward } from './components/CardReward.js';
@@ -24,6 +27,10 @@ import { ShopView } from './components/ShopView.js';
 import { EventView } from './components/EventView.js';
 import { RestView } from './components/RestView.js';
 import { KeepView } from './components/KeepView.js';
+import { TutorialView, TUTORIAL_PAGE_COUNT } from './components/TutorialView.js';
+import { SettingsView, DEFAULT_SETTINGS } from './components/SettingsView.js';
+import type { GameSettings } from './components/SettingsView.js';
+import { ControlsView } from './components/ControlsView.js';
 import { useCombatState } from './hooks/useCombatState.js';
 
 const MIN_COLS = 60;
@@ -51,7 +58,7 @@ export interface AppProps {
   dryRun?: boolean;
 }
 
-type Screen = 'menu' | 'keep' | 'map' | 'combat' | 'reward' | 'deck' | 'deck_remove' | 'shop' | 'shop_remove' | 'event' | 'rest' | 'result';
+type Screen = 'menu' | 'tutorial' | 'settings' | 'controls' | 'keep' | 'map' | 'combat' | 'reward' | 'deck' | 'deck_remove' | 'shop' | 'shop_remove' | 'event' | 'rest' | 'result';
 
 function AppContent({ dryRun }: AppProps) {
   const { exit } = useApp();
@@ -97,21 +104,24 @@ function AppContent({ dryRun }: AppProps) {
   const [inspectEnemy, setInspectEnemy] = useState(0);
 
   // Tutorial
-  const isFirstRun = (() => {
-    const save = loadGame();
-    return !save || save.keep.totalRuns <= 1;
-  })();
+  const [tutorialPage, setTutorialPage] = useState(0);
 
-  const storyLayer = (() => {
-    const save = loadGame();
-    return save ? getCurrentStoryLayer(save.keep.totalRuns, save.keep.highestAscension) : 'surface';
-  })();
+  // Settings
+  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const [settingsIndex, setSettingsIndex] = useState(0);
+  const [settingsMessage, setSettingsMessage] = useState('');
+  const [confirmingReset, setConfirmingReset] = useState(false);
+
+  // Cached save data (avoid disk I/O on every render)
+  const [cachedSave, setCachedSave] = useState<GameSave | null>(() => loadGame());
+  const isFirstRun = !cachedSave || cachedSave.keep.totalRuns <= 1;
+  const storyLayer = cachedSave ? getCurrentStoryLayer(cachedSave.keep.totalRuns, cachedSave.keep.highestAscension) : 'surface';
 
   const tooSmall = columns < MIN_COLS || rows < MIN_ROWS;
 
   // Persistence
   const ensureSave = useCallback((): GameSave => {
-    let save = loadGame();
+    let save = cachedSave ?? loadGame();
     if (!save) {
       save = createNewGameSave('Warden');
       if (save.keep.npcs.length === 0) {
@@ -122,8 +132,9 @@ function AppContent({ dryRun }: AppProps) {
     if (save.keep.npcs.length === 0) {
       save.keep.npcs = createDefaultNpcs();
     }
+    setCachedSave(save);
     return save;
-  }, []);
+  }, [cachedSave]);
 
   const doSave = useCallback((r: RunState | null) => {
     if (dryRun) return;
@@ -131,6 +142,7 @@ function AppContent({ dryRun }: AppProps) {
     save.activeRun = r;
     if (keep) save.keep = keep;
     saveGame(save);
+    setCachedSave(save);
   }, [dryRun, keep, ensureSave]);
 
   const beginRun = useCallback(() => {
@@ -143,7 +155,13 @@ function AppContent({ dryRun }: AppProps) {
     save.keep.totalRuns++;
     setKeep(save.keep);
     saveGame(save);
-    setScreen('map');
+    setCachedSave(save);
+    if (save.keep.totalRuns === 1) {
+      setTutorialPage(0);
+      setScreen('tutorial');
+    } else {
+      setScreen('map');
+    }
   }, [ensureSave]);
 
   const resumeRun = useCallback(() => {
@@ -158,6 +176,7 @@ function AppContent({ dryRun }: AppProps) {
 
   const goToKeep = useCallback(() => {
     const save = ensureSave();
+    setCachedSave(save);
     setKeep(save.keep);
     setKeepIndex(0);
     setKeepMessage('');
@@ -221,6 +240,7 @@ function AppContent({ dryRun }: AppProps) {
     save.activeRun = null;
     setKeep(save.keep);
     saveGame(save);
+    setCachedSave(save);
     setScreen('result');
   }, [ensureSave]);
 
@@ -275,11 +295,70 @@ function AppContent({ dryRun }: AppProps) {
   const menuItems = [
     { label: 'The Keep', action: 'keep' },
     { label: 'New Run', action: 'new' },
-    ...(loadGame()?.activeRun ? [{ label: 'Resume Run', action: 'resume' }] : []),
+    ...(cachedSave?.activeRun ? [{ label: 'Resume Run', action: 'resume' }] : []),
+    ...(!cachedSave || cachedSave.keep.totalRuns === 0 ? [{ label: 'Tutorial', action: 'tutorial' }] : []),
+    { label: 'Settings', action: 'settings' },
     { label: 'Quit', action: 'quit' },
   ];
 
   useInput((input, key) => {
+    if (screen === 'tutorial') {
+      if (key.rightArrow || input === 'l') setTutorialPage(p => Math.min(TUTORIAL_PAGE_COUNT - 1, p + 1));
+      else if (key.leftArrow || input === 'h') setTutorialPage(p => Math.max(0, p - 1));
+      else if (key.return) {
+        if (tutorialPage === TUTORIAL_PAGE_COUNT - 1) {
+          beginRun();
+        } else {
+          setTutorialPage(p => Math.min(TUTORIAL_PAGE_COUNT - 1, p + 1));
+        }
+      }
+      else if (input === 'q' || key.escape) setScreen('menu');
+      return;
+    }
+
+    if (screen === 'controls') {
+      if (input === 'q' || key.escape) setScreen('settings');
+      return;
+    }
+
+    if (screen === 'settings') {
+      const settingsItems = ['ascii', 'hints', 'log', 'tutorial', 'controls', 'reset', 'back'];
+      if (key.upArrow || input === 'k') { setSettingsIndex(i => Math.max(0, i - 1)); setConfirmingReset(false); }
+      else if (key.downArrow || input === 'j') { setSettingsIndex(i => Math.min(settingsItems.length - 1, i + 1)); setConfirmingReset(false); }
+      else if (input === 'q' || key.escape) { setScreen('menu'); setConfirmingReset(false); }
+      else if (key.return) {
+        const item = settingsItems[settingsIndex];
+        if (item === 'ascii') {
+          setSettings(s => ({ ...s, asciiMode: !s.asciiMode }));
+          setSettingsMessage('ASCII mode ' + (!settings.asciiMode ? 'enabled' : 'disabled'));
+        } else if (item === 'hints') {
+          setSettings(s => ({ ...s, showTutorialHints: !s.showTutorialHints }));
+          setSettingsMessage('Tutorial hints ' + (!settings.showTutorialHints ? 'enabled' : 'disabled'));
+        } else if (item === 'log') {
+          setSettings(s => ({ ...s, combatLogSize: s.combatLogSize >= 8 ? 0 : s.combatLogSize + 2 }));
+        } else if (item === 'tutorial') {
+          setTutorialPage(0);
+          setScreen('tutorial');
+        } else if (item === 'controls') {
+          setScreen('controls');
+        } else if (item === 'reset') {
+          if (confirmingReset) {
+            deleteSaveFile();
+            setCachedSave(null);
+            setKeep(null);
+            setRun(null);
+            setConfirmingReset(false);
+            setSettingsMessage('Save data deleted. Starting fresh.');
+          } else {
+            setConfirmingReset(true);
+          }
+        } else if (item === 'back') {
+          setScreen('menu');
+        }
+      }
+      return;
+    }
+
     if (screen === 'menu') {
       if (key.upArrow || input === 'k') setMenuIndex((i) => Math.max(0, i - 1));
       else if (key.downArrow || input === 'j') setMenuIndex((i) => Math.min(menuItems.length - 1, i + 1));
@@ -288,6 +367,8 @@ function AppContent({ dryRun }: AppProps) {
         if (action === 'keep') goToKeep();
         else if (action === 'new') beginRun();
         else if (action === 'resume') resumeRun();
+        else if (action === 'tutorial') { setTutorialPage(0); setScreen('tutorial'); }
+        else if (action === 'settings') { setSettingsIndex(0); setSettingsMessage(''); setConfirmingReset(false); setScreen('settings'); }
         else exit();
       }
       else if (input === 'q') exit();
@@ -594,6 +675,25 @@ function AppContent({ dryRun }: AppProps) {
     );
   }
 
+  if (screen === 'tutorial') {
+    return <TutorialView page={tutorialPage} totalPages={TUTORIAL_PAGE_COUNT} />;
+  }
+
+  if (screen === 'controls') {
+    return <ControlsView />;
+  }
+
+  if (screen === 'settings') {
+    const saveInfo = {
+      totalRuns: cachedSave?.keep.totalRuns ?? 0,
+      totalWins: cachedSave?.keep.totalWins ?? 0,
+      highestAscension: cachedSave?.keep.highestAscension ?? 0,
+      echoes: cachedSave?.keep.echoes ?? 0,
+      hasSave: !!cachedSave,
+    };
+    return <SettingsView settings={settings} selectedIndex={settingsIndex} saveInfo={saveInfo} confirmingReset={confirmingReset} message={settingsMessage} />;
+  }
+
   if (screen === 'deck' && run) {
     return <DeckView deck={run.deck} />;
   }
@@ -637,7 +737,7 @@ function AppContent({ dryRun }: AppProps) {
           <Text>Fragments <Text bold color="yellow">{run.fragments}</Text></Text>
           <Text>Deck <Text dimColor>{run.deck.length}</Text></Text>
         </Box>
-        {isFirstRun && !run.currentNodeId && (
+        {isFirstRun && settings.showTutorialHints && !run.currentNodeId && (
           <Text color="green" bold>  TIP: ⚔=combat ★=elite(harder, more reward) △=rest $=shop ?=event ◆=boss. ↑↓ select, Enter to go.</Text>
         )}
         <MapView
@@ -696,7 +796,7 @@ function AppContent({ dryRun }: AppProps) {
   }
 
   if (screen === 'combat' && combat && run) {
-    const tutorialHint = isFirstRun && combat.turn <= 3 ? (
+    const tutorialHint = isFirstRun && settings.showTutorialHints && combat.turn <= 3 ? (
       combat.turn === 1 && selectedCard < 0
         ? 'TIP: Press 1-5 to select a card. ←→ to target a column. Enter to play. Space to end turn.'
         : combat.turn === 1 && selectedCard >= 0

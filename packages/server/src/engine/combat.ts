@@ -364,11 +364,11 @@ function applyEffect(
       break;
     }
     case 'replay_last': {
-      if (state.lastCardPlayed) {
+      if (state.lastCardPlayed && state.lastCardPlayed !== 'pale_echo') {
         const lastDef = getCardDef(state.lastCardPlayed);
         if (lastDef) {
           for (const eff of lastDef.effects) {
-            if (eff.type !== 'exhaust_self') {
+            if (eff.type !== 'exhaust_self' && eff.type !== 'replay_last') {
               applyEffect(state, eff, targetColumn);
             }
           }
@@ -477,12 +477,10 @@ export function endPlayerTurn(state: CombatState): CombatState {
 function resolveEnemyTurn(state: CombatState): void {
   const rng = mulberry32(state.seed + state.turn * 31);
 
-  for (const col of state.columns) {
-    for (const enemy of col.enemies) {
-      if (enemy.hp <= 0) continue;
-      const intent = enemy.intent ?? { type: 'advance' as const, value: 1 };
-      executeEnemyIntent(state, enemy, intent, rng);
-    }
+  const allEnemies = state.columns.flatMap(col => col.enemies.map(e => ({ enemy: e, intent: e.intent ?? { type: 'advance' as const, value: 1 } })));
+  for (const { enemy, intent } of allEnemies) {
+    if (enemy.hp <= 0) continue;
+    executeEnemyIntent(state, enemy, intent, rng);
   }
 
   removeDeadEnemies(state);

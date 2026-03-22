@@ -25,6 +25,8 @@ export function getDamageMult(enemy: EnemyInstance): number {
   let mult = 1;
   const vulnStacks = hasStatus(enemy, 'vulnerable');
   if (vulnStacks > 0) mult *= 1 + vulnStacks * 0.25;
+  const fortStacks = hasStatus(enemy, 'fortified');
+  if (fortStacks > 0) mult *= Math.max(0.25, 1 - fortStacks * 0.15);
   return mult;
 }
 

@@ -5,5 +5,5 @@ export default defineConfig({
   dts: true,
   clean: true,
   target: 'es2022',
-  external: ['@libsql/client'],
+  external: ['@libsql/client', '@libsql/client/web'],
 });

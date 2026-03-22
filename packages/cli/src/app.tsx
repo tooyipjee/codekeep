@@ -88,8 +88,8 @@ function AppContent({ dryRun }: AppProps) {
 
   // Keep state
   const [keep, setKeep] = useState<KeepState | null>(null);
-  const [keepCursorRow, setKeepCursorRow] = useState(7);
-  const [keepCursorCol, setKeepCursorCol] = useState(17);
+  const [keepCursorRow, setKeepCursorRow] = useState(9);
+  const [keepCursorCol, setKeepCursorCol] = useState(25);
   const [keepMessage, setKeepMessage] = useState('');
   const [runWon, setRunWon] = useState(false);
 
@@ -187,8 +187,8 @@ function AppContent({ dryRun }: AppProps) {
     const save = ensureSave();
     setCachedSave(save);
     setKeep(save.keep);
-    setKeepCursorRow(7);
-    setKeepCursorCol(17);
+    setKeepCursorRow(9);
+    setKeepCursorCol(25);
     setKeepMessage('');
     setScreen('keep');
   }, [ensureSave]);
@@ -759,17 +759,22 @@ function AppContent({ dryRun }: AppProps) {
 
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold color="yellow">{'◆ CodeKeep — The Pale'}</Text>
+        <Text bold color="yellow">{'┌──────────────────────────────┐'}</Text>
+        <Text bold color="yellow">{'│    ◆ CodeKeep — The Pale     │'}</Text>
+        <Text bold color="yellow">{'└──────────────────────────────┘'}</Text>
         <Text> </Text>
-        {flavorText.map((line, i) => <Text key={i}>{line}</Text>)}
+        {flavorText.map((line, i) => <Text key={i} dimColor italic>{line}</Text>)}
         <Text> </Text>
-        {menuItems.map((item, i) => (
-          <Text key={item.action} bold={i === menuIndex} color={i === menuIndex ? 'yellow' : undefined}>
-            {i === menuIndex ? '▶ ' : '  '}{item.label}
-          </Text>
-        ))}
+        {menuItems.map((item, i) => {
+          const selected = i === menuIndex;
+          return (
+            <Text key={item.action} bold={selected} color={selected ? 'yellow' : 'white'}>
+              {selected ? ' ▶ ' : '   '}{item.label}
+            </Text>
+          );
+        })}
         <Text> </Text>
-        <Text dimColor>↑↓ navigate  Enter select  q quit</Text>
+        <Text dimColor>{'↑↓ navigate  Enter select  q quit'}</Text>
       </Box>
     );
   }
@@ -851,28 +856,38 @@ function AppContent({ dryRun }: AppProps) {
   if (screen === 'relic_reward') {
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold color="yellow">◆ Relic Reward</Text>
-        <Text dimColor>Choose a relic to add to your collection (s to skip):</Text>
+        <Text bold color="magenta">{'◆ Relic Reward'}</Text>
+        <Text dimColor>{'─'.repeat(36)}</Text>
+        <Text dimColor italic>{'An artifact resonates from the defeated foe.'}</Text>
         <Text> </Text>
         {relicChoices.map((relic, i) => {
           const isSelected = i === relicIndex;
           return (
             <Box key={relic.id} flexDirection="column">
-              <Text bold={isSelected} color={isSelected ? 'yellow' : 'white'}>
-                {isSelected ? '▶ ' : '  '}{relic.name}
+              <Text>
+                <Text bold={isSelected} color={isSelected ? 'yellow' : 'white'}>
+                  {isSelected ? ' ▶ ' : '   '}
+                </Text>
+                <Text color={isSelected ? 'magenta' : 'white'} bold={isSelected}>
+                  {'★ '}{relic.name}
+                </Text>
               </Text>
-              <Text dimColor>    {relic.description}</Text>
+              {isSelected && <Text dimColor>{'      '}{relic.description}</Text>}
             </Box>
           );
         })}
+        <Text> </Text>
         <Text bold={relicIndex === relicChoices.length} color={relicIndex === relicChoices.length ? 'yellow' : 'white'}>
-          {relicIndex === relicChoices.length ? '▶ ' : '  '}Skip
+          {relicIndex === relicChoices.length ? ' ▶ ' : '   '}Skip
         </Text>
         <Text> </Text>
         {run && run.relics.length > 0 && (
-          <Text dimColor>Current relics: {run.relics.join(', ')}</Text>
+          <Box>
+            <Text dimColor>{'Relics: '}</Text>
+            <Text color="magenta">{run.relics.join(' · ')}</Text>
+          </Box>
         )}
-        <Text dimColor>↑↓ navigate  Enter select  s skip</Text>
+        <Text dimColor>{'↑↓ navigate  Enter select  s skip'}</Text>
       </Box>
     );
   }
@@ -893,27 +908,42 @@ function AppContent({ dryRun }: AppProps) {
     const echoReward = run ? calculateEchoReward(runWon, run.act, run.ascensionLevel) : 0;
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold color="yellow">{'◆ CodeKeep — The Pale'}</Text>
-        <Text> </Text>
         {runWon ? (
           <>
-            <Text bold color="green">{'★ RUN COMPLETE'}</Text>
-            <Text>The Pale recedes. The Keep endures.</Text>
+            <Text bold color="green">{'┌──────────────────────────────┐'}</Text>
+            <Text bold color="green">{'│       ★ RUN COMPLETE         │'}</Text>
+            <Text bold color="green">{'└──────────────────────────────┘'}</Text>
+            <Text> </Text>
+            <Text italic>The Pale recedes. The Keep endures.</Text>
+            <Text italic dimColor>Another dawn. Another day of resistance.</Text>
           </>
         ) : (
           <>
-            <Text bold color="red">{'✗ DEFEAT'}</Text>
-            <Text>The Gate has fallen. The Pale consumes all.</Text>
-          </>
-        )}
-        {run && (
-          <>
-            <Text dimColor>Act {run.act} | Deck: {run.deck.length} cards | Fragments: {run.fragments}</Text>
-            <Text>Echoes earned: <Text bold color="cyan">+{echoReward}</Text></Text>
+            <Text bold color="red">{'┌──────────────────────────────┐'}</Text>
+            <Text bold color="red">{'│          ✗ DEFEAT            │'}</Text>
+            <Text bold color="red">{'└──────────────────────────────┘'}</Text>
+            <Text> </Text>
+            <Text italic>The Gate has fallen. The Pale consumes all.</Text>
+            <Text italic dimColor>But the Keep remembers. It always remembers.</Text>
           </>
         )}
         <Text> </Text>
-        <Text dimColor>Enter → The Keep  |  q → menu</Text>
+        {run && (
+          <>
+            <Text dimColor>{'─'.repeat(32)}</Text>
+            <Text>
+              {'  '}Act <Text bold>{run.act}</Text>
+              {'  '}Deck <Text dimColor>{run.deck.length} cards</Text>
+              {'  '}Fragments <Text dimColor>{run.fragments}</Text>
+            </Text>
+            <Text>
+              {'  '}Echoes earned <Text bold color="cyan">+{echoReward}</Text>
+            </Text>
+            <Text dimColor>{'─'.repeat(32)}</Text>
+          </>
+        )}
+        <Text> </Text>
+        <Text dimColor>{'Enter → The Keep  |  q → menu'}</Text>
       </Box>
     );
   }

@@ -23,7 +23,7 @@ const TUTORIAL_PAGES = [
       'Your Gate is your lifeline. It has HP (hit points).',
       'If Gate HP reaches 0, your run is over.',
       '',
-      'Gate HP:  ██████████░░ 70/70',
+      '  ◆ Gate ████████████░░░░░░░░ 70/70',
       '',
       'Enemies advance toward the Gate. When they reach it,',
       'they deal damage. Block reduces incoming damage.',
@@ -35,12 +35,11 @@ const TUTORIAL_PAGES = [
       'Each turn you have 3 Resolve (mana) to play cards.',
       'Cards cost 0-4 Resolve. Your hand refreshes each turn.',
       '',
-      'Controls:',
-      '  1-5    Select a card from your hand',
-      '  ←→     Choose target column',
-      '  Enter  Play the selected card',
-      '  Space  End your turn',
-      '  i      Inspect an enemy',
+      '  1-5 .... Select a card from your hand',
+      '  ←→  .... Choose target column',
+      '  Enter .. Play the selected card',
+      '  Space .. End your turn',
+      '  i ...... Inspect an enemy',
     ],
   },
   {
@@ -49,11 +48,10 @@ const TUTORIAL_PAGES = [
       'The battlefield has 5 columns. Enemies spawn at the top',
       'and advance downward toward your Gate at the bottom.',
       '',
-      '  Col 1 │ Col 2 │ Col 3 │ Col 4 │ Col 5',
-      '  ──────│───────│───────│───────│──────',
-      '  ☠18   │   ·   │ ↑10   │   ·   │   ·',
-      '  ══════════════════════════════════════',
-      '  Gate ██████████ 70/70',
+      '  ┌──Col 1──┬──Col 2──┬──Col 3──┐',
+      '  │  ☠18    │    ·    │  ↑10    │',
+      '  └─────────┴─────────┴─────────┘',
+      '  ◆ Gate ████████████ 70/70',
     ],
   },
   {
@@ -61,11 +59,11 @@ const TUTORIAL_PAGES = [
     lines: [
       'Enemies show what they plan to do next turn:',
       '',
-      '  ↓N  Advance N rows toward the Gate',
-      '  ⚔N  Attack the Gate for N damage',
-      '  ▲N  Buff themselves',
-      '  ◈N  Shield nearby enemies',
-      '  +N  Summon new enemies',
+      '  ↓N .. Advance N rows toward the Gate',
+      '  ⚔N .. Attack the Gate for N damage',
+      '  ▲N .. Buff themselves',
+      '  ◈N .. Shield nearby enemies',
+      '  +N .. Summon new enemies',
       '',
       'Read intents to plan your plays wisely!',
     ],
@@ -75,48 +73,48 @@ const TUTORIAL_PAGES = [
     lines: [
       'Some cards have dual use — cast OR emplace.',
       '',
-      'Cast:    Immediate effect (damage, block, etc.)',
-      'Emplace: Place as a structure in a column.',
-      '         Structures trigger every turn automatically!',
+      '  Cast:    Immediate effect (damage, block, etc.)',
+      '  Emplace: Place as a structure in a column.',
+      '           Triggers automatically every turn!',
       '',
-      'To emplace: select the card, press e to toggle',
-      'emplace mode, choose a column, press Enter.',
+      'Press e to toggle emplace mode, pick a column,',
+      'then press Enter to place it.',
     ],
   },
   {
     title: 'Status Effects',
     lines: [
-      'V = Vulnerable  Takes +25% damage per stack',
-      'W = Weak         Deals -15% damage per stack',
-      'B = Burn         Takes damage each turn, decays',
-      'F = Fortified    Takes -15% damage per stack',
-      'E = Empowered    Deals +25% damage per stack',
+      '  V Vulnerable ... +25% damage taken per stack',
+      '  W Weak ......... -15% damage dealt per stack',
+      '  B Burn ......... Takes damage each turn, decays',
+      '  F Fortified .... -15% damage taken per stack',
+      '  E Empowered .... +25% damage dealt per stack',
       '',
-      'Stack-based: 2x Vulnerable = +50% damage taken.',
+      'Effects stack: 2x Vulnerable = +50% damage taken.',
     ],
   },
   {
-    title: 'The Map & Node Types',
+    title: 'The Map',
     lines: [
-      '⚔ Combat    Standard enemy encounter',
-      '★ Elite     Harder fight, better rewards',
-      '△ Rest      Heal or remove a card',
-      '$ Shop      Buy cards, potions, remove cards',
-      '? Event     Story encounters with choices',
-      '◆ Boss      Act boss — defeat to advance',
+      '  ⚔ Combat ... Standard enemy encounter',
+      '  ★ Elite .... Harder fight, better rewards',
+      '  △ Rest ..... Heal or remove a card',
+      '  $ Shop ..... Buy cards, potions, remove cards',
+      '  ? Event .... Story encounters with choices',
+      '  ◆ Boss ..... Act boss — defeat to advance',
       '',
       'Choose your path wisely. Elites are risky but rewarding.',
     ],
   },
   {
-    title: 'The Keep & Meta-Progression',
+    title: 'The Keep',
     lines: [
       'After each run, you earn Echoes based on performance.',
-      'Spend Echoes at The Keep to:',
+      'Explore the Keep to:',
       '',
       '  ◆ Upgrade structures (bonuses for future runs)',
       '  ◆ Talk to NPCs (unlock story and lore)',
-      '  ◆ Increase Ascension (harder difficulty, new modifiers)',
+      '  ◆ Increase Ascension (harder + new modifiers)',
       '',
       'The Keep remembers. Each run makes you stronger.',
     ],
@@ -124,12 +122,9 @@ const TUTORIAL_PAGES = [
   {
     title: 'Ready to Play!',
     lines: [
-      'Quick reference:',
-      '  1-5 = select card    ←→ = target column',
-      '  Enter = play card    Space = end turn',
-      '  e = emplace toggle   p = use potion',
-      '  i = inspect enemy    d = view deck',
-      '  q = quit to menu',
+      '  1-5 = card    ←→ = column    Enter = play',
+      '  Space = end    e = emplace    p = potion',
+      '  i = inspect    d = deck       q = menu',
       '',
       'The Pale awaits, Warden. Defend the Keep.',
       '',
@@ -138,23 +133,33 @@ const TUTORIAL_PAGES = [
   },
 ];
 
+function progressBar(current: number, total: number, width: number): string {
+  const filled = Math.round((current / total) * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
+
 export function TutorialView({ page, totalPages }: TutorialViewProps) {
   const content = TUTORIAL_PAGES[page];
   if (!content) return null;
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Text bold color="yellow">◆ Tutorial — {content.title} ({page + 1}/{totalPages})</Text>
+      <Text bold color="yellow">{'◆ Tutorial — '}{content.title}</Text>
+      <Text dimColor>{'─'.repeat(44)}</Text>
       <Text> </Text>
       {content.lines.map((line, i) => (
         <Text key={i}>{line || ' '}</Text>
       ))}
       <Text> </Text>
-      <Text dimColor>
-        {page < totalPages - 1
-          ? '← prev  → next  Enter skip to game  q close'
-          : '← prev  Enter start game  q close'}
-      </Text>
+      <Text dimColor>{'─'.repeat(44)}</Text>
+      <Box>
+        <Text dimColor>{progressBar(page + 1, totalPages, 20)} {page + 1}/{totalPages}  </Text>
+        <Text dimColor>
+          {page < totalPages - 1
+            ? '← prev  → next  q close'
+            : '← prev  Enter start  q close'}
+        </Text>
+      </Box>
     </Box>
   );
 }

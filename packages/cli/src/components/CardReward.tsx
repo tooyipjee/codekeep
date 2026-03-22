@@ -16,30 +16,58 @@ function rarityColor(rarity: string): string {
   }
 }
 
+function rarityLabel(rarity: string): string {
+  switch (rarity) {
+    case 'uncommon': return '◇ uncommon';
+    case 'rare': return '◆ rare';
+    case 'legendary': return '★ legendary';
+    default: return '· common';
+  }
+}
+
+function categorySymbol(category: string): string {
+  switch (category) {
+    case 'armament': return '⚔';
+    case 'fortification': return '◇';
+    case 'edict': return '✦';
+    case 'wild': return '◈';
+    default: return '·';
+  }
+}
+
 export function CardReward({ cards, selectedIndex }: CardRewardProps) {
+  const skipSelected = selectedIndex >= cards.length;
+
   return (
     <Box flexDirection="column" padding={1}>
-      <Text bold color="yellow">{'◆ Choose a Card Reward'}</Text>
+      <Text bold color="yellow">{'◆ Card Reward'}</Text>
+      <Text dimColor>{'─'.repeat(36)}</Text>
+      <Text dimColor italic>{'Choose a card to add to your deck.'}</Text>
       <Text> </Text>
       {cards.map((card, i) => {
         const isSelected = i === selectedIndex;
         return (
-          <Box key={card.id} flexDirection="column" marginBottom={1}>
-            <Text bold={isSelected} color={isSelected ? 'yellow' : rarityColor(card.rarity)}>
-              {isSelected ? '▶ ' : '  '}{i + 1}. {card.name} [{card.cost}] ({card.rarity})
+          <Box key={card.id} flexDirection="column" marginBottom={0}>
+            <Text>
+              <Text bold={isSelected} color={isSelected ? 'yellow' : 'white'}>
+                {isSelected ? ' ▶ ' : '   '}
+              </Text>
+              <Text color={rarityColor(card.rarity)} bold={isSelected}>
+                {categorySymbol(card.category)} {card.name}
+              </Text>
+              <Text dimColor>{' '}[{card.cost}]{' '}</Text>
+              <Text color={rarityColor(card.rarity)} dimColor>{rarityLabel(card.rarity)}</Text>
             </Text>
-            <Text dimColor>     {card.description}</Text>
+            {isSelected && <Text dimColor>{'      '}{card.description}</Text>}
           </Box>
         );
       })}
       <Text> </Text>
-      <Text dimColor>
-        {selectedIndex >= 0
-          ? `  ${cards.length + 1}. Skip — take no card`
-          : `▶ ${cards.length + 1}. Skip — take no card`}
+      <Text bold={skipSelected} color={skipSelected ? 'yellow' : 'white'}>
+        {skipSelected ? ' ▶ ' : '   '}Skip
       </Text>
       <Text> </Text>
-      <Text dimColor>↑↓ navigate  Enter select  s skip</Text>
+      <Text dimColor>{'↑↓ navigate  Enter select  s skip'}</Text>
     </Box>
   );
 }

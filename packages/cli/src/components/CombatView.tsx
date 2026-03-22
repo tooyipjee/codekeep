@@ -7,20 +7,20 @@ import { CardHand } from './CardHand.js';
 
 function formatCombatEvent(evt: CombatEvent): string {
   switch (evt.type) {
-    case 'damage_dealt': return `Dealt ${evt.data.damage} damage to enemy`;
-    case 'enemy_advance': return `Enemy advances to row ${evt.data.row}`;
-    case 'gate_hit': return `Gate hit for ${evt.data.damage} damage${evt.data.blocked ? ` (${evt.data.blocked} blocked)` : ''}`;
-    case 'enemy_killed': return `Enemy destroyed!`;
-    case 'block_gained': return `Gained ${evt.data.value} Block`;
-    case 'emplacement_placed': return `Emplacement placed in column ${(evt.data.column as number) + 1}`;
-    case 'emplacement_triggered': return `Emplacement triggered in column ${(evt.data.column as number) + 1}`;
-    case 'emplacement_destroyed': return `Emplacement destroyed in column ${(evt.data.column as number) + 1}`;
-    case 'status_applied': return `Applied ${evt.data.type} (${evt.data.value})`;
+    case 'damage_dealt': return `  dealt ${evt.data.damage} damage`;
+    case 'enemy_advance': return `  enemy advances to row ${evt.data.row}`;
+    case 'gate_hit': return `  gate hit for ${evt.data.damage}${evt.data.blocked ? ` (${evt.data.blocked} blocked)` : ''}`;
+    case 'enemy_killed': return `  enemy destroyed`;
+    case 'block_gained': return `  +${evt.data.value} Block`;
+    case 'emplacement_placed': return `  emplacement placed in col ${(evt.data.column as number) + 1}`;
+    case 'emplacement_triggered': return `  emplacement triggered in col ${(evt.data.column as number) + 1}`;
+    case 'emplacement_destroyed': return `  emplacement destroyed in col ${(evt.data.column as number) + 1}`;
+    case 'status_applied': return `  applied ${evt.data.type} (${evt.data.value})`;
     case 'card_played': {
       const cardDef = getCardDef(evt.data.cardId as string);
-      return `Played ${cardDef?.name ?? evt.data.cardId}`;
+      return `  played ${cardDef?.name ?? evt.data.cardId}`;
     }
-    case 'turn_start': return `— Turn ${evt.data.turn} —`;
+    case 'turn_start': return `─ Turn ${evt.data.turn} ─`;
     default: return '';
   }
 }
@@ -38,18 +38,22 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
 
   return (
     <Box flexDirection="column">
+      {/* Status bar */}
       <Box justifyContent="space-between">
-        <Text bold color="yellow">◆ CodeKeep — The Pale</Text>
+        <Text bold color="yellow">{'◆ The Pale'}</Text>
         <Text>
-          Turn <Text bold>{combat.turn}</Text>
-          {'  '}Resolve <Text bold color="cyan">{combat.resolve}/{combat.maxResolve}</Text>
-          {'  '}Enemies <Text bold color="red">{totalEnemies}</Text>
-          {'  '}Draw <Text dimColor>{combat.drawPile.length}</Text>
-          {'  '}Discard <Text dimColor>{combat.discardPile.length}</Text>
+          Turn <Text bold color="white">{combat.turn}</Text>
+          {'  '}
+          <Text color="cyan">{'◆'.repeat(combat.resolve)}</Text>
+          <Text dimColor>{'◇'.repeat(combat.maxResolve - combat.resolve)}</Text>
+          {'  '}
+          Enemies <Text bold color="red">{totalEnemies}</Text>
+          {'  '}
+          Draw <Text dimColor>{combat.drawPile.length}</Text>
+          {' / '}
+          Discard <Text dimColor>{combat.discardPile.length}</Text>
         </Text>
       </Box>
-
-      <Text> </Text>
 
       <CombatGrid
         columns={combat.columns}
@@ -60,42 +64,47 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
         gateBlock={combat.gateBlock}
       />
 
-      <Text> </Text>
-
       <CardHand
         hand={combat.hand}
         selectedIndex={selectedCard}
         resolve={combat.resolve}
       />
 
-      <Text> </Text>
-
-      {message && <Text color="yellow">{message}</Text>}
-
+      {/* Event log */}
       {(() => {
         const recentEvents = combat.events
           .filter(e => e.turn >= combat.turn - 1)
-          .slice(-4);
+          .slice(-5);
         if (recentEvents.length === 0) return null;
         return (
-          <Box flexDirection="column">
-            {recentEvents.map((evt, i) => (
-              <Text key={i} dimColor>
-                {'  '}{formatCombatEvent(evt)}
-              </Text>
-            ))}
+          <Box flexDirection="column" marginTop={0}>
+            <Text dimColor>{'─── Log ───'}</Text>
+            {recentEvents.map((evt, i) => {
+              const txt = formatCombatEvent(evt);
+              if (!txt) return null;
+              const isTurnHeader = evt.type === 'turn_start';
+              return (
+                <Text key={i} dimColor={!isTurnHeader} color={isTurnHeader ? 'white' : undefined}>
+                  {txt}
+                </Text>
+              );
+            })}
           </Box>
         );
       })()}
 
+      {message && (
+        <Text color="yellow" bold>{'  '}{message}</Text>
+      )}
+
       {combat.phase === 'player' && (
         <Text dimColor>
-          1-{combat.hand.length} card  ←→ column  Enter play  e emplace  p potion  Space end turn  d deck  q quit
+          {'  '}1-{combat.hand.length} card  ←→ column  Enter play  e emplace  p potion  Space end  d deck  q quit
         </Text>
       )}
 
       {combat.outcome !== 'undecided' && (
-        <Box marginTop={1}>
+        <Box marginTop={1} paddingX={1}>
           <Text bold color={combat.outcome === 'win' ? 'green' : 'red'}>
             {combat.outcome === 'win'
               ? '★ VICTORY — The siege is broken!'

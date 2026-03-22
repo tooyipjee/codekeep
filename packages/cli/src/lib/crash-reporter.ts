@@ -17,6 +17,9 @@ export interface CrashReport {
 }
 
 export function saveCrashReport(error: unknown, context?: { screen?: string; gameState?: string }): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  if (msg.includes('Raw mode is not supported')) return '';
+
   if (!existsSync(CRASH_DIR)) {
     mkdirSync(CRASH_DIR, { recursive: true });
   }
@@ -25,7 +28,7 @@ export function saveCrashReport(error: unknown, context?: { screen?: string; gam
     timestamp: new Date().toISOString(),
     error: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
-    version: '0.1.0',
+    version: globalThis.__CODEKEEP_VERSION ?? 'unknown',
     nodeVersion: process.version,
     platform: process.platform,
     arch: process.arch,

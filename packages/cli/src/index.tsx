@@ -5,12 +5,15 @@ import React from 'react';
 import { App } from './app.js';
 import { loadGame, saveGame } from '@codekeep/server';
 
+export const CLI_VERSION = '0.2.1';
+(globalThis as any).__CODEKEEP_VERSION = CLI_VERSION;
+
 const program = new Command();
 
 program
   .name('codekeep')
   .description('Async tower defense terminal game powered by your coding activity')
-  .version('0.2.0')
+  .version(CLI_VERSION)
   .option('--ascii', 'Force ASCII-only rendering (no Unicode box drawing)')
   .option('--compact', 'Compact layout for narrow terminals')
   .option('--tutorial', 'Replay the tutorial')
@@ -18,6 +21,14 @@ program
   .option('--online <url>', 'Connect to a CodeKeep server for multiplayer')
   .option('--server <url>', 'Alias for --online')
   .action((opts) => {
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+      process.stderr.write(
+        'codekeep requires an interactive terminal.\n' +
+        'Run it directly in your terminal (not piped or in CI).\n',
+      );
+      process.exit(1);
+    }
+
     const hasSave = !!loadGame();
     const serverUrl = opts.online || opts.server || process.env.CODEKEEP_SERVER;
 

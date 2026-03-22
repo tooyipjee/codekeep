@@ -1,6 +1,6 @@
 {
   "name": "codekeep",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Async tower defense terminal game — build ASCII fortresses powered by your coding activity",
   "license": "MIT",
@@ -9,6 +9,7 @@
     "url": "https://github.com/tooyipjee/codekeep.git",
     "directory": "packages/cli"
   },
+  "engines": { "node": ">=20" },
   "keywords": ["terminal", "game", "tower-defense", "ascii", "cli", "tui", "pvp"],
   "bin": {
     "codekeep": "./dist/index.js"

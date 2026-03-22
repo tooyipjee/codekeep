@@ -37,7 +37,7 @@ export function Settings({ onBack, onResetGame, onReplayTutorial, asciiMode, onT
         const report: CrashReport = {
           timestamp: new Date().toISOString(),
           error: bugInput,
-          version: '0.1.0',
+          version: globalThis.__CODEKEEP_VERSION ?? 'unknown',
           nodeVersion: process.version,
           platform: process.platform,
           arch: process.arch,

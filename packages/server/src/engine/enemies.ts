@@ -19,7 +19,12 @@ export function spawnEnemy(templateId: string, column: number): EnemyInstance {
   };
 }
 
-export function rollEnemyIntent(enemy: EnemyInstance, rng: () => number, turn: number = 1): Intent {
+export function rollEnemyIntent(
+  enemy: EnemyInstance,
+  rng: () => number,
+  turn: number = 1,
+  columnHasEmplacement: boolean = false,
+): Intent {
   const tmpl = getEnemyTemplate(enemy.templateId);
   if (!tmpl) return { type: 'advance', value: 1 };
 
@@ -39,16 +44,16 @@ export function rollEnemyIntent(enemy: EnemyInstance, rng: () => number, turn: n
 
     case 'flanker': {
       if (roll < 0.4) {
-        const shift = rng() < 0.5 ? -1 : 1;
-        const newCol = Math.max(0, Math.min(COLUMNS - 1, enemy.column + shift));
-        enemy.column = newCol;
-        return { type: 'attack', value: tmpl.damage, targetColumn: newCol };
+        return { type: 'attack', value: tmpl.damage, targetColumn: enemy.column };
       }
       if (roll < 0.7) return { type: 'advance', value: tmpl.speed };
       return { type: 'attack', value: tmpl.damage, targetColumn: enemy.column };
     }
 
     case 'breaker':
+      if (columnHasEmplacement) {
+        return { type: 'advance', value: tmpl.speed };
+      }
       if (roll < 0.6) return { type: 'advance', value: tmpl.speed };
       return { type: 'attack', value: tmpl.damage, targetColumn: enemy.column };
 

@@ -6,11 +6,19 @@ export interface BossPhase {
   intentPattern: Intent[];
 }
 
+export interface BossDialogue {
+  storyLayer: string;
+  onAppear: string;
+  onPhaseChange?: string;
+  onDefeat?: string;
+}
+
 export interface BossDef {
   templateId: string;
   name: string;
   act: number;
   phases: BossPhase[];
+  dialogue?: BossDialogue[];
   onPhaseChange?: (state: CombatState, boss: EnemyInstance, phase: number) => void;
 }
 
@@ -28,6 +36,11 @@ export const BOSS_DEFS: BossDef[] = [
         { type: 'summon', value: 2 },
         { type: 'attack', value: 10 },
       ] },
+    ],
+    dialogue: [
+      { storyLayer: 'surface', onAppear: 'I will stitch this Keep into silence.', onDefeat: 'Unraveled... but the thread remains...' },
+      { storyLayer: 'cracks', onAppear: 'You again. How many times have we done this?', onPhaseChange: 'I remember you. Every time.' },
+      { storyLayer: 'truth', onAppear: 'I was a warden once. Before the stitching.' },
     ],
     onPhaseChange: (state, _boss, _phase) => {
       const col = state.columns[2];
@@ -50,6 +63,11 @@ export const BOSS_DEFS: BossDef[] = [
         { type: 'summon', value: 3 },
       ] },
     ],
+    dialogue: [
+      { storyLayer: 'surface', onAppear: 'Everything must be recorded. Including your defeat.', onDefeat: 'The records... will continue... without me...' },
+      { storyLayer: 'cracks', onAppear: 'Sable? Is that... no. Not yet. Not this time.' },
+      { storyLayer: 'truth', onAppear: 'I am what Sable will become. I am what the Archive demands.' },
+    ],
   },
   {
     templateId: 'boss_pale', name: 'The Pale Itself', act: 3,
@@ -69,6 +87,12 @@ export const BOSS_DEFS: BossDef[] = [
         { type: 'summon', value: 3 },
         { type: 'attack', value: 20 },
       ] },
+    ],
+    dialogue: [
+      { storyLayer: 'surface', onAppear: 'I am the memory of everything. And everything remembers its end.' },
+      { storyLayer: 'cracks', onAppear: "You've learned to read the patterns. But patterns are cages too." },
+      { storyLayer: 'truth', onAppear: 'The Architect made me to preserve. I preserved so perfectly that nothing could change. Is that not love?' },
+      { storyLayer: 'true_ending', onAppear: 'You carry the same question the Architect carried. The answer hasn\'t changed. Only the one asking.' },
     ],
     onPhaseChange: (state, _boss, phase) => {
       if (phase >= 2) {

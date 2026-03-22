@@ -105,6 +105,64 @@ const ACT2_EVENTS: GameEvent[] = [
   },
 ];
 
+const ACT1_EVENTS_CRACKS: GameEvent[] = [
+  {
+    id: 'wandering_smith_cracks',
+    name: 'The Wandering Smith',
+    description: "The smith again. You've seen this forge before — the same cracks in the stone, the same angle of the cloak. They look up and for the first time, you notice their hands are shaking.",
+    choices: [
+      { label: '"How long have you been here?" (Heal 15 HP)', effect: { type: 'heal', value: 15 } },
+      { label: '"You\'re not real, are you." (Gain 20 fragments)', effect: { type: 'fragments', value: 20 } },
+      { label: 'Say nothing. The kindness is worse than the lie.', effect: { type: 'nothing' } },
+    ],
+  },
+  {
+    id: 'the_echoing_child',
+    name: 'The Echoing Child',
+    description: "A child sits in the corridor, humming. They look up with eyes that glow faintly. \"I remember my house,\" they say. \"Can you take me there?\" The house is gone. You know this.",
+    choices: [
+      { label: '"I\'ll try." (Lose 15 HP — the detour is dangerous)', effect: { type: 'damage', value: 15 } },
+      { label: '"There\'s nothing to go back to." (Gain 10 fragments — they dissolve)', effect: { type: 'fragments', value: 10 } },
+      { label: '"Stay here. The Keep is safe."', effect: { type: 'nothing' } },
+    ],
+  },
+];
+
+const ACT2_EVENTS_CRACKS: GameEvent[] = [
+  {
+    id: 'motts_stash',
+    name: "Mott's Hidden Stash",
+    description: "\"DON'T TELL MOTT,\" reads the note pinned to a crate. It's Mott's handwriting.",
+    choices: [
+      { label: 'Open it. (Gain 25 fragments)', effect: { type: 'fragments', value: 25 } },
+      { label: 'Leave it. Mott knows things you don\'t.', effect: { type: 'nothing' } },
+    ],
+  },
+  {
+    id: 'wardens_echo',
+    name: "A Warden's Echo",
+    description: "You find scratches on the wall. Tallies. Hundreds of them. Below, in faded ink: \"Run 847. The Pale is not the enemy. The Pale is the answer to a question we forgot.\"",
+    choices: [
+      { label: 'Study the scratches. (Gain a card)', effect: { type: 'card_reward' } },
+      { label: 'Cover them. Some knowledge is dangerous. (Gain 15 fragments)', effect: { type: 'fragments', value: 15 } },
+      { label: 'Add your own tally mark.', effect: { type: 'nothing' } },
+    ],
+  },
+];
+
+const ACT3_EVENTS_TRUTH: GameEvent[] = [
+  {
+    id: 'the_architects_choice',
+    name: "The Architect's Choice",
+    description: "A door that shouldn't exist. Beyond it, a room you've seen in dreams. A desk. A journal. A pen that still has ink. The Architect's final workspace.",
+    choices: [
+      { label: 'Read the journal. (+15 max Gate HP)', effect: { type: 'max_hp', value: 15 } },
+      { label: 'Destroy the journal. (Gain 40 fragments)', effect: { type: 'fragments', value: 40 } },
+      { label: 'Sit down. Pick up the pen.', effect: { type: 'nothing' } },
+    ],
+  },
+];
+
 const ACT3_EVENTS: GameEvent[] = [
   {
     id: 'the_last_wall',
@@ -138,16 +196,34 @@ const ACT3_EVENTS: GameEvent[] = [
   },
 ];
 
-export function pickEvent(act: number, rng: () => number): GameEvent {
+export function pickEvent(act: number, rng: () => number, storyLayer?: string): GameEvent {
   let pool: GameEvent[];
   switch (act) {
     case 2: pool = ACT2_EVENTS; break;
     case 3: pool = ACT3_EVENTS; break;
     default: pool = ACT1_EVENTS; break;
   }
+
+  const isCracksOrAbove = storyLayer === 'cracks' || storyLayer === 'truth' || storyLayer === 'true_ending';
+  const isTruthOrAbove = storyLayer === 'truth' || storyLayer === 'true_ending';
+
+  if (isTruthOrAbove && act === 3 && ACT3_EVENTS_TRUTH.length > 0 && rng() < 0.4) {
+    return ACT3_EVENTS_TRUTH[Math.floor(rng() * ACT3_EVENTS_TRUTH.length)];
+  }
+
+  if (isCracksOrAbove) {
+    let cracksPool: GameEvent[] | null = null;
+    if (act === 1) cracksPool = ACT1_EVENTS_CRACKS;
+    else if (act === 2) cracksPool = ACT2_EVENTS_CRACKS;
+
+    if (cracksPool && cracksPool.length > 0 && rng() < 0.4) {
+      return cracksPool[Math.floor(rng() * cracksPool.length)];
+    }
+  }
+
   return pool[Math.floor(rng() * pool.length)];
 }
 
 export function getAllEvents(): GameEvent[] {
-  return [...ACT1_EVENTS, ...ACT2_EVENTS, ...ACT3_EVENTS];
+  return [...ACT1_EVENTS, ...ACT2_EVENTS, ...ACT3_EVENTS, ...ACT1_EVENTS_CRACKS, ...ACT2_EVENTS_CRACKS, ...ACT3_EVENTS_TRUTH];
 }

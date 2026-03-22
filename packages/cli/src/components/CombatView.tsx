@@ -1,8 +1,25 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import type { CombatState } from '@codekeep/shared';
+import type { CombatState, CombatEvent } from '@codekeep/shared';
 import { CombatGrid } from './CombatGrid.js';
 import { CardHand } from './CardHand.js';
+
+function formatCombatEvent(evt: CombatEvent): string {
+  switch (evt.type) {
+    case 'damage_dealt': return `Dealt ${evt.data.damage} damage to enemy`;
+    case 'enemy_advance': return `Enemy advances to row ${evt.data.row}`;
+    case 'gate_hit': return `Gate hit for ${evt.data.damage} damage${evt.data.blocked ? ` (${evt.data.blocked} blocked)` : ''}`;
+    case 'enemy_killed': return `Enemy destroyed!`;
+    case 'block_gained': return `Gained ${evt.data.value} Block`;
+    case 'emplacement_placed': return `Emplacement placed in column ${(evt.data.column as number) + 1}`;
+    case 'emplacement_triggered': return `Emplacement triggered in column ${(evt.data.column as number) + 1}`;
+    case 'emplacement_destroyed': return `Emplacement destroyed in column ${(evt.data.column as number) + 1}`;
+    case 'status_applied': return `Applied ${evt.data.type} (${evt.data.value})`;
+    case 'card_played': return `Played ${evt.data.cardId}`;
+    case 'turn_start': return `— Turn ${evt.data.turn} —`;
+    default: return '';
+  }
+}
 
 interface CombatViewProps {
   combat: CombatState;
@@ -50,6 +67,22 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
       <Text> </Text>
 
       {message && <Text color="yellow">{message}</Text>}
+
+      {(() => {
+        const recentEvents = combat.events
+          .filter(e => e.turn >= combat.turn - 1)
+          .slice(-4);
+        if (recentEvents.length === 0) return null;
+        return (
+          <Box flexDirection="column">
+            {recentEvents.map((evt, i) => (
+              <Text key={i} dimColor>
+                {'  '}{formatCombatEvent(evt)}
+              </Text>
+            ))}
+          </Box>
+        );
+      })()}
 
       {combat.phase === 'player' && (
         <Text dimColor>

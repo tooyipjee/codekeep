@@ -32,8 +32,11 @@ describe('card definitions', () => {
       expect(card.id).toBeTruthy();
       expect(card.name).toBeTruthy();
       expect(card.description).toBeTruthy();
-      expect(card.effects.length).toBeGreaterThan(0);
+      expect(card.effects).toBeDefined();
       expect(card.cost).toBeGreaterThanOrEqual(0);
+      if (card.id !== 'pale_curse') {
+        expect(card.effects.length).toBeGreaterThan(0);
+      }
     }
   });
 

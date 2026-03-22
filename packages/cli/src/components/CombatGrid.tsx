@@ -96,7 +96,7 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
       <Text dimColor>{'═'.repeat(colWidth * 5 + 4)}</Text>
       <Text>
         <Text bold color={gateColor}>Gate {hpBar(gateHp, gateMaxHp, 12)} {gateHp}/{gateMaxHp}</Text>
-        {gateBlock > 0 && <Text color="cyan"> 🛡{gateBlock}</Text>}
+        {gateBlock > 0 && <Text color="cyan"> ◇{gateBlock}</Text>}
       </Text>
     </Box>
   );

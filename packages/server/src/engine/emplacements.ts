@@ -1,15 +1,16 @@
 import type { CombatState, Emplacement, CardDef, CardEffect, EnemyInstance } from '@codekeep/shared';
 import { getCardDef } from '@codekeep/shared';
 
-export function placeEmplacement(state: CombatState, cardDef: CardDef, column: number): boolean {
+export function placeEmplacement(state: CombatState, cardDef: CardDef, column: number, hpBonus: number = 0): boolean {
   if (column < 0 || column >= state.columns.length) return false;
   if (state.columns[column].emplacement) return false;
   if (!cardDef.emplaceHp || !cardDef.emplaceEffects) return false;
 
+  const totalHp = cardDef.emplaceHp + hpBonus;
   state.columns[column].emplacement = {
     cardDefId: cardDef.id,
-    hp: cardDef.emplaceHp,
-    maxHp: cardDef.emplaceHp,
+    hp: totalHp,
+    maxHp: totalHp,
     effects: cardDef.emplaceEffects,
   };
 
@@ -23,15 +24,40 @@ export function placeEmplacement(state: CombatState, cardDef: CardDef, column: n
 }
 
 export function triggerEmplacements(state: CombatState): void {
+  const emplacementCount = state.columns.filter(c => c.emplacement).length;
+
   for (const col of state.columns) {
     if (!col.emplacement) continue;
+
     for (const effect of col.emplacement.effects) {
       applyEmplacementEffect(state, col.index, effect);
     }
+
+    const leftHasEmplace = col.index > 0 && state.columns[col.index - 1].emplacement;
+    const rightHasEmplace = col.index < state.columns.length - 1 && state.columns[col.index + 1].emplacement;
+    const adjacencyBonus = (leftHasEmplace ? 1 : 0) + (rightHasEmplace ? 1 : 0);
+
+    if (adjacencyBonus > 0) {
+      for (const effect of col.emplacement.effects) {
+        if (effect.type === 'damage') {
+          for (const enemy of col.enemies) {
+            enemy.hp -= adjacencyBonus;
+          }
+        }
+        if (effect.type === 'block') {
+          state.gateBlock += adjacencyBonus;
+        }
+      }
+    }
+
+    if (emplacementCount >= 3) {
+      state.gateBlock += emplacementCount;
+    }
+
     state.events.push({
       type: 'emplacement_triggered',
       turn: state.turn,
-      data: { column: col.index, cardId: col.emplacement.cardDefId },
+      data: { column: col.index, cardId: col.emplacement.cardDefId, adjacencyBonus },
     });
   }
 }
@@ -78,6 +104,32 @@ function applyEmplacementEffect(state: CombatState, column: number, effect: Card
       }
       break;
   }
+}
+
+export function reinforceEmplacement(state: CombatState, column: number, cardDef: CardDef): boolean {
+  const col = state.columns[column];
+  if (!col.emplacement) return false;
+  if (!cardDef.emplaceHp || !cardDef.emplaceEffects) return false;
+
+  col.emplacement.hp += Math.floor(cardDef.emplaceHp / 2);
+  col.emplacement.maxHp += Math.floor(cardDef.emplaceHp / 2);
+
+  for (const newEffect of cardDef.emplaceEffects) {
+    const existing = col.emplacement.effects.find(e => e.type === newEffect.type && e.target === newEffect.target);
+    if (existing) {
+      existing.value += Math.floor(newEffect.value / 2);
+    } else {
+      col.emplacement.effects.push({ ...newEffect, value: Math.floor(newEffect.value / 2) });
+    }
+  }
+
+  state.events.push({
+    type: 'emplacement_placed',
+    turn: state.turn,
+    data: { cardId: cardDef.id, column, reinforced: true },
+  });
+
+  return true;
 }
 
 export function damageEmplacement(state: CombatState, column: number, damage: number): void {

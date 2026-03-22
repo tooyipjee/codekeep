@@ -5,7 +5,12 @@ export type CardType = 'cast' | 'emplace';
 export type CardCategory = 'armament' | 'fortification' | 'edict' | 'wild';
 
 export interface CardEffect {
-  type: 'damage' | 'block' | 'draw' | 'heal' | 'resolve' | 'burn' | 'vulnerable' | 'weak' | 'fortify' | 'self_damage';
+  type:
+    | 'damage' | 'block' | 'draw' | 'heal' | 'resolve' | 'burn' | 'vulnerable' | 'weak' | 'fortify' | 'self_damage'
+    | 'trigger_emplacements' | 'damage_per_burn' | 'damage_equal_block' | 'draw_per_kills'
+    | 'damage_if_vulnerable' | 'damage_per_kill_this_action' | 'exhaust_draw' | 'burn_if_burning'
+    | 'damage_plus_block' | 'replay_last' | 'damage_if_emplaced' | 'exhaust_self'
+    | 'damage_if_low_hp' | 'damage_per_emplace' | 'draw_per_empty_potions';
   value: number;
   target?: 'single' | 'column' | 'all' | 'self' | 'adjacent';
 }
@@ -88,6 +93,24 @@ export interface Column {
   emplacement: Emplacement | null;
 }
 
+export interface DifficultyModifiers {
+  enemyHpMult: number;
+  enemyDamageMult: number;
+  startingGateHp: number;
+  extraEnemies: number;
+  shopCostMult: number;
+  healMult: number;
+  startWithCurse: boolean;
+  enemyBlitz: boolean;
+  reducedRewards: boolean;
+  enemyStartFortified: boolean;
+  voidColumns: number;
+  paleHunger: boolean;
+  bossExtraMinions: number;
+  reducedHandSize: boolean;
+  reducedMaxResolve: boolean;
+}
+
 export interface CombatState {
   columns: Column[];
   hand: CardInstance[];
@@ -104,6 +127,10 @@ export interface CombatState {
   outcome: 'undecided' | 'win' | 'lose';
   events: CombatEvent[];
   seed: number;
+  killsThisCombat: number;
+  relics: string[];
+  difficulty?: DifficultyModifiers;
+  lastCardPlayed?: string;
 }
 
 export type CombatEventType =
@@ -152,10 +179,31 @@ export interface PotionDef {
   effects: CardEffect[];
 }
 
+export type RelicEffect =
+  | { type: 'gain_block'; value: number }
+  | { type: 'gain_resolve'; value: number }
+  | { type: 'draw_cards'; value: number }
+  | { type: 'deal_damage_all'; value: number }
+  | { type: 'deal_damage_column'; value: number }
+  | { type: 'heal'; value: number }
+  | { type: 'apply_vulnerable_all'; value: number }
+  | { type: 'apply_weak_all'; value: number }
+  | { type: 'emplace_hp_bonus'; value: number }
+  | { type: 'max_resolve_bonus'; value: number }
+  | { type: 'extra_card_reward'; value: number }
+  | { type: 'fragment_bonus'; value: number }
+  | { type: 'first_card_free'; value: number }
+  | { type: 'burn_on_kill'; value: number }
+  | { type: 'block_on_emplace'; value: number };
+
+export type RelicTrigger = 'on_combat_start' | 'on_turn_start' | 'on_card_play' | 'on_enemy_kill' | 'on_emplace' | 'on_elite_kill' | 'passive';
+
 export interface RelicDef {
   id: string;
   name: string;
   description: string;
+  trigger: RelicTrigger;
+  effect: RelicEffect;
 }
 
 export interface RunState {

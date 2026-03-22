@@ -21,7 +21,7 @@ function rarityColor(rarity: string): string {
 function categorySymbol(category: string): string {
   switch (category) {
     case 'armament': return '⚔';
-    case 'fortification': return '🛡';
+    case 'fortification': return '◇';
     case 'edict': return '✦';
     case 'wild': return '◈';
     default: return '·';
@@ -53,9 +53,7 @@ export function CardHand({ hand, selectedIndex, resolve }: CardHandProps) {
             <Text color={canAfford ? rarityColor(def.rarity) : 'gray'} bold={isSelected}>
               {categorySymbol(def.category)} {def.name} {costStr}
             </Text>
-            {isSelected && (
-              <Text dimColor> — {def.description}</Text>
-            )}
+            <Text dimColor> — {isSelected ? def.description : (def.description.length > 35 ? def.description.slice(0, 35) + '…' : def.description)}</Text>
           </Text>
         );
       })}

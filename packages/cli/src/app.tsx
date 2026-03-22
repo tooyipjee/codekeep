@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import type { CardDef, CardInstance, RunState, MapNode, CombatState, KeepState, PotionDef, GameSave } from '@codekeep/shared';
-import { getCardDef, STARTING_GATE_HP, FRAGMENT_REWARDS, POTION_DEFS } from '@codekeep/shared';
+import { getCardDef, getEnemyTemplate, STARTING_GATE_HP, FRAGMENT_REWARDS, POTION_DEFS } from '@codekeep/shared';
 import {
   createStarterDeck, makeCardInstance, generateCardRewards, pickEncounter,
   mulberry32, hashSeed, createCombatState, playCard, endPlayerTurn,
@@ -12,6 +12,7 @@ import {
   saveGame, loadGame, createNewGameSave,
   calculateEchoReward, upgradeStructure, KEEP_STRUCTURES, getStructureLevel,
   createDefaultNpcs, getNextDialogue, markDialogueSeen,
+  getCurrentStoryLayer,
 } from '@codekeep/server';
 import type { ShopItem, GameEvent } from '@codekeep/server';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
@@ -89,6 +90,22 @@ function AppContent({ dryRun }: AppProps) {
   // Combat
   const combatHook = useCombatState();
   const { combat, selectedCard, targetColumn, message, emplaceMode, selectCard, selectTarget, confirmPlay, endTurn, toggleEmplace, startCombat, applyPotion: _applyPotion, needsTarget } = combatHook;
+
+  // Inspect mode
+  const [inspectMode, setInspectMode] = useState(false);
+  const [inspectCol, setInspectCol] = useState(0);
+  const [inspectEnemy, setInspectEnemy] = useState(0);
+
+  // Tutorial
+  const isFirstRun = (() => {
+    const save = loadGame();
+    return !save || save.keep.totalRuns <= 1;
+  })();
+
+  const storyLayer = (() => {
+    const save = loadGame();
+    return save ? getCurrentStoryLayer(save.keep.totalRuns, save.keep.highestAscension) : 'surface';
+  })();
 
   const tooSmall = columns < MIN_COLS || rows < MIN_ROWS;
 
@@ -177,7 +194,7 @@ function AppContent({ dryRun }: AppProps) {
       setScreen('shop');
     } else if (node.type === 'event') {
       const rng = mulberry32(hashSeed(run.seed + node.id));
-      setCurrentEvent(pickEvent(run.act, rng));
+      setCurrentEvent(pickEvent(run.act, rng, storyLayer));
       setEventChoice(0);
       setRun(r);
       setScreen('event');
@@ -496,6 +513,27 @@ function AppContent({ dryRun }: AppProps) {
         if (key.return || input === ' ') afterCombat();
         return;
       }
+      if (input === 'i') {
+        if (inspectMode) {
+          setInspectMode(false);
+        } else {
+          setInspectMode(true);
+          setInspectCol(0);
+          setInspectEnemy(0);
+        }
+        return;
+      }
+      if (inspectMode) {
+        if (key.leftArrow || input === 'h') setInspectCol(c => Math.max(0, c - 1));
+        else if (key.rightArrow || input === 'l') setInspectCol(c => Math.min(4, c + 1));
+        else if (key.upArrow || input === 'k') setInspectEnemy(e => Math.max(0, e - 1));
+        else if (key.downArrow || input === 'j') {
+          const maxE = (combat.columns[inspectCol]?.enemies.length ?? 1) - 1;
+          setInspectEnemy(e => Math.min(Math.max(0, maxE), e + 1));
+        }
+        else if (key.escape) setInspectMode(false);
+        return;
+      }
       if (input === 'q') { setScreen('menu'); return; }
       if (input === 'd' && run) { setScreen('deck'); return; }
       if (input === 'e') { toggleEmplace(); return; }
@@ -531,12 +569,19 @@ function AppContent({ dryRun }: AppProps) {
   }
 
   if (screen === 'menu') {
+    const flavorText = storyLayer === 'true_ending'
+      ? ['The fortress. The Pale. You can no longer tell which side you\'re on.']
+      : storyLayer === 'truth'
+      ? ['The fortress stands. The Pale stands. The line between them blurs.']
+      : storyLayer === 'cracks'
+      ? ['The fortress stands at the edge of the Pale.', 'You\'ve stood here before. You\'re sure of it.']
+      : ['The fortress stands at the edge of the Pale.', 'Beyond the walls, something stirs.'];
+
     return (
       <Box flexDirection="column" padding={1}>
         <Text bold color="yellow">{'◆ CodeKeep — The Pale'}</Text>
         <Text> </Text>
-        <Text>The fortress stands at the edge of the Pale.</Text>
-        <Text>Beyond the walls, something stirs.</Text>
+        {flavorText.map((line, i) => <Text key={i}>{line}</Text>)}
         <Text> </Text>
         {menuItems.map((item, i) => (
           <Text key={item.action} bold={i === menuIndex} color={i === menuIndex ? 'yellow' : undefined}>
@@ -592,6 +637,9 @@ function AppContent({ dryRun }: AppProps) {
           <Text>Fragments <Text bold color="yellow">{run.fragments}</Text></Text>
           <Text>Deck <Text dimColor>{run.deck.length}</Text></Text>
         </Box>
+        {isFirstRun && !run.currentNodeId && (
+          <Text color="green" bold>  TIP: ⚔=combat ★=elite(harder, more reward) △=rest $=shop ?=event ◆=boss. ↑↓ select, Enter to go.</Text>
+        )}
         <MapView
           map={run.map}
           currentNodeId={run.currentNodeId}
@@ -648,9 +696,21 @@ function AppContent({ dryRun }: AppProps) {
   }
 
   if (screen === 'combat' && combat && run) {
+    const tutorialHint = isFirstRun && combat.turn <= 3 ? (
+      combat.turn === 1 && selectedCard < 0
+        ? 'TIP: Press 1-5 to select a card. ←→ to target a column. Enter to play. Space to end turn.'
+        : combat.turn === 1 && selectedCard >= 0
+        ? 'TIP: Arrow keys choose which column to target. Press Enter to play the card.'
+        : combat.turn === 2
+        ? 'TIP: Enemies with ⚔ will attack your Gate. ↓ means they advance. Block reduces damage. Press i to inspect enemies.'
+        : combat.turn === 3
+        ? 'TIP: Cards with type "emplace" can become structures! Select one, press e to toggle emplace mode, then Enter.'
+        : null
+    ) : null;
     return (
       <Box flexDirection="column" paddingX={1}>
-        <Text dimColor>Act {run.act}  |  Gate {run.gateHp}/{run.gateMaxHp}  |  Fragments {run.fragments}  |  d=deck</Text>
+        <Text dimColor>Act {run.act}  |  Gate {run.gateHp}/{run.gateMaxHp}  |  Fragments {run.fragments}  |  d=deck  i=inspect</Text>
+        {tutorialHint && <Text color="green" bold>{tutorialHint}</Text>}
         <CombatView
           combat={combat}
           selectedCard={selectedCard}
@@ -658,6 +718,24 @@ function AppContent({ dryRun }: AppProps) {
           needsTarget={needsTarget}
           message={message}
         />
+        {inspectMode && (() => {
+          const col = combat.columns[inspectCol];
+          const enemy = col?.enemies[inspectEnemy];
+          if (!enemy) return <Text dimColor>No enemy in column {inspectCol + 1}. ←→ to navigate.</Text>;
+          const tmpl = getEnemyTemplate(enemy.templateId);
+          return (
+            <Box flexDirection="column" borderStyle="single" borderColor="cyan" paddingX={1}>
+              <Text bold color="cyan">Inspecting: {tmpl?.name ?? enemy.templateId} (Col {inspectCol + 1})</Text>
+              <Text>HP: {enemy.hp}/{enemy.maxHp}  Row: {enemy.row}</Text>
+              <Text dimColor>{tmpl?.description ?? ''}</Text>
+              {enemy.statusEffects.length > 0 && (
+                <Text>Status: {enemy.statusEffects.map(s => `${s.type}(${s.stacks}x, ${s.duration}t)`).join(', ')}</Text>
+              )}
+              <Text>Intent: {enemy.intent ? `${enemy.intent.type} ${enemy.intent.value}` : 'unknown'}</Text>
+              <Text dimColor>←→ column  ↑↓ enemy  i/Esc close</Text>
+            </Box>
+          );
+        })()}
       </Box>
     );
   }

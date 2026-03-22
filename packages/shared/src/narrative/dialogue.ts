@@ -58,6 +58,16 @@ export const NPC_DIALOGUES: DialogueSet[] = [
     { id: 'sable_t3_1', speaker: 'Sable', text: 'The bosses you fight... they\'re not monsters. They\'re memories. The Suture, the Archivist...' },
     { id: 'sable_t3_2', speaker: 'Sable', text: 'Wait. The Archivist. That\'s my title. Why is there a boss named after my role?' },
   ]},
+  { npcId: 'sable', tier: 4, lines: [
+    { id: 'sable_t4_1', speaker: 'Sable', text: 'I cross-referenced myself against the Archive records. The result was... recursive.' },
+    { id: 'sable_t4_2', speaker: 'Sable', text: 'The original Archivist\'s handwriting. It\'s identical to mine. Not similar — identical.' },
+    { id: 'sable_t4_3', speaker: 'Sable', text: 'I\'m not afraid that I\'m a copy, Warden. I\'m afraid that the copy was an improvement.' },
+  ]},
+  { npcId: 'sable', tier: 5, lines: [
+    { id: 'sable_t5_1', speaker: 'Sable', text: 'I found something in the Archive today. A letter, addressed to me. In my handwriting. Dated three hundred years ago.' },
+    { id: 'sable_t5_2', speaker: 'Sable', text: 'It said: \'When you find this, stop looking. Some records exist to be lost.\'' },
+    { id: 'sable_t5_3', speaker: 'Sable', text: 'I\'ve decided to keep cataloguing. Not because I have to. Because it\'s the only thing I do that the original never did.' },
+  ]},
 
   // ── Duskmar (First Wall) ──
   { npcId: 'duskmar', tier: 0, lines: [
@@ -73,6 +83,11 @@ export const NPC_DIALOGUES: DialogueSet[] = [
     { id: 'dusk_t2_1', speaker: 'Duskmar', text: 'I died once, you know. In the Pale. Wren brought me back with Echoes.' },
     { id: 'dusk_t2_2', speaker: 'Duskmar', text: 'Death isn\'t permanent here. That should worry you more than it comforts you.' },
   ]},
+  { npcId: 'duskmar', tier: 4, lines: [
+    { id: 'duskmar_t4_1', speaker: 'Duskmar', text: 'I remember dying, Warden. Not the pain — that faded. The silence after.' },
+    { id: 'duskmar_t4_2', speaker: 'Duskmar', text: 'When they brought me back, I could feel the Pale filling the gaps where memories should be. Cold, like water in a cracked foundation.' },
+    { id: 'duskmar_t4_3', speaker: 'Duskmar', text: 'I don\'t block because I\'m brave. I block because I know exactly what it costs to fall.' },
+  ]},
 
   // ── Mott (Salvager) ──
   { npcId: 'mott', tier: 0, lines: [
@@ -87,6 +102,11 @@ export const NPC_DIALOGUES: DialogueSet[] = [
   { npcId: 'mott', tier: 2, lines: [
     { id: 'mott_t2_1', speaker: 'Mott', text: 'I figured it out. The fragments? They\'re not resources. They\'re memories — compressed.' },
     { id: 'mott_t2_2', speaker: 'Mott', text: 'When you spend fragments, you\'re spending someone\'s past. Heavy, right?' },
+  ]},
+  { npcId: 'mott', tier: 4, lines: [
+    { id: 'mott_t4_1', speaker: 'Mott', text: 'I can\'t sell this one. It\'s... it\'s someone\'s last birthday. The whole day, compressed into a shard.' },
+    { id: 'mott_t4_2', speaker: 'Mott', text: 'You ever wonder if we\'re the good guys, Warden? Spending people\'s pasts like pocket change?' },
+    { id: 'mott_t4_3', speaker: 'Mott', text: 'Found a fragment today that tasted like rain. Don\'t ask me how I know that. Don\'t ask me why I cried.' },
   ]},
 
   // ── The Pale Visitor ──
@@ -107,9 +127,14 @@ export const NPC_DIALOGUES: DialogueSet[] = [
     { id: 'pv_t3_2', speaker: 'The Visitor', text: 'But I can\'t. Not alone. That\'s why I need a Warden.' },
   ]},
   { npcId: 'pale_visitor', tier: 4, lines: [
-    { id: 'pv_t4_1', speaker: 'The Visitor', text: 'There is a true ending, Warden. But it requires Ascension 15.' },
-    { id: 'pv_t4_2', speaker: 'The Visitor', text: 'At the peak, the Pale reveals its core. And you will have a choice.' },
-    { id: 'pv_t4_3', speaker: 'The Visitor', text: 'Destroy the Pale — and everything it remembers. Or become the new Architect.' },
+    { id: 'pv_t4_1', speaker: 'The Visitor', text: 'There is a place where the Pale is thin enough to see through. You will know it when the game stops feeling like a game.' },
+    { id: 'pv_t4_2', speaker: 'The Visitor', text: 'The Architect left two doors. One leads out. One leads deeper. Both are locked from the inside.' },
+    { id: 'pv_t4_3', speaker: 'The Visitor', text: 'You\'re closer than any Warden has been. That\'s not a compliment. It\'s a warning.' },
+  ]},
+  { npcId: 'pale_visitor', tier: 5, lines: [
+    { id: 'pv_t5_1', speaker: '???', text: 'The Pale doesn\'t consume. It remembers. And a memory that remembers itself...' },
+    { id: 'pv_t5_2', speaker: '???', text: 'You\'ve seen the Architect\'s journal. You know what they tried to build. Do you understand what they actually built?' },
+    { id: 'pv_t5_3', speaker: '???', text: 'The Keep is not a fortress, Warden. It\'s an argument. Against eternity. And you are its latest word.' },
   ]},
 ];
 

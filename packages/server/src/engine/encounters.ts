@@ -27,6 +27,31 @@ const ACT1_ENCOUNTERS: Omit<Encounter, 'isElite'>[] = [
   { name: 'Armored Column', enemies: [
     { templateId: 'husk', column: 2 }, { templateId: 'wisp', column: 0 }, { templateId: 'wisp', column: 4 },
   ] },
+  { name: 'Pale Scouts', enemies: [
+    { templateId: 'wisp', column: 0 }, { templateId: 'wisp', column: 4 }, { templateId: 'hollow', column: 2 },
+  ] },
+  { name: 'Needle Formation', enemies: [
+    { templateId: 'needle', column: 1 }, { templateId: 'needle', column: 3 },
+  ] },
+  { name: 'Husk Advance', enemies: [
+    { templateId: 'husk', column: 2 }, { templateId: 'wisp', column: 1 }, { templateId: 'wisp', column: 3 },
+  ] },
+  { name: 'Shadow Patrol', enemies: [
+    { templateId: 'shade', column: 0 }, { templateId: 'needle', column: 4 },
+  ] },
+  { name: 'Swarm Tide', enemies: [
+    { templateId: 'wisp', column: 0 }, { templateId: 'wisp', column: 1 }, { templateId: 'hollow', column: 2 },
+    { templateId: 'wisp', column: 3 }, { templateId: 'wisp', column: 4 },
+  ] },
+  { name: 'Hollow Shields', enemies: [
+    { templateId: 'hollow', column: 1 }, { templateId: 'hollow', column: 2 }, { templateId: 'hollow', column: 3 },
+  ] },
+  { name: 'Fast Assault', enemies: [
+    { templateId: 'needle', column: 0 }, { templateId: 'needle', column: 2 }, { templateId: 'needle', column: 4 },
+  ] },
+  { name: 'Pale Sentries', enemies: [
+    { templateId: 'shade', column: 2 }, { templateId: 'hollow', column: 0 }, { templateId: 'hollow', column: 4 },
+  ] },
 ];
 
 const ACT1_ELITES: Omit<Encounter, 'isElite'>[] = [
@@ -36,6 +61,12 @@ const ACT1_ELITES: Omit<Encounter, 'isElite'>[] = [
   { name: 'Hollow Legion', enemies: [
     { templateId: 'hollow', column: 0 }, { templateId: 'hollow', column: 1 },
     { templateId: 'hollow', column: 3 }, { templateId: 'hollow', column: 4 },
+  ] },
+  { name: 'Husk Fortress', enemies: [
+    { templateId: 'husk', column: 1 }, { templateId: 'husk', column: 3 }, { templateId: 'needle', column: 2 },
+  ] },
+  { name: 'Shade Ambush', enemies: [
+    { templateId: 'shade', column: 0 }, { templateId: 'shade', column: 2 }, { templateId: 'shade', column: 4 },
   ] },
 ];
 
@@ -47,6 +78,12 @@ const ACT2_ELITES: Omit<Encounter, 'isElite'>[] = [
     { templateId: 'flanker', column: 0 }, { templateId: 'flanker', column: 4 },
     { templateId: 'wraith', column: 2 },
   ] },
+  { name: 'Breaker Vanguard', enemies: [
+    { templateId: 'breaker', column: 1 }, { templateId: 'breaker', column: 3 }, { templateId: 'shielder', column: 2 },
+  ] },
+  { name: 'Phantom Blitz', enemies: [
+    { templateId: 'wraith', column: 0 }, { templateId: 'wraith', column: 1 }, { templateId: 'wraith', column: 3 }, { templateId: 'wraith', column: 4 },
+  ] },
 ];
 
 const ACT3_ELITES: Omit<Encounter, 'isElite'>[] = [
@@ -55,6 +92,13 @@ const ACT3_ELITES: Omit<Encounter, 'isElite'>[] = [
   ] },
   { name: 'The Final Test', enemies: [
     { templateId: 'echo', column: 2 }, { templateId: 'breaker', column: 0 }, { templateId: 'flanker', column: 4 },
+  ] },
+  { name: 'Memory Siege', enemies: [
+    { templateId: 'echo', column: 0 }, { templateId: 'echo', column: 2 }, { templateId: 'echo', column: 4 },
+  ] },
+  { name: 'The Pale Tribunal', enemies: [
+    { templateId: 'echo', column: 1 }, { templateId: 'echo', column: 2 }, { templateId: 'echo', column: 3 },
+    { templateId: 'breaker', column: 0 },
   ] },
 ];
 
@@ -68,6 +112,37 @@ const ACT2_ENCOUNTERS: Omit<Encounter, 'isElite'>[] = [
   { name: 'Shield Wall', enemies: [
     { templateId: 'shielder', column: 2 }, { templateId: 'hollow', column: 1 }, { templateId: 'hollow', column: 3 },
   ] },
+  { name: 'Wraith Surge', enemies: [
+    { templateId: 'wraith', column: 0 }, { templateId: 'wraith', column: 2 }, { templateId: 'wraith', column: 4 },
+  ] },
+  { name: 'Flanker Pair', enemies: [
+    { templateId: 'flanker', column: 1 }, { templateId: 'flanker', column: 3 },
+  ] },
+  { name: 'Shielder Escort', enemies: [
+    { templateId: 'shielder', column: 2 }, { templateId: 'breaker', column: 1 }, { templateId: 'hollow', column: 3 },
+  ] },
+  { name: 'Pale Vanguard II', enemies: [
+    { templateId: 'breaker', column: 0 }, { templateId: 'flanker', column: 2 }, { templateId: 'shielder', column: 4 },
+  ] },
+  { name: 'Wraith Patrol', enemies: [
+    { templateId: 'wraith', column: 1 }, { templateId: 'hollow', column: 0 }, { templateId: 'hollow', column: 4 },
+  ] },
+  { name: 'Breaker Column', enemies: [
+    { templateId: 'breaker', column: 2 }, { templateId: 'wisp', column: 0 }, { templateId: 'wisp', column: 1 },
+    { templateId: 'wisp', column: 3 }, { templateId: 'wisp', column: 4 },
+  ] },
+  { name: 'Shield Formation', enemies: [
+    { templateId: 'shielder', column: 1 }, { templateId: 'shielder', column: 3 }, { templateId: 'flanker', column: 2 },
+  ] },
+  { name: 'Assault Wave', enemies: [
+    { templateId: 'breaker', column: 1 }, { templateId: 'breaker', column: 3 },
+  ] },
+  { name: 'Night Raid', enemies: [
+    { templateId: 'wraith', column: 0 }, { templateId: 'flanker', column: 2 }, { templateId: 'wraith', column: 4 },
+  ] },
+  { name: 'Armored Push', enemies: [
+    { templateId: 'shielder', column: 0 }, { templateId: 'breaker', column: 2 }, { templateId: 'shielder', column: 4 },
+  ] },
 ];
 
 const ACT3_ENCOUNTERS: Omit<Encounter, 'isElite'>[] = [
@@ -77,6 +152,38 @@ const ACT3_ENCOUNTERS: Omit<Encounter, 'isElite'>[] = [
   { name: 'Final Surge', enemies: [
     { templateId: 'echo', column: 2 }, { templateId: 'wraith', column: 0 }, { templateId: 'wraith', column: 4 },
     { templateId: 'breaker', column: 1 },
+  ] },
+  { name: 'Echo Patrol', enemies: [
+    { templateId: 'echo', column: 0 }, { templateId: 'echo', column: 4 },
+  ] },
+  { name: 'Pale Convergence', enemies: [
+    { templateId: 'echo', column: 2 }, { templateId: 'wraith', column: 1 }, { templateId: 'wraith', column: 3 },
+  ] },
+  { name: 'Void March', enemies: [
+    { templateId: 'echo', column: 1 }, { templateId: 'echo', column: 3 }, { templateId: 'breaker', column: 2 },
+  ] },
+  { name: 'Shadow Tide', enemies: [
+    { templateId: 'wraith', column: 0 }, { templateId: 'echo', column: 2 }, { templateId: 'flanker', column: 4 },
+  ] },
+  { name: 'The Unnamed', enemies: [
+    { templateId: 'echo', column: 2 }, { templateId: 'shielder', column: 1 }, { templateId: 'shielder', column: 3 },
+  ] },
+  { name: 'Pale Hammer', enemies: [
+    { templateId: 'breaker', column: 0 }, { templateId: 'echo', column: 2 }, { templateId: 'breaker', column: 4 },
+  ] },
+  { name: 'Memory Storm', enemies: [
+    { templateId: 'echo', column: 0 }, { templateId: 'echo', column: 1 }, { templateId: 'echo', column: 3 }, { templateId: 'echo', column: 4 },
+  ] },
+  { name: 'Wraith Flood', enemies: [
+    { templateId: 'wraith', column: 0 }, { templateId: 'wraith', column: 1 }, { templateId: 'wraith', column: 2 },
+    { templateId: 'wraith', column: 3 }, { templateId: 'wraith', column: 4 },
+  ] },
+  { name: 'Final Guard', enemies: [
+    { templateId: 'echo', column: 1 }, { templateId: 'breaker', column: 2 }, { templateId: 'echo', column: 3 },
+  ] },
+  { name: 'Pale Assembly', enemies: [
+    { templateId: 'echo', column: 0 }, { templateId: 'shielder', column: 2 }, { templateId: 'echo', column: 4 },
+    { templateId: 'flanker', column: 1 },
   ] },
 ];
 

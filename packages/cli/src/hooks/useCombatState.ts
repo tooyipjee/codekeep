@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
-import type { CombatState, CardInstance } from '@codekeep/shared';
-import { getCardDef } from '@codekeep/shared';
-import { createCombatState, playCard, endPlayerTurn, createStarterDeck } from '@codekeep/server';
+import type { CombatState, CardInstance, PotionDef } from '@codekeep/shared';
+import { getCardDef, HAND_SIZE } from '@codekeep/shared';
+import { createCombatState, playCard, endPlayerTurn, createStarterDeck, mulberry32, drawCards } from '@codekeep/server';
 
 export interface UseCombatStateReturn {
   combat: CombatState | null;
@@ -15,6 +15,7 @@ export interface UseCombatStateReturn {
   endTurn: () => void;
   toggleEmplace: () => void;
   startCombat: (deck?: CardInstance[], seed?: number, gateHp?: number, gateMaxHp?: number, wave?: { templateId: string; column: number }[]) => void;
+  applyPotion: (potionDef: PotionDef | null) => void;
   needsTarget: boolean;
 }
 
@@ -137,6 +138,47 @@ export function useCombatState(): UseCombatStateReturn {
     }
   }, []);
 
+  const applyPotion = useCallback((potionDef: PotionDef | null) => {
+    const state = combatRef.current;
+    if (!state || !potionDef) return;
+
+    for (const effect of potionDef.effects) {
+      switch (effect.type) {
+        case 'heal':
+          state.gateHp = Math.min(state.gateMaxHp, state.gateHp + effect.value);
+          break;
+        case 'block':
+          state.gateBlock += effect.value;
+          break;
+        case 'damage': {
+          if (effect.target === 'column') {
+            const col = state.columns[2];
+            for (const e of col.enemies) e.hp -= effect.value;
+          } else if (effect.target === 'all') {
+            for (const col of state.columns) {
+              for (const e of col.enemies) e.hp -= effect.value;
+            }
+          }
+          break;
+        }
+        case 'draw': {
+          const rng = mulberry32(state.seed + state.turn * 53);
+          const { drawn, newDrawPile, newDiscardPile } = drawCards(state.drawPile, state.discardPile, effect.value, rng);
+          state.hand.push(...drawn);
+          state.drawPile = newDrawPile;
+          state.discardPile = newDiscardPile;
+          break;
+        }
+        case 'resolve':
+          state.resolve = Math.min(state.maxResolve + 5, state.resolve + effect.value);
+          break;
+      }
+    }
+    combatRef.current = state;
+    setCombat({ ...state });
+    setMessage(`Used ${potionDef.name}.`);
+  }, []);
+
   return {
     combat,
     selectedCard,
@@ -149,6 +191,7 @@ export function useCombatState(): UseCombatStateReturn {
     endTurn,
     toggleEmplace,
     startCombat,
+    applyPotion,
     needsTarget,
   };
 }

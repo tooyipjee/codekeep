@@ -53,7 +53,7 @@ export function createCombatState(
 
   for (const col of columns) {
     for (const enemy of col.enemies) {
-      enemy.intent = rollEnemyIntent(enemy, rng);
+      enemy.intent = rollEnemyIntent(enemy, rng, 1);
     }
   }
 
@@ -182,6 +182,11 @@ function applyEffect(
       }
       break;
     }
+    case 'self_damage': {
+      state.gateHp -= effect.value;
+      pushEvent(state, 'gate_hit', { self: true, damage: effect.value });
+      break;
+    }
   }
 }
 
@@ -251,7 +256,7 @@ function resolveEnemyTurn(state: CombatState): void {
 
   for (const col of state.columns) {
     for (const enemy of col.enemies) {
-      enemy.intent = rollEnemyIntent(enemy, rng);
+      enemy.intent = rollEnemyIntent(enemy, rng, state.turn);
     }
   }
 
@@ -264,6 +269,8 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
 
   applyBurn(enemy);
   tickStatusEffects(enemy);
+
+  if (enemy.hp <= 0) return;
 
   switch (intent.type) {
     case 'advance':

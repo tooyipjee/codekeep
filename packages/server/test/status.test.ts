@@ -29,18 +29,22 @@ describe('status effects', () => {
     expect(hasStatus(enemy, 'vulnerable')).toBe(3);
   });
 
-  it('vulnerable increases incoming damage by 50%', () => {
+  it('vulnerable increases incoming damage per stack (25% per stack)', () => {
     const enemy = makeEnemy();
     expect(getDamageMult(enemy)).toBe(1);
+    applyStatus(enemy, 'vulnerable', 1, 2);
+    expect(getDamageMult(enemy)).toBe(1.25);
     applyStatus(enemy, 'vulnerable', 1, 2);
     expect(getDamageMult(enemy)).toBe(1.5);
   });
 
-  it('weak reduces enemy damage by 25%', () => {
+  it('weak reduces enemy damage per stack (15% per stack)', () => {
     const enemy = makeEnemy();
     expect(getEnemyDamageMult(enemy)).toBe(1);
     applyStatus(enemy, 'weak', 1, 2);
-    expect(getEnemyDamageMult(enemy)).toBe(0.75);
+    expect(getEnemyDamageMult(enemy)).toBeCloseTo(0.85);
+    applyStatus(enemy, 'weak', 1, 2);
+    expect(getEnemyDamageMult(enemy)).toBeCloseTo(0.7);
   });
 
   it('empowered increases enemy damage', () => {

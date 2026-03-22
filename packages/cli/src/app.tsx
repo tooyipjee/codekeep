@@ -1,15 +1,17 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
-import type { CardDef, CardInstance, RunState, MapNode, CombatState } from '@codekeep/shared';
-import { getCardDef, STARTING_GATE_HP, FRAGMENT_REWARDS } from '@codekeep/shared';
+import type { CardDef, CardInstance, RunState, MapNode, CombatState, KeepState, PotionDef, GameSave } from '@codekeep/shared';
+import { getCardDef, STARTING_GATE_HP, FRAGMENT_REWARDS, POTION_DEFS } from '@codekeep/shared';
 import {
   createStarterDeck, makeCardInstance, generateCardRewards, pickEncounter,
   mulberry32, hashSeed, createCombatState, playCard, endPlayerTurn,
   createRun, visitNode, healGate, gainFragments, spendFragments, addCardToRunDeck, addPotion,
-  removeCardFromRunDeck, advanceAct,
+  removeCardFromRunDeck, advanceAct, usePotion,
   generateActMap, getReachableNodes, getNodeById,
   generateShop, pickEvent, getBossWave,
   saveGame, loadGame, createNewGameSave,
+  calculateEchoReward, upgradeStructure, KEEP_STRUCTURES, getStructureLevel,
+  createDefaultNpcs, getNextDialogue, markDialogueSeen,
 } from '@codekeep/server';
 import type { ShopItem, GameEvent } from '@codekeep/server';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
@@ -20,6 +22,7 @@ import { MapView } from './components/MapView.js';
 import { ShopView } from './components/ShopView.js';
 import { EventView } from './components/EventView.js';
 import { RestView } from './components/RestView.js';
+import { KeepView } from './components/KeepView.js';
 import { useCombatState } from './hooks/useCombatState.js';
 
 const MIN_COLS = 60;
@@ -47,7 +50,7 @@ export interface AppProps {
   dryRun?: boolean;
 }
 
-type Screen = 'menu' | 'map' | 'combat' | 'reward' | 'deck' | 'shop' | 'event' | 'rest' | 'result';
+type Screen = 'menu' | 'keep' | 'map' | 'combat' | 'reward' | 'deck' | 'deck_remove' | 'shop' | 'shop_remove' | 'event' | 'rest' | 'result';
 
 function AppContent({ dryRun }: AppProps) {
   const { exit } = useApp();
@@ -74,38 +77,75 @@ function AppContent({ dryRun }: AppProps) {
   // Rest state
   const [restChoice, setRestChoice] = useState(0);
 
+  // Keep state
+  const [keep, setKeep] = useState<KeepState | null>(null);
+  const [keepIndex, setKeepIndex] = useState(0);
+  const [keepMessage, setKeepMessage] = useState('');
+  const [runWon, setRunWon] = useState(false);
+
+  // Deck remove state
+  const [removeIndex, setRemoveIndex] = useState(0);
+
   // Combat
   const combatHook = useCombatState();
-  const { combat, selectedCard, targetColumn, message, emplaceMode, selectCard, selectTarget, confirmPlay, endTurn, toggleEmplace, startCombat, needsTarget } = combatHook;
+  const { combat, selectedCard, targetColumn, message, emplaceMode, selectCard, selectTarget, confirmPlay, endTurn, toggleEmplace, startCombat, applyPotion: _applyPotion, needsTarget } = combatHook;
 
   const tooSmall = columns < MIN_COLS || rows < MIN_ROWS;
 
   // Persistence
+  const ensureSave = useCallback((): GameSave => {
+    let save = loadGame();
+    if (!save) {
+      save = createNewGameSave('Warden');
+      if (save.keep.npcs.length === 0) {
+        save.keep.npcs = createDefaultNpcs();
+      }
+      saveGame(save);
+    }
+    if (save.keep.npcs.length === 0) {
+      save.keep.npcs = createDefaultNpcs();
+    }
+    return save;
+  }, []);
+
   const doSave = useCallback((r: RunState | null) => {
     if (dryRun) return;
-    let save = loadGame();
-    if (!save) save = createNewGameSave('Warden');
+    const save = ensureSave();
     save.activeRun = r;
+    if (keep) save.keep = keep;
     saveGame(save);
-  }, [dryRun]);
+  }, [dryRun, keep, ensureSave]);
 
   const beginRun = useCallback(() => {
     const seedStr = `run-${Date.now()}`;
-    const r = createRun(seedStr);
+    const save = ensureSave();
+    const r = createRun(seedStr, save.keep.highestAscension);
     setRun(r);
     setSelectedNodeIdx(0);
-    doSave(r);
+    save.activeRun = r;
+    save.keep.totalRuns++;
+    setKeep(save.keep);
+    saveGame(save);
     setScreen('map');
-  }, [doSave]);
+  }, [ensureSave]);
 
   const resumeRun = useCallback(() => {
     const save = loadGame();
     if (save?.activeRun) {
       setRun(save.activeRun);
+      setKeep(save.keep);
       setSelectedNodeIdx(0);
       setScreen('map');
     }
   }, []);
+
+  const goToKeep = useCallback(() => {
+    const save = ensureSave();
+    setKeep(save.keep);
+    setKeepIndex(0);
+    setKeepMessage('');
+    setScreen('keep');
+  }, [ensureSave]);
 
   const getReachable = useCallback((): MapNode[] => {
     if (!run) return [];
@@ -149,15 +189,30 @@ function AppContent({ dryRun }: AppProps) {
     doSave(r);
   }, [run, startCombat, doSave]);
 
+  const finishRun = useCallback((r: RunState, won: boolean) => {
+    setRunWon(won);
+    setRun(r);
+    const save = ensureSave();
+    const echoes = calculateEchoReward(won, r.act, r.ascensionLevel);
+    save.keep.echoes += echoes;
+    if (won) {
+      save.keep.totalWins++;
+      if (r.ascensionLevel >= save.keep.highestAscension) {
+        save.keep.highestAscension = r.ascensionLevel + 1;
+      }
+    }
+    save.activeRun = null;
+    setKeep(save.keep);
+    saveGame(save);
+    setScreen('result');
+  }, [ensureSave]);
+
   const afterCombat = useCallback(() => {
     if (!combat || !run) return;
     let r = { ...run, gateHp: combat.gateHp };
 
     if (combat.outcome === 'lose') {
-      r = { ...r, combat: null };
-      setRun(r);
-      doSave(null);
-      setScreen('result');
+      finishRun(r, false);
       return;
     }
 
@@ -175,9 +230,7 @@ function AppContent({ dryRun }: AppProps) {
         setSelectedNodeIdx(0);
         setScreen('map');
       } else {
-        setRun(r);
-        doSave(null);
-        setScreen('result');
+        finishRun(r, true);
       }
       return;
     }
@@ -188,7 +241,7 @@ function AppContent({ dryRun }: AppProps) {
     setRun(r);
     doSave(r);
     setScreen('reward');
-  }, [combat, run, doSave]);
+  }, [combat, run, doSave, finishRun]);
 
   const pickReward = useCallback((cardDef: CardDef | null) => {
     if (!run) return;
@@ -203,6 +256,7 @@ function AppContent({ dryRun }: AppProps) {
   }, [run, doSave]);
 
   const menuItems = [
+    { label: 'The Keep', action: 'keep' },
     { label: 'New Run', action: 'new' },
     ...(loadGame()?.activeRun ? [{ label: 'Resume Run', action: 'resume' }] : []),
     { label: 'Quit', action: 'quit' },
@@ -214,7 +268,8 @@ function AppContent({ dryRun }: AppProps) {
       else if (key.downArrow || input === 'j') setMenuIndex((i) => Math.min(menuItems.length - 1, i + 1));
       else if (key.return) {
         const action = menuItems[menuIndex]?.action;
-        if (action === 'new') beginRun();
+        if (action === 'keep') goToKeep();
+        else if (action === 'new') beginRun();
         else if (action === 'resume') resumeRun();
         else exit();
       }
@@ -262,14 +317,24 @@ function AppContent({ dryRun }: AppProps) {
           if (!r) return;
           if (item.type === 'card' && item.cardDef) {
             r = addCardToRunDeck(r, makeCardInstance(item.cardDef.id));
+            setRun(r);
+            doSave(r);
+            setShopItems((items) => items.filter((_, i) => i !== shopIndex));
+            setShopIndex(0);
           } else if (item.type === 'potion' && item.potionDef) {
             const result = addPotion(r, item.potionDef.id);
             if (result) r = result;
+            setRun(r);
+            doSave(r);
+            setShopItems((items) => items.filter((_, i) => i !== shopIndex));
+            setShopIndex(0);
+          } else if (item.type === 'card_remove') {
+            setRun(r);
+            doSave(r);
+            setRemoveIndex(0);
+            setShopItems((items) => items.filter((_, i) => i !== shopIndex));
+            setScreen('shop_remove');
           }
-          setRun(r);
-          doSave(r);
-          setShopItems((items) => items.filter((_, i) => i !== shopIndex));
-          setShopIndex(0);
         }
       }
       return;
@@ -283,12 +348,19 @@ function AppContent({ dryRun }: AppProps) {
         let r = run;
         switch (choice.effect.type) {
           case 'heal': r = healGate(r, choice.effect.value); break;
-          case 'damage': r = { ...r, gateHp: Math.max(1, r.gateHp - choice.effect.value) }; break;
+          case 'damage': {
+            r = { ...r, gateHp: Math.max(1, r.gateHp - choice.effect.value) };
+            const fragMatch = choice.label.match(/(\d+)\s*fragments/i);
+            if (fragMatch) r = gainFragments(r, parseInt(fragMatch[1]));
+            break;
+          }
           case 'fragments': r = gainFragments(r, choice.effect.value); break;
-          case 'max_hp': r = { ...r, gateMaxHp: r.gateMaxHp + choice.effect.value }; break;
+          case 'max_hp': r = { ...r, gateMaxHp: r.gateMaxHp + choice.effect.value, gateHp: r.gateHp + choice.effect.value }; break;
           case 'card_reward': {
-            const rng = mulberry32(hashSeed(run.seed + (currentEvent?.id ?? '')));
-            setRewardCards(generateCardRewards(rng));
+            const hpMatch = choice.label.match(/lose\s+(\d+)\s*hp/i);
+            if (hpMatch) r = { ...r, gateHp: Math.max(1, r.gateHp - parseInt(hpMatch[1])) };
+            const evtRng = mulberry32(hashSeed(run.seed + (currentEvent?.id ?? '')));
+            setRewardCards(generateCardRewards(evtRng));
             setRewardIndex(0);
             setRun(r);
             doSave(r);
@@ -296,12 +368,12 @@ function AppContent({ dryRun }: AppProps) {
             return;
           }
           case 'remove_card': {
-            if (r.deck.length > 5) {
-              const removeIdx = Math.floor(Math.random() * r.deck.length);
-              r = removeCardFromRunDeck(r, r.deck[removeIdx].instanceId);
-            }
-            break;
+            setRun(r);
+            doSave(r);
+            setScreen('deck_remove');
+            return;
           }
+          case 'nothing': break;
         }
         setRun(r);
         doSave(r);
@@ -313,22 +385,109 @@ function AppContent({ dryRun }: AppProps) {
 
     if (screen === 'rest' && run) {
       if (key.upArrow || input === 'k') setRestChoice((i) => Math.max(0, i - 1));
-      else if (key.downArrow || input === 'j') setRestChoice((i) => Math.min(1, i + 1));
+      else if (key.downArrow || input === 'j') setRestChoice((i) => Math.min(2, i + 1));
       else if (key.return) {
         let r = run;
         if (restChoice === 0) {
           r = healGate(r, Math.floor(r.gateMaxHp * 0.3));
+          setRun(r);
+          doSave(r);
+          setSelectedNodeIdx(0);
+          setScreen('map');
+        } else if (restChoice === 1 && r.deck.length > 5) {
+          setRun(r);
+          setRemoveIndex(0);
+          setScreen('deck_remove');
+        } else {
+          setRun(r);
+          doSave(r);
+          setSelectedNodeIdx(0);
+          setScreen('map');
         }
-        setRun(r);
-        doSave(r);
+      }
+      return;
+    }
+
+    if (screen === 'deck_remove' && run) {
+      if (key.upArrow || input === 'k') setRemoveIndex((i) => Math.max(0, i - 1));
+      else if (key.downArrow || input === 'j') setRemoveIndex((i) => Math.min(run.deck.length - 1, i + 1));
+      else if (key.escape || input === 'q') {
+        setSelectedNodeIdx(0);
+        setScreen('map');
+      }
+      else if (key.return && run.deck.length > 5) {
+        const card = run.deck[removeIndex];
+        if (card) {
+          const r = removeCardFromRunDeck(run, card.instanceId);
+          setRun(r);
+          doSave(r);
+        }
         setSelectedNodeIdx(0);
         setScreen('map');
       }
       return;
     }
 
+    if (screen === 'shop_remove' && run) {
+      if (key.upArrow || input === 'k') setRemoveIndex((i) => Math.max(0, i - 1));
+      else if (key.downArrow || input === 'j') setRemoveIndex((i) => Math.min(run.deck.length - 1, i + 1));
+      else if (key.escape || input === 'q') setScreen('shop');
+      else if (key.return && run.deck.length > 5) {
+        const card = run.deck[removeIndex];
+        if (card) {
+          const r = removeCardFromRunDeck(run, card.instanceId);
+          setRun(r);
+          doSave(r);
+        }
+        setScreen('shop');
+      }
+      return;
+    }
+
+    if (screen === 'keep' && keep) {
+      const totalItems = KEEP_STRUCTURES.length + keep.npcs.length + 2;
+      if (key.upArrow || input === 'k') setKeepIndex((i) => Math.max(0, i - 1));
+      else if (key.downArrow || input === 'j') setKeepIndex((i) => Math.min(totalItems - 1, i + 1));
+      else if (input === 'q') setScreen('menu');
+      else if (key.return) {
+        if (keepIndex < KEEP_STRUCTURES.length) {
+          const struct = KEEP_STRUCTURES[keepIndex];
+          const result = upgradeStructure(keep, struct.id);
+          if (result) {
+            setKeep(result);
+            const save = ensureSave();
+            save.keep = result;
+            saveGame(save);
+            setKeepMessage(`Upgraded ${struct.name}!`);
+          } else {
+            const level = getStructureLevel(keep, struct.id);
+            if (level >= struct.maxLevel) setKeepMessage(`${struct.name} is already max level.`);
+            else setKeepMessage(`Not enough Echoes to upgrade ${struct.name}.`);
+          }
+        } else if (keepIndex < KEEP_STRUCTURES.length + keep.npcs.length) {
+          const npcIdx = keepIndex - KEEP_STRUCTURES.length;
+          const npc = keep.npcs[npcIdx];
+          const dialogue = getNextDialogue(npc.id, keep);
+          if (dialogue) {
+            const newKeep = markDialogueSeen(keep, npc.id, dialogue.dialogueId);
+            setKeep(newKeep);
+            const save = ensureSave();
+            save.keep = newKeep;
+            saveGame(save);
+            setKeepMessage(`${dialogue.speaker}: "${dialogue.text}"`);
+          } else {
+            setKeepMessage('(No new dialogue)');
+          }
+        } else if (keepIndex === KEEP_STRUCTURES.length + keep.npcs.length) {
+          beginRun();
+        }
+      }
+      return;
+    }
+
     if (screen === 'result') {
-      if (key.return || input === ' ' || input === 'q') setScreen('menu');
+      if (key.return || input === ' ') goToKeep();
+      else if (input === 'q') setScreen('menu');
       return;
     }
 
@@ -340,6 +499,19 @@ function AppContent({ dryRun }: AppProps) {
       if (input === 'q') { setScreen('menu'); return; }
       if (input === 'd' && run) { setScreen('deck'); return; }
       if (input === 'e') { toggleEmplace(); return; }
+      if (input === 'p' && run) {
+        const slotIdx = run.potions.findIndex((p) => p !== null);
+        if (slotIdx >= 0) {
+          const result = usePotion(run, slotIdx);
+          if (result && combatHook.combat) {
+            const potDef = POTION_DEFS.find((p) => p.id === result.potionId);
+            setRun(result.run);
+            doSave(result.run);
+            combatHook.applyPotion(potDef ?? null);
+          }
+        }
+        return;
+      }
       if (input >= '1' && input <= '9') { selectCard(parseInt(input) - 1); return; }
       if (key.leftArrow || input === 'h') { selectTarget(Math.max(0, targetColumn - 1)); return; }
       if (key.rightArrow || input === 'l') { selectTarget(Math.min(4, targetColumn + 1)); return; }
@@ -381,6 +553,36 @@ function AppContent({ dryRun }: AppProps) {
     return <DeckView deck={run.deck} />;
   }
 
+  if (screen === 'keep' && keep) {
+    return (
+      <Box flexDirection="column">
+        <KeepView keep={keep} selectedIndex={keepIndex} />
+        {keepMessage && <Text color="cyan" bold>  {keepMessage}</Text>}
+      </Box>
+    );
+  }
+
+  if ((screen === 'deck_remove' || screen === 'shop_remove') && run) {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text bold color="red">◆ Remove a Card</Text>
+        <Text dimColor>Choose a card to remove from your deck ({run.deck.length} cards).</Text>
+        <Text> </Text>
+        {run.deck.map((card, i) => {
+          const def = getCardDef(card.defId);
+          const isSelected = i === removeIndex;
+          return (
+            <Text key={card.instanceId} bold={isSelected} color={isSelected ? 'yellow' : 'white'}>
+              {isSelected ? '▶ ' : '  '}{def?.name ?? card.defId} ({def?.rarity}) — {def?.description ?? ''}
+            </Text>
+          );
+        })}
+        <Text> </Text>
+        <Text dimColor>↑↓ navigate  Enter remove  Esc cancel</Text>
+      </Box>
+    );
+  }
+
   if (screen === 'map' && run) {
     const reachable = getReachable();
     return (
@@ -417,12 +619,12 @@ function AppContent({ dryRun }: AppProps) {
   }
 
   if (screen === 'result') {
-    const won = combat?.outcome === 'win' || (run && run.act >= 3);
+    const echoReward = run ? calculateEchoReward(runWon, run.act, run.ascensionLevel) : 0;
     return (
       <Box flexDirection="column" padding={1}>
         <Text bold color="yellow">{'◆ CodeKeep — The Pale'}</Text>
         <Text> </Text>
-        {won ? (
+        {runWon ? (
           <>
             <Text bold color="green">{'★ RUN COMPLETE'}</Text>
             <Text>The Pale recedes. The Keep endures.</Text>
@@ -434,10 +636,13 @@ function AppContent({ dryRun }: AppProps) {
           </>
         )}
         {run && (
-          <Text dimColor>Act {run.act} | Deck: {run.deck.length} cards | Fragments: {run.fragments}</Text>
+          <>
+            <Text dimColor>Act {run.act} | Deck: {run.deck.length} cards | Fragments: {run.fragments}</Text>
+            <Text>Echoes earned: <Text bold color="cyan">+{echoReward}</Text></Text>
+          </>
         )}
         <Text> </Text>
-        <Text dimColor>Press Enter to return to menu.</Text>
+        <Text dimColor>Enter → The Keep  |  q → menu</Text>
       </Box>
     );
   }

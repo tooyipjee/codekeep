@@ -5,7 +5,7 @@ export type CardType = 'cast' | 'emplace';
 export type CardCategory = 'armament' | 'fortification' | 'edict' | 'wild';
 
 export interface CardEffect {
-  type: 'damage' | 'block' | 'draw' | 'heal' | 'resolve' | 'burn' | 'vulnerable' | 'weak' | 'fortify';
+  type: 'damage' | 'block' | 'draw' | 'heal' | 'resolve' | 'burn' | 'vulnerable' | 'weak' | 'fortify' | 'self_damage';
   value: number;
   target?: 'single' | 'column' | 'all' | 'self' | 'adjacent';
 }

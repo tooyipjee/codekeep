@@ -1,5 +1,6 @@
 import type { EnemyInstance, Intent } from '@codekeep/shared';
 import { getEnemyTemplate, COLUMNS } from '@codekeep/shared';
+import { getBossDef, getBossIntent } from './bosses.js';
 
 let nextEnemyId = 1;
 
@@ -18,15 +19,52 @@ export function spawnEnemy(templateId: string, column: number): EnemyInstance {
   };
 }
 
-export function rollEnemyIntent(enemy: EnemyInstance, rng: () => number): Intent {
+export function rollEnemyIntent(enemy: EnemyInstance, rng: () => number, turn: number = 1): Intent {
   const tmpl = getEnemyTemplate(enemy.templateId);
   if (!tmpl) return { type: 'advance', value: 1 };
 
-  const roll = rng();
-  if (roll < 0.5) {
-    return { type: 'advance', value: tmpl.speed };
+  const bossDef = getBossDef(tmpl.act);
+  if (bossDef && bossDef.templateId === enemy.templateId) {
+    const hpPercent = enemy.hp / enemy.maxHp;
+    return getBossIntent(bossDef, hpPercent, turn);
   }
-  return { type: 'attack', value: tmpl.damage, targetColumn: enemy.column };
+
+  const roll = rng();
+
+  switch (enemy.templateId) {
+    case 'shielder':
+      if (roll < 0.3) return { type: 'shield', value: 5 };
+      if (roll < 0.6) return { type: 'advance', value: tmpl.speed };
+      return { type: 'attack', value: tmpl.damage, targetColumn: enemy.column };
+
+    case 'flanker': {
+      if (roll < 0.4) {
+        const shift = rng() < 0.5 ? -1 : 1;
+        const newCol = Math.max(0, Math.min(COLUMNS - 1, enemy.column + shift));
+        enemy.column = newCol;
+        return { type: 'attack', value: tmpl.damage, targetColumn: newCol };
+      }
+      if (roll < 0.7) return { type: 'advance', value: tmpl.speed };
+      return { type: 'attack', value: tmpl.damage, targetColumn: enemy.column };
+    }
+
+    case 'breaker':
+      if (roll < 0.6) return { type: 'advance', value: tmpl.speed };
+      return { type: 'attack', value: tmpl.damage, targetColumn: enemy.column };
+
+    case 'wraith':
+      if (roll < 0.4) return { type: 'advance', value: tmpl.speed };
+      return { type: 'attack', value: tmpl.damage, targetColumn: enemy.column };
+
+    case 'echo':
+      if (roll < 0.3) return { type: 'buff', value: 1 };
+      if (roll < 0.6) return { type: 'attack', value: tmpl.damage, targetColumn: enemy.column };
+      return { type: 'advance', value: tmpl.speed };
+
+    default:
+      if (roll < 0.5) return { type: 'advance', value: tmpl.speed };
+      return { type: 'attack', value: tmpl.damage, targetColumn: enemy.column };
+  }
 }
 
 export function resetEnemyIdCounter(): void {

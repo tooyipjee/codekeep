@@ -23,13 +23,15 @@ export function hasStatus(enemy: EnemyInstance, type: StatusEffect['type']): num
 
 export function getDamageMult(enemy: EnemyInstance): number {
   let mult = 1;
-  if (hasStatus(enemy, 'vulnerable') > 0) mult *= 1.5;
+  const vulnStacks = hasStatus(enemy, 'vulnerable');
+  if (vulnStacks > 0) mult *= 1 + vulnStacks * 0.25;
   return mult;
 }
 
 export function getEnemyDamageMult(enemy: EnemyInstance): number {
   let mult = 1;
-  if (hasStatus(enemy, 'weak') > 0) mult *= 0.75;
+  const weakStacks = hasStatus(enemy, 'weak');
+  if (weakStacks > 0) mult *= Math.max(0.25, 1 - weakStacks * 0.15);
   if (hasStatus(enemy, 'empowered') > 0) mult *= 1 + hasStatus(enemy, 'empowered') * 0.25;
   return mult;
 }

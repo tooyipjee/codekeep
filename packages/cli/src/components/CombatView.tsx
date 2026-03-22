@@ -53,7 +53,7 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
 
       {combat.phase === 'player' && (
         <Text dimColor>
-          1-{combat.hand.length} select card  ←→ target column  Enter play  Space end turn  q quit
+          1-{combat.hand.length} card  ←→ column  Enter play  e emplace  p potion  Space end turn  d deck  q quit
         </Text>
       )}
 

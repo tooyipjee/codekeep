@@ -12,7 +12,8 @@ export function RestView({ gateHp, gateMaxHp, selectedChoice, deckSize }: RestVi
   const healAmount = Math.floor(gateMaxHp * 0.3);
   const choices = [
     `Rest — Heal ${healAmount} Gate HP (${gateHp} → ${Math.min(gateMaxHp, gateHp + healAmount)}/${gateMaxHp})`,
-    `Smith — Upgrade a random card (deck: ${deckSize})`,
+    `Thin — Remove a card from your deck (${deckSize} cards)`,
+    `Leave — Continue without resting`,
   ];
 
   return (

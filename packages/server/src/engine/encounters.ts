@@ -39,6 +39,25 @@ const ACT1_ELITES: Omit<Encounter, 'isElite'>[] = [
   ] },
 ];
 
+const ACT2_ELITES: Omit<Encounter, 'isElite'>[] = [
+  { name: 'The Warband', enemies: [
+    { templateId: 'breaker', column: 2 }, { templateId: 'shielder', column: 1 }, { templateId: 'shielder', column: 3 },
+  ] },
+  { name: 'Flanking Ambush', enemies: [
+    { templateId: 'flanker', column: 0 }, { templateId: 'flanker', column: 4 },
+    { templateId: 'wraith', column: 2 },
+  ] },
+];
+
+const ACT3_ELITES: Omit<Encounter, 'isElite'>[] = [
+  { name: 'Echo Vanguard', enemies: [
+    { templateId: 'echo', column: 1 }, { templateId: 'echo', column: 3 },
+  ] },
+  { name: 'The Final Test', enemies: [
+    { templateId: 'echo', column: 2 }, { templateId: 'breaker', column: 0 }, { templateId: 'flanker', column: 4 },
+  ] },
+];
+
 const ACT2_ENCOUNTERS: Omit<Encounter, 'isElite'>[] = [
   { name: 'Wraith Drift', enemies: [
     { templateId: 'wraith', column: 1 }, { templateId: 'wraith', column: 3 },
@@ -64,7 +83,11 @@ const ACT3_ENCOUNTERS: Omit<Encounter, 'isElite'>[] = [
 export function pickEncounter(act: number, rng: () => number, isElite: boolean = false): Encounter {
   let pool: Omit<Encounter, 'isElite'>[];
   if (isElite) {
-    pool = ACT1_ELITES;
+    switch (act) {
+      case 2: pool = ACT2_ELITES; break;
+      case 3: pool = ACT3_ELITES; break;
+      default: pool = ACT1_ELITES; break;
+    }
   } else {
     switch (act) {
       case 2: pool = ACT2_ENCOUNTERS; break;

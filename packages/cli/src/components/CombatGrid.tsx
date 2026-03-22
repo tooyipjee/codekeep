@@ -12,19 +12,6 @@ interface CombatGridProps {
   gateBlock: number;
 }
 
-function intentIcon(intent: EnemyInstance['intent']): string {
-  if (!intent) return '?';
-  switch (intent.type) {
-    case 'advance': return '↓';
-    case 'attack': return '⚔';
-    case 'buff': return '▲';
-    case 'debuff': return '▼';
-    case 'shield': return '◈';
-    case 'summon': return '+';
-    default: return '?';
-  }
-}
-
 function intentLabel(intent: EnemyInstance['intent']): string {
   if (!intent) return '';
   switch (intent.type) {
@@ -36,6 +23,20 @@ function intentLabel(intent: EnemyInstance['intent']): string {
     case 'summon': return `+${intent.value}`;
     default: return '';
   }
+}
+
+function statusIcons(enemy: EnemyInstance): string {
+  const parts: string[] = [];
+  for (const s of enemy.statusEffects) {
+    switch (s.type) {
+      case 'vulnerable': parts.push(`V${s.stacks}`); break;
+      case 'weak': parts.push(`W${s.stacks}`); break;
+      case 'burn': parts.push(`B${s.stacks}`); break;
+      case 'empowered': parts.push(`E${s.stacks}`); break;
+      case 'fortified': parts.push(`F${s.stacks}`); break;
+    }
+  }
+  return parts.join('');
 }
 
 function hpBar(current: number, max: number, width: number = 6): string {
@@ -50,12 +51,14 @@ function enemyDisplay(enemy: EnemyInstance): string {
 }
 
 export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxHp, gateBlock }: CombatGridProps) {
-  const colWidth = 12;
+  const colWidth = 14;
 
   const header = columns.map((col, i) => {
     const label = `Col ${i + 1}`;
+    const emp = col.emplacement ? `[${col.emplacement.hp}hp]` : '';
+    const full = emp ? `${label}${emp}` : label;
     const isTarget = showTarget && i === targetColumn;
-    const padded = label.padStart(Math.floor((colWidth + label.length) / 2)).padEnd(colWidth);
+    const padded = full.padStart(Math.floor((colWidth + full.length) / 2)).padEnd(colWidth);
     return isTarget ? `[${padded.slice(1, -1)}]` : ` ${padded.slice(1, -1)} `;
   }).join('│');
 
@@ -64,15 +67,15 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
     const cells = columns.map((col) => {
       const enemies = col.enemies.filter((e) => e.row === r);
       if (enemies.length === 0) {
-        const hasCursor = col.emplacement && r === ROWS - 1;
-        if (hasCursor) {
-          return `[EMPL]`.padStart(Math.floor((colWidth + 6) / 2)).padEnd(colWidth);
-        }
         return '·'.padStart(Math.floor((colWidth + 1) / 2)).padEnd(colWidth);
       }
       const display = enemies.map((e) => {
         const intent = intentLabel(e.intent);
-        return `${enemyDisplay(e)}${intent ? ' ' + intent : ''}`;
+        const statuses = statusIcons(e);
+        let txt = enemyDisplay(e);
+        if (intent) txt += ` ${intent}`;
+        if (statuses) txt += ` ${statuses}`;
+        return txt;
       }).join(' ');
       return display.slice(0, colWidth).padEnd(colWidth);
     }).join('│');

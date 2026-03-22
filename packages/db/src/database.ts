@@ -1,4 +1,4 @@
-import type { Client } from '@libsql/client';
+import { createClient as createWebClient, type Client } from '@libsql/client/web';
 
 export type Database = Client;
 
@@ -105,10 +105,13 @@ const MIGRATIONS: string[][] = [
 
 export async function createDatabase(url: string, authToken?: string): Promise<Database> {
   const isRemote = url.startsWith('libsql://') || url.startsWith('https://');
-  const { createClient } = isRemote
-    ? await import('@libsql/client/web')
-    : await import('@libsql/client');
-  const client = createClient({ url, authToken });
+  let client: Client;
+  if (isRemote) {
+    client = createWebClient({ url, authToken });
+  } else {
+    const { createClient } = await import('@libsql/client');
+    client = createClient({ url, authToken });
+  }
 
   const applied = new Set<string>();
   try {

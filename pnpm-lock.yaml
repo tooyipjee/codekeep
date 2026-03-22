@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@libsql/client':
+        specifier: ^0.14
+        version: 0.14.0
       hono:
         specifier: ^4
         version: 4.12.8

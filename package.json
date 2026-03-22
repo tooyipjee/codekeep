@@ -21,7 +21,6 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@hono/node-server": "^1",
     "@libsql/client": "^0.14",
     "hono": "^4"
   }

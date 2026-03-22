@@ -1,6 +1,17 @@
-import { createClient as createWebClient, type Client } from '@libsql/client/web';
+import { createClient, type Client } from '@libsql/client';
 
 export type Database = Client;
+
+function authFetch(authToken?: string): typeof globalThis.fetch {
+  if (!authToken) return globalThis.fetch;
+  return (input, init) => {
+    const headers = new Headers(init?.headers);
+    if (!headers.has('authorization')) {
+      headers.set('authorization', `Bearer ${authToken}`);
+    }
+    return globalThis.fetch(input, { ...init, headers });
+  };
+}
 
 const MIGRATIONS: string[][] = [
   [
@@ -104,14 +115,7 @@ const MIGRATIONS: string[][] = [
 ];
 
 export async function createDatabase(url: string, authToken?: string): Promise<Database> {
-  const isRemote = url.startsWith('libsql://') || url.startsWith('https://');
-  let client: Client;
-  if (isRemote) {
-    client = createWebClient({ url, authToken });
-  } else {
-    const { createClient } = await import('@libsql/client');
-    client = createClient({ url, authToken });
-  }
+  const client = createClient({ url, authToken, fetch: authFetch(authToken) });
 
   const applied = new Set<string>();
   try {

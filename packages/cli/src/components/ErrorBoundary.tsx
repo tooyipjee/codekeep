@@ -29,7 +29,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         timestamp: new Date().toISOString(),
         error: error.message,
         stack: error.stack,
-        version: globalThis.__CODEKEEP_VERSION ?? 'unknown',
+        version: (globalThis as Record<string, unknown>).__CODEKEEP_VERSION as string ?? 'unknown',
         nodeVersion: process.version,
         platform: process.platform,
         arch: process.arch,

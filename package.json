@@ -1,9 +1,9 @@
 {
   "name": "codekeep",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "Async tower defense terminal game powered by your coding activity",
+  "description": "CodeKeep: The Pale — deck-building tactical roguelike in your terminal",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
@@ -19,9 +19,5 @@
   "packageManager": "pnpm@9.15.4",
   "engines": {
     "node": ">=20"
-  },
-  "dependencies": {
-    "@libsql/client": "^0.14",
-    "hono": "^4"
   }
 }

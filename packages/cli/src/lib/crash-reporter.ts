@@ -28,7 +28,7 @@ export function saveCrashReport(error: unknown, context?: { screen?: string; gam
     timestamp: new Date().toISOString(),
     error: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
-    version: globalThis.__CODEKEEP_VERSION ?? 'unknown',
+    version: (globalThis as Record<string, unknown>).__CODEKEEP_VERSION as string ?? 'unknown',
     nodeVersion: process.version,
     platform: process.platform,
     arch: process.arch,

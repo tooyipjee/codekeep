@@ -1,259 +1,206 @@
-export type GridCoord = { x: number; y: number };
+// ── Card System ──
 
-export type ResourceId = 'gold' | 'wood' | 'stone';
-export type Resources = Record<ResourceId, number>;
+export type CardRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
+export type CardType = 'cast' | 'emplace';
+export type CardCategory = 'armament' | 'fortification' | 'edict' | 'wild';
 
-export type StructureKind =
-  | 'wall'
-  | 'trap'
-  | 'treasury'
-  | 'ward'
-  | 'watchtower'
-  | 'archerTower'
-  | 'vault';
-
-export type ProbeType = 'raider' | 'scout' | 'brute';
-
-export type UpgradeLevel = 1 | 2 | 3;
-
-export interface PlacedStructure {
-  id: string;
-  kind: StructureKind;
-  level: UpgradeLevel;
-  pos: GridCoord;
-  placedAtUnixMs: number;
+export interface CardEffect {
+  type: 'damage' | 'block' | 'draw' | 'heal' | 'resolve' | 'burn' | 'vulnerable' | 'weak' | 'fortify';
+  value: number;
+  target?: 'single' | 'column' | 'all' | 'self' | 'adjacent';
 }
 
-export interface Keep {
+export interface CardDef {
   id: string;
   name: string;
-  ownerPlayerId: string;
-  grid: KeepGridState;
-  resources: Resources;
-  createdAtUnixMs: number;
-  updatedAtUnixMs: number;
+  cost: number;
+  type: CardType;
+  category: CardCategory;
+  rarity: CardRarity;
+  description: string;
+  effects: CardEffect[];
+  emplaceCost?: number;
+  emplaceHp?: number;
+  emplaceEffects?: CardEffect[];
+  upgraded?: boolean;
 }
 
-export interface KeepGridState {
-  width: 16;
-  height: 16;
-  structures: PlacedStructure[];
+export interface CardInstance {
+  instanceId: string;
+  defId: string;
+  upgraded: boolean;
 }
 
-export type RaidOutcome = 'defense_win' | 'partial_breach' | 'full_breach';
+// ── Enemy System ──
 
-export type RaidTickEvent =
-  | { t: number; type: 'raider_spawn'; probeId: number; edge: 'N' | 'S' | 'E' | 'W'; pos: GridCoord; raiderType?: ProbeType; maxHp?: number }
-  | { t: number; type: 'raider_move'; probeId: number; from: GridCoord; to: GridCoord }
-  | { t: number; type: 'raider_blocked'; probeId: number; pos: GridCoord; wallId: string }
-  | { t: number; type: 'raider_stunned'; probeId: number; pos: GridCoord; trapId: string; stunTicks: number }
-  | { t: number; type: 'wall_damaged'; structureId: string; hpRemaining: number; destroyed: boolean }
-  | { t: number; type: 'structure_damaged'; structureId: string; structureKind: StructureKind; hpRemaining: number; destroyed: boolean }
-  | { t: number; type: 'treasury_breach'; structureId: string; lootTaken: Resources }
-  | { t: number; type: 'raider_destroyed'; probeId: number; pos: GridCoord }
-  | { t: number; type: 'arrow_hit'; probeId: number; archerId: string; damage: number; hpRemaining: number }
-  | { t: number; type: 'raid_end'; outcome: RaidOutcome };
+export type IntentType = 'advance' | 'attack' | 'buff' | 'debuff' | 'summon' | 'shield';
 
-export interface RaidReplay {
-  tickRateHz: number;
-  maxTicks: number;
-  events: RaidTickEvent[];
+export interface Intent {
+  type: IntentType;
+  value: number;
+  targetColumn?: number;
 }
 
-export interface RaidSpawnSpec {
-  raiderType: ProbeType;
-  edge: 'N' | 'S' | 'E' | 'W';
-  offset: number;
-  waveDelay: number;
+export interface EnemyTemplate {
+  id: string;
+  name: string;
+  symbol: string;
+  hp: number;
+  damage: number;
+  speed: number;
+  act: 1 | 2 | 3;
+  description: string;
 }
 
-export interface RaidRecord {
+export interface EnemyInstance {
+  instanceId: string;
+  templateId: string;
+  hp: number;
+  maxHp: number;
+  column: number;
+  row: number;
+  intent: Intent | null;
+  statusEffects: StatusEffect[];
+}
+
+// ── Status Effects ──
+
+export type StatusType = 'vulnerable' | 'weak' | 'fortified' | 'burn' | 'empowered';
+
+export interface StatusEffect {
+  type: StatusType;
+  stacks: number;
+  duration: number;
+}
+
+// ── Combat ──
+
+export interface Emplacement {
+  cardDefId: string;
+  hp: number;
+  maxHp: number;
+  effects: CardEffect[];
+}
+
+export interface Column {
+  index: number;
+  enemies: EnemyInstance[];
+  emplacement: Emplacement | null;
+}
+
+export interface CombatState {
+  columns: Column[];
+  hand: CardInstance[];
+  drawPile: CardInstance[];
+  discardPile: CardInstance[];
+  exhaustPile: CardInstance[];
+  gateHp: number;
+  gateMaxHp: number;
+  gateBlock: number;
+  resolve: number;
+  maxResolve: number;
+  turn: number;
+  phase: 'player' | 'enemy' | 'ended';
+  outcome: 'undecided' | 'win' | 'lose';
+  events: CombatEvent[];
+  seed: number;
+}
+
+export type CombatEventType =
+  | 'card_played'
+  | 'damage_dealt'
+  | 'enemy_advance'
+  | 'gate_hit'
+  | 'enemy_killed'
+  | 'block_gained'
+  | 'emplacement_placed'
+  | 'emplacement_triggered'
+  | 'emplacement_destroyed'
+  | 'status_applied'
+  | 'turn_start'
+  | 'turn_end'
+  | 'combat_end';
+
+export interface CombatEvent {
+  type: CombatEventType;
+  turn: number;
+  data: Record<string, unknown>;
+}
+
+// ── Run / Map ──
+
+export type NodeType = 'combat' | 'elite' | 'rest' | 'shop' | 'event' | 'boss';
+
+export interface MapNode {
+  id: string;
+  type: NodeType;
+  row: number;
+  column: number;
+  connections: string[];
+  visited: boolean;
+}
+
+export interface ActMap {
+  act: number;
+  nodes: MapNode[];
+}
+
+export interface PotionDef {
+  id: string;
+  name: string;
+  description: string;
+  effects: CardEffect[];
+}
+
+export interface RelicDef {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface RunState {
   id: string;
   seed: string;
-  rulesVersion: number;
-  attackerId: string;
-  defenderKeepId: string;
-  startedAtUnixMs: number;
-  resolvedAtUnixMs: number;
-  outcome: RaidOutcome;
-  lootLost: Resources;
-  lootGained: Resources;
-  replay: RaidReplay;
-  defenderGrid?: KeepGridState;
+  act: number;
+  map: ActMap;
+  currentNodeId: string | null;
+  deck: CardInstance[];
+  gateHp: number;
+  gateMaxHp: number;
+  fragments: number;
+  potions: (string | null)[];
+  relics: string[];
+  ascensionLevel: number;
+  combat: CombatState | null;
 }
 
-export interface PlayerProfile {
+// ── The Keep (meta-progression) ──
+
+export interface NpcState {
   id: string;
-  displayName: string;
-  settings: {
-    asciiMode: boolean;
-  };
+  tier: number;
+  echoesGiven: number;
+  dialoguesSeen: string[];
 }
+
+export interface KeepState {
+  structures: Record<string, number>;
+  npcs: NpcState[];
+  echoes: number;
+  highestAscension: number;
+  totalRuns: number;
+  totalWins: number;
+  unlockedCardIds: string[];
+  achievements: string[];
+  narrativeFlags: string[];
+}
+
+// ── Save ──
 
 export interface GameSave {
   schemaVersion: number;
   savedAtUnixMs: number;
-  player: PlayerProfile;
-  keep: Keep;
-  raidHistory: RaidRecord[];
-  tutorialCompleted: boolean;
-  lastPlayedAtUnixMs: number;
-  progression: {
-    totalBuildsToday: number;
-    totalCommitsToday: number;
-    lastDailyResetDay: number;
-    totalRaidsWon: number;
-    totalRaidsLost: number;
-    totalStructuresPlaced: number;
-    currentWinStreak: number;
-    bestWinStreak: number;
-    achievements: string[];
-    totalRaidersKilledByArcher: number;
-    dailyChallenges?: Record<string, { wavesCleared: number; score: number }>;
-  };
-  activeBuffs?: ActiveBuff[];
-  prestige?: PrestigeData;
-}
-
-// === Roguelike Mechanics ===
-
-export interface RaidAnomaly {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  modifiers: RaidModifiers;
-}
-
-export interface RaidModifiers {
-  raiderHpMult?: number;
-  raiderSpeedMult?: number;
-  raiderDamageMult?: number;
-  raiderCountMult?: number;
-  wallHpMult?: number;
-  archerDamageMult?: number;
-  archerRangeMult?: number;
-  trapStunMult?: number;
-  wardMitigationMult?: number;
-  watchtowerRangeMult?: number;
-  lootMult?: number;
-  bruteChanceMult?: number;
-  singleEdge?: boolean;
-}
-
-export interface RewardOption {
-  id: string;
-  type: 'resources' | 'buff' | 'token';
-  name: string;
-  description: string;
-  icon: string;
-  resources?: Resources;
-  buff?: ActiveBuff;
-}
-
-export interface ActiveBuff {
-  id: string;
-  name: string;
-  raidsRemaining: number;
-  modifiers: RaidModifiers;
-}
-
-export interface PrestigeData {
-  ascensionLevel: number;
-  permanentUnlocks: string[];
-  lifetimeRaidsWon: number;
-  lifetimeRaidsLost: number;
-  lifetimeBestStreak: number;
-}
-
-export interface StructureStats {
-  kind: StructureKind;
-  symbol: string;
-  name: string;
-  description: string;
-  costs: Record<UpgradeLevel, Resources>;
-  stats: Record<UpgradeLevel, Record<string, number>>;
-}
-
-export interface CodingEvent {
-  type: 'build_success' | 'tests_pass' | 'git_commit' | 'session_reward' | 'daily_login';
-  timestamp: number;
-  grants: Resources;
-}
-
-export type FragmentType = 'gold_nugget' | 'timber' | 'ore' | 'gem';
-
-export interface DataFragment {
-  id: string;
-  type: FragmentType;
-  pos: GridCoord;
-  spawnedAtMs: number;
-}
-
-// === Multiplayer Types ===
-
-export type League = 'copper' | 'iron' | 'silver' | 'gold' | 'diamond';
-
-export interface WarCampSlot {
-  slotId: number;
-  raiderType: ProbeType | null;
-  readyAtMs: number | null;
-}
-
-export interface WarCamp {
-  slots: WarCampSlot[];
-  maxSlots: number;
-}
-
-export interface RevengeToken {
-  fromRaidId: string;
-  targetPlayerId: string;
-  expiresAtMs: number;
-  used: boolean;
-}
-
-export interface PvpState {
-  trophies: number;
-  league: League;
-  shieldExpiresAtMs: number | null;
-  seasonId: string;
-  seasonPeakTrophies: number;
-  rivalPlayerId: string | null;
-  revengeTokens: RevengeToken[];
-  warCamp: WarCamp;
-  lastMatchedAt: number | null;
-}
-
-export interface DailyBounty {
-  id: string;
-  type: 'raid' | 'defense' | 'build';
-  description: string;
-  reward: Resources;
-  completed: boolean;
-}
-
-export interface MatchResult {
-  matchId: string;
-  target: {
-    playerId: string;
-    displayName: string;
-    trophies: number;
-    grid: KeepGridState;
-  };
-  expiresAtMs: number;
-}
-
-export interface SeasonModifiers {
-  scoutHpMultiplier: number;
-  wallHpMultiplier: number;
-  lootCapPercent: number;
-  wardMitigationBonus: number;
-}
-
-export interface OnlineGameSave extends GameSave {
-  serverId?: string;
-  lastSyncVersion?: number;
-  onlineEnabled: boolean;
-  pvp?: PvpState;
-  bounties?: DailyBounty[];
+  playerName: string;
+  keep: KeepState;
+  activeRun: RunState | null;
 }

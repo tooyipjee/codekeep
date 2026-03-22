@@ -35,10 +35,10 @@ jobs:
       - name: Run all tests
         run: pnpm test
 
-      - name: Type check (db + api + server + shared)
-        run: pnpm --filter @codekeep/shared typecheck && pnpm --filter @codekeep/db typecheck && pnpm --filter @codekeep/server typecheck && pnpm --filter @codekeep/api typecheck
+      - name: Type check (shared + server)
+        run: pnpm --filter @codekeep/shared typecheck && pnpm --filter @codekeep/server typecheck
 
-      - name: Type check (cli — pre-existing issues)
+      - name: Type check (cli)
         run: pnpm --filter @codekeep/cli typecheck
         continue-on-error: true
 

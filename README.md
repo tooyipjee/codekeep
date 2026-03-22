@@ -7,167 +7,195 @@
                                       |_|    
 ```
 
-Async tower defense terminal game powered by your coding activity
+Async tower defense terminal game — build ASCII fortresses while you vibe code.
 
----
-
-**Demo GIF (placeholder)** — Add a short screen recording here (e.g. `docs/demo.gif` or inline in this README) showing menu → build → raid playback.
+```bash
+npx codekeep
+```
 
 ---
 
 ## Quickstart
 
-**Prerequisites:** Node.js **≥ 20**, **pnpm**
+**Play instantly** (no install):
+
+```bash
+npx codekeep@latest
+```
+
+**From source:**
 
 ```bash
 git clone <repo-url>
-cd vibe-td
+cd codekeep
 pnpm install
 pnpm build
 pnpm play
-# or, after build:
-node packages/cli/dist/index.js
 ```
 
-**Dev (watch):** `pnpm dev`
+**Prerequisites:** Node.js **≥ 20**
 
 ---
 
 ## How to Play
 
+Build a keep on a 16×16 grid, place defensive structures, and fend off NPC raiders. Resources come from a sim-mode faucet (press `f`), foraging fragments on the grid, and winning raids.
+
 ### Controls
 
 | Keys | Action |
 |------|--------|
-| `h` `j` `k` `l` | Move cursor (vim-style) |
-| `W` `A` `S` `D` | Move cursor |
-| Arrow keys | Move cursor |
-| `[` `]` | Cycle selected structure type |
-| `Enter` or `e` | Place structure at cursor |
-| `u` | Upgrade structure at cursor |
-| `x` | Demolish structure at cursor |
-| `f` | Simulate a coding event (resource faucet — **sim mode**) |
-| `?` | Toggle help |
-| `Esc` | Back to main menu (from keep) |
+| `h` `j` `k` `l` / `WASD` / Arrows | Move cursor |
+| `[` `]` | Cycle selected structure |
+| `1`–`7` | Select structure by number |
+| `e` or `Enter` | Place structure at cursor |
+| `u` | Upgrade structure (Lv.1 → 2 → 3) |
+| `x` | Demolish structure (50% refund) |
+| `z` | Undo last build/upgrade/demolish |
+| `r` | Quick defend (instant raid result) |
+| `v` | Watch replay of last defense |
+| `f` | Kingdom boon (sim-mode resources) |
+| `g` + coords | Jump to coordinate (e.g. `g 5,3`) |
+| `Tab` | Jump to next structure |
+| `p` | Copy keep postcard to clipboard |
+| `?` | Toggle full help screen |
+| `Esc` | Back to main menu |
 | `q` | Save and quit |
 
-**Main menu:** `j`/`k`, `W`/`S`, or arrows to move selection; `Enter` to choose; `q` to quit.
+**Raid replay:** `p` pause · `1` / `2` / `4` / `8` speed · `n` skip to end · `q` exit
 
-**Raid replay:** `p` or `Space` pause; `1` / `2` / `4` speed; `q` or `Esc` to exit.
+### Structures
 
-### Structures (grid symbols)
-
-| Symbol | Structure | Role |
-|--------|-------------|------|
-| `#` | Firewall | Blocks probe movement |
-| `%` | Honeypot | Stuns probes that enter |
-| `$` | Data Vault | Stores resources (raid target) |
-| `@` | Encryption | Reduces loot from adjacent vaults |
-| `^` | Relay Tower | Extends encryption range |
+| # | Symbol | Structure | Role |
+|---|--------|-----------|------|
+| 1 | `#` | Stone Wall | Blocks raiders, has HP |
+| 2 | `%` | Bear Trap | Stuns raiders on contact |
+| 3 | `$` | Treasury | Stores loot, generates passive income |
+| 4 | `@` | Ward | Reduces loot stolen from nearby treasuries |
+| 5 | `^` | Watchtower | Extends ward range, auto-gathers forage |
+| 6 | `!` | Archer Tower | Fires arrows at raiders in range |
+| 7 | `&` | Vault | Protects stored resources from raids |
 
 Empty cells render as `·`.
 
+### Structure Synergies
+
+Place structures in specific patterns for bonus effects:
+
+| Synergy | Pattern | Bonus |
+|---------|---------|-------|
+| **Killbox** | Trap + Archer Tower adjacent | +30% archer damage to stunned |
+| **Fortress** | 3+ walls in a line | +25% wall HP in line |
+| **Sanctum** | Ward + Treasury + Watchtower adjacent | 2x treasury mitigation |
+| **Gauntlet** | 2+ traps within 3 tiles | +2 stun ticks |
+
 ### Resources
 
-Building and upgrading spend three resource types (see HUD):
+| Icon | Resource | Sources |
+|------|----------|---------|
+| ● | **Gold** | Events, foraging, raids, passive income |
+| ♣ | **Wood** | Events, treasuries, foraging |
+| ■ | **Stone** | Events, watchtowers, foraging |
 
-- **Compute** — primary construction budget for many structures.
-- **Memory** — used heavily by vaults and some defensive pieces.
-- **Bandwidth** — ties to connectivity-heavy structures (e.g. relays, firewalls).
+Treasuries and watchtowers generate passive income over time.
 
-Daily caps apply; excess is clamped by the economy rules in the engine.
+### Raider Types
+
+| Type | HP | Dmg | Speed | Behavior |
+|------|---:|----:|------:|----------|
+| Raider | 15 | 4 | 1 | Standard foot soldier |
+| Scout | 8 | 2 | 2 | Fast, attacks weakest blocker |
+| Brute | 30 | 6 | 1 | Targets defenses first |
+
+### Raid Difficulty (Lv.1–10)
+
+Difficulty scales with total raids completed. Higher levels bring more raiders, scouts, and brutes. At difficulty 2+, random **anomalies** modify raid rules (Fog of War, Speed Raid, Fortified, Swarm, etc.). At difficulty 6+, you may face two anomalies at once.
 
 ---
 
-## Git integration (optional)
+## Roguelike Features
 
-Wire your real repo so commits can feed the same **coding event** system the game already understands.
+### Raid Anomalies
 
-### Install the `post-commit` hook
+Random modifiers applied to raids: faster raiders, double brute chance, halved watchtower range, all-from-one-edge flanking, and more. Displayed during raids and in the HUD.
 
-From your **project git repo** (not necessarily this monorepo), install the hook so it runs after each commit:
+### Choice-based Rewards
+
+After winning a raid, pick 1-of-3 rewards:
+- **Gold Cache** — big gold payout
+- **Supply Crate** — balanced resources
+- **Buff** — temporary modifier lasting 2-3 raids (e.g. Fortified Walls, Archer Focus)
+
+Active buffs stack multiplicatively with anomaly modifiers.
+
+### Prestige / Ascension
+
+Once you've won 50 raids, you can **prestige** from the menu. This resets your keep and structures but grants permanent unlocks:
+
+| Level | Unlock | Effect |
+|------:|--------|--------|
+| 1 | War Chest | Start with 2x resources |
+| 2 | Veteran Builder | New structures start at Lv.2 |
+| 3 | Deep Wells | +3 faucet uses before diminishing |
+| 4 | Trade Routes | +50% passive income |
+| 5 | Oracle | Choose from 2 anomalies (coming soon) |
+
+Achievements, daily challenge scores, and lifetime stats are preserved across prestiges.
+
+### Daily Challenge
+
+Date-seeded escalating waves on a fixed grid. Compete for the best score each day.
+
+---
+
+## Git Integration (optional)
+
+Wire your real repo so commits feed the coding event system:
 
 ```bash
 cp /path/to/codekeep/packages/cli/scripts/hooks/post-commit .git/hooks/post-commit
 chmod +x .git/hooks/post-commit
 ```
 
-Point `cp` at your CodeKeep checkout (a symlink is fine). If that path is not in your tree yet, see `docs/testing-strategy-codekeep.md` for the intended layout and sandbox testing via `scripts/git-test-sandbox.sh`. The hook should record a **`git_commit`**-style event into the game’s local save (behavior is defined by the hook script).
+**No git required:** the game is fully playable in **sim mode**. Press `f` to simulate a coding event.
 
-### Event types the engine grants
+---
 
-Resource grants are keyed by event type (see `CODING_EVENT_GRANTS` in shared constants):
+## CLI Flags
 
-| Event | Typical source |
-|-------|----------------|
-| `git_commit` | Post-commit hook / git activity |
-| `build_success` | Successful builds (CI or local tooling, when wired) |
-| `tests_pass` | Test runs passing (when wired) |
-| `session_reward` | Session-style rewards |
-| `daily_login` | Daily check-in style rewards |
-
-**No git required:** the game is fully playable in **sim mode**. Press **`f`** in the keep view to simulate a coding event and receive resources without any hooks.
+```bash
+codekeep                  # Launch the game
+codekeep --tutorial       # Force tutorial replay
+codekeep --resume         # Skip menu, jump to keep
+codekeep --ascii          # Pure ASCII (no Unicode box drawing)
+codekeep --compact        # Compact layout for small terminals
+codekeep --no-save        # Dry-run mode (no save writes)
+codekeep --stats          # Print save file stats as JSON and exit
+```
 
 ---
 
 ## Architecture
 
-Monorepo layout:
-
 | Package | Role |
 |---------|------|
-| **`packages/shared`** | Shared types, constants, balance tables — no runtime deps; imported by all packages. |
-| **`packages/server`** | Pure game engine: grid, raids, economy, NPC keeps. No UI, no network. |
-| **`packages/db`** | SQLite persistence: players, keeps, raids, matchmaking, sessions. |
-| **`packages/api`** | Hono HTTP API: auth, PvP, matchmaking, leaderboard, feedback. |
-| **`packages/cli`** | Ink-based TUI: rendering and input; local-first or online via `--online`. |
-
-Game rules and mutations stay in **`server`**; the CLI stays a thin client.
-
----
+| **`packages/shared`** | Types, constants, balance tables — zero deps |
+| **`packages/server`** | Pure game engine: grid, raids, economy, prestige, NPC keeps |
+| **`packages/cli`** | Ink TUI: rendering, input, local-first gameplay |
+| **`packages/db`** | Database persistence (Turso/SQLite) |
+| **`packages/api`** | Hono HTTP API for future online PvP |
 
 ## Development
 
 ```bash
-pnpm test    # all packages (Vitest)
-pnpm build   # turbo build across packages
+pnpm install   # Install all deps
+pnpm build     # Build all packages
+pnpm test      # Run all tests (Vitest)
+pnpm play      # Launch the game
+pnpm dev       # Watch mode
 ```
 
----
-
-## Online PvP
-
-CodeKeep supports async PvP over the internet. A shared server handles matchmaking, raids, leaderboards, and war camp.
-
-### Connect to a server
-
-```bash
-pnpm play -- --online https://your-server.up.railway.app
-```
-
-Or set the `CODEKEEP_SERVER` env var and just `pnpm play`.
-
-### Host your own (free on Vercel + Turso)
-
-1. Create a database: `turso db create codekeep && turso db tokens create codekeep`
-2. Link your repo at [Vercel](https://vercel.com)
-3. Set env vars in Vercel: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `JWT_SECRET`, `NODE_ENV=production`
-4. Auto-deploys on push — share the URL with friends
-
-### Quick PvP (no signup)
-
-```bash
-docker compose up                              # Terminal 1: start API
-cloudflared tunnel --url http://localhost:3000  # Terminal 2: expose to internet
-```
-
-Share the tunnel URL. Done.
-
-See `docs/SERVICES.md` for full setup details, Docker self-hosting, and optional integrations.
-
-### Local / offline mode
-
-Without `--online`, the game runs in **local-first** mode: raids against NPC keeps, saves on disk, no server needed.
+Minimum terminal: 80×24. Tested on iTerm2, Terminal.app, Alacritty, Windows Terminal.
 
 ---
 

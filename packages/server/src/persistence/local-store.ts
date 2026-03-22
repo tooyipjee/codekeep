@@ -1,9 +1,9 @@
-import { type GameSave, type Keep, STARTING_RESOURCES } from '@codekeep/shared';
+import type { GameSave, KeepState } from '@codekeep/shared';
 import { writeFileSync, readFileSync, mkdirSync, existsSync, renameSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export function getConfigDir(): string {
   return join(homedir(), '.config', 'codekeep');
@@ -13,40 +13,27 @@ export function getSavePath(): string {
   return join(getConfigDir(), 'game.json');
 }
 
+function defaultKeepState(): KeepState {
+  return {
+    structures: {},
+    npcs: [],
+    echoes: 0,
+    highestAscension: 0,
+    totalRuns: 0,
+    totalWins: 0,
+    unlockedCardIds: [],
+    achievements: [],
+    narrativeFlags: [],
+  };
+}
+
 export function createNewGameSave(playerName: string): GameSave {
-  const playerId = `player-${Date.now()}`;
   return {
     schemaVersion: SCHEMA_VERSION,
     savedAtUnixMs: Date.now(),
-    player: {
-      id: playerId,
-      displayName: playerName,
-      settings: { asciiMode: false },
-    },
-    keep: {
-      id: `keep-${playerId}-${Date.now()}`,
-      name: `${playerName}'s Keep`,
-      ownerPlayerId: playerId,
-      grid: { width: 16, height: 16, structures: [] },
-      resources: { ...STARTING_RESOURCES },
-      createdAtUnixMs: Date.now(),
-      updatedAtUnixMs: Date.now(),
-    },
-    raidHistory: [],
-    tutorialCompleted: false,
-    lastPlayedAtUnixMs: Date.now(),
-    progression: {
-      totalBuildsToday: 0,
-      totalCommitsToday: 0,
-      lastDailyResetDay: Math.floor(Date.now() / 86400000),
-      totalRaidsWon: 0,
-      totalRaidsLost: 0,
-      totalStructuresPlaced: 0,
-      currentWinStreak: 0,
-      bestWinStreak: 0,
-      achievements: [],
-      totalRaidersKilledByArcher: 0,
-    },
+    playerName,
+    keep: defaultKeepState(),
+    activeRun: null,
   };
 }
 

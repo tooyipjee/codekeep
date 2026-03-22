@@ -36,6 +36,9 @@ importers:
       '@codekeep/shared':
         specifier: workspace:*
         version: link:../shared
+      '@types/node':
+        specifier: ^25.5.0
+        version: 25.5.0
       '@types/react':
         specifier: ^19
         version: 19.2.14

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
-import type { CardDef, CardInstance, RunState, MapNode, CombatState, KeepState, PotionDef, GameSave } from '@codekeep/shared';
+import type { CardDef, CardInstance, RunState, MapNode, CombatState, KeepState, PotionDef, GameSave, RelicDef } from '@codekeep/shared';
 import { getCardDef, getEnemyTemplate, STARTING_GATE_HP, FRAGMENT_REWARDS, POTION_DEFS } from '@codekeep/shared';
 import {
   createStarterDeck, makeCardInstance, generateCardRewards, pickEncounter,
@@ -12,7 +12,8 @@ import {
   saveGame, loadGame, createNewGameSave,
   calculateEchoReward, upgradeStructure, KEEP_STRUCTURES, getStructureLevel,
   createDefaultNpcs, getNextDialogue, markDialogueSeen,
-  getCurrentStoryLayer,
+  getCurrentStoryLayer, getDifficultyModifiers,
+  pickRelicReward, getBossDef,
 } from '@codekeep/server';
 import type { ShopItem, GameEvent } from '@codekeep/server';
 import {
@@ -58,7 +59,7 @@ export interface AppProps {
   dryRun?: boolean;
 }
 
-type Screen = 'menu' | 'tutorial' | 'settings' | 'controls' | 'keep' | 'map' | 'combat' | 'reward' | 'deck' | 'deck_remove' | 'shop' | 'shop_remove' | 'event' | 'rest' | 'result';
+type Screen = 'menu' | 'tutorial' | 'settings' | 'controls' | 'keep' | 'map' | 'combat' | 'reward' | 'relic_reward' | 'deck' | 'deck_remove' | 'shop' | 'shop_remove' | 'event' | 'rest' | 'result';
 
 function AppContent({ dryRun }: AppProps) {
   const { exit } = useApp();
@@ -91,6 +92,10 @@ function AppContent({ dryRun }: AppProps) {
   const [keepMessage, setKeepMessage] = useState('');
   const [runWon, setRunWon] = useState(false);
 
+  // Relic reward state
+  const [relicChoices, setRelicChoices] = useState<RelicDef[]>([]);
+  const [relicIndex, setRelicIndex] = useState(0);
+
   // Deck remove state
   const [removeIndex, setRemoveIndex] = useState(0);
 
@@ -102,6 +107,9 @@ function AppContent({ dryRun }: AppProps) {
   const [inspectMode, setInspectMode] = useState(false);
   const [inspectCol, setInspectCol] = useState(0);
   const [inspectEnemy, setInspectEnemy] = useState(0);
+
+  // Boss dialogue
+  const [bossDialogue, setBossDialogue] = useState<string | null>(null);
 
   // Tutorial
   const [tutorialPage, setTutorialPage] = useState(0);
@@ -196,13 +204,23 @@ function AppContent({ dryRun }: AppProps) {
       const seed = hashSeed(run.seed + node.id);
       const rng = mulberry32(seed);
       const encounter = pickEncounter(run.act, rng, node.type === 'elite');
-      startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, encounter.enemies);
+      startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, encounter.enemies, r.relics, getDifficultyModifiers(run.act, run.ascensionLevel));
       setRun(r);
       setScreen('combat');
     } else if (node.type === 'boss') {
       const seed = hashSeed(run.seed + '-boss-' + run.act);
       const wave = getBossWave(run.act);
-      startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, wave);
+      startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, wave, r.relics, getDifficultyModifiers(run.act, run.ascensionLevel));
+
+      const bossDef = getBossDef(run.act);
+      if (bossDef?.dialogue) {
+        const layerDialogue = bossDef.dialogue.find(d => d.storyLayer === storyLayer)
+          ?? bossDef.dialogue[0];
+        if (layerDialogue) {
+          setBossDialogue(layerDialogue.onAppear);
+        }
+      }
+
       setRun(r);
       setScreen('combat');
     } else if (node.type === 'shop') {
@@ -259,6 +277,26 @@ function AppContent({ dryRun }: AppProps) {
       : FRAGMENT_REWARDS.combat;
     r = gainFragments(r, fragReward);
 
+    if (r.relics.includes('mending_stone')) {
+      r = healGate(r, 5);
+    }
+    if (r.relics.includes('fragment_magnet')) {
+      r = gainFragments(r, 5);
+    }
+
+    if (currentNode?.type === 'elite' || currentNode?.type === 'boss') {
+      const relicRng = mulberry32(hashSeed(run.seed + (run.currentNodeId ?? '') + '-relic'));
+      const choices = pickRelicReward(relicRng, r.relics, 3);
+      if (choices.length > 0) {
+        setRelicChoices(choices);
+        setRelicIndex(0);
+        setRun(r);
+        doSave(r);
+        setScreen('relic_reward');
+        return;
+      }
+    }
+
     if (currentNode?.type === 'boss') {
       if (run.act < 3) {
         r = advanceAct(r);
@@ -291,6 +329,34 @@ function AppContent({ dryRun }: AppProps) {
     setSelectedNodeIdx(0);
     setScreen('map');
   }, [run, doSave]);
+
+  const pickRelic = useCallback((relic: RelicDef | null) => {
+    if (!run) return;
+    let r = run;
+    if (relic) {
+      r = { ...r, relics: [...r.relics, relic.id] };
+    }
+    setRun(r);
+    doSave(r);
+
+    const currentNode = run.currentNodeId ? getNodeById(run.map, run.currentNodeId) : null;
+    if (currentNode?.type === 'boss') {
+      if (run.act < 3) {
+        r = advanceAct(r);
+        setRun(r);
+        doSave(r);
+        setSelectedNodeIdx(0);
+        setScreen('map');
+      } else {
+        finishRun(r, true);
+      }
+    } else {
+      const rng = mulberry32(hashSeed(run.seed + (run.currentNodeId ?? '') + '-reward'));
+      setRewardCards(generateCardRewards(rng));
+      setRewardIndex(0);
+      setScreen('reward');
+    }
+  }, [run, doSave, finishRun]);
 
   const menuItems = [
     { label: 'The Keep', action: 'keep' },
@@ -355,6 +421,16 @@ function AppContent({ dryRun }: AppProps) {
         } else if (item === 'back') {
           setScreen('menu');
         }
+      }
+      return;
+    }
+
+    if (screen === 'relic_reward') {
+      if (key.upArrow || input === 'k') setRelicIndex(i => Math.max(0, i - 1));
+      else if (key.downArrow || input === 'j') setRelicIndex(i => Math.min(relicChoices.length, i + 1));
+      else if (input === 's') pickRelic(null);
+      else if (key.return) {
+        pickRelic(relicIndex < relicChoices.length ? relicChoices[relicIndex] : null);
       }
       return;
     }
@@ -594,6 +670,9 @@ function AppContent({ dryRun }: AppProps) {
         if (key.return || input === ' ') afterCombat();
         return;
       }
+      if (bossDialogue && combat.turn > 1) {
+        setBossDialogue(null);
+      }
       if (input === 'i') {
         if (inspectMode) {
           setInspectMode(false);
@@ -754,6 +833,35 @@ function AppContent({ dryRun }: AppProps) {
     return <CardReward cards={rewardCards} selectedIndex={rewardIndex} />;
   }
 
+  if (screen === 'relic_reward') {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text bold color="yellow">◆ Relic Reward</Text>
+        <Text dimColor>Choose a relic to add to your collection (s to skip):</Text>
+        <Text> </Text>
+        {relicChoices.map((relic, i) => {
+          const isSelected = i === relicIndex;
+          return (
+            <Box key={relic.id} flexDirection="column">
+              <Text bold={isSelected} color={isSelected ? 'yellow' : 'white'}>
+                {isSelected ? '▶ ' : '  '}{relic.name}
+              </Text>
+              <Text dimColor>    {relic.description}</Text>
+            </Box>
+          );
+        })}
+        <Text bold={relicIndex === relicChoices.length} color={relicIndex === relicChoices.length ? 'yellow' : 'white'}>
+          {relicIndex === relicChoices.length ? '▶ ' : '  '}Skip
+        </Text>
+        <Text> </Text>
+        {run && run.relics.length > 0 && (
+          <Text dimColor>Current relics: {run.relics.join(', ')}</Text>
+        )}
+        <Text dimColor>↑↓ navigate  Enter select  s skip</Text>
+      </Box>
+    );
+  }
+
   if (screen === 'shop' && run) {
     return <ShopView items={shopItems} selectedIndex={shopIndex} fragments={run.fragments} />;
   }
@@ -811,6 +919,11 @@ function AppContent({ dryRun }: AppProps) {
       <Box flexDirection="column" paddingX={1}>
         <Text dimColor>Act {run.act}  |  Gate {run.gateHp}/{run.gateMaxHp}  |  Fragments {run.fragments}  |  d=deck  i=inspect</Text>
         {tutorialHint && <Text color="green" bold>{tutorialHint}</Text>}
+        {bossDialogue && (
+          <Box borderStyle="single" borderColor="magenta" paddingX={1} marginBottom={1}>
+            <Text color="magenta" italic>"{bossDialogue}"</Text>
+          </Box>
+        )}
         <CombatView
           combat={combat}
           selectedCard={selectedCard}

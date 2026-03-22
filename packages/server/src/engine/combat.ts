@@ -87,6 +87,9 @@ export function createCombatState(
 
 function pushEvent(state: CombatState, type: CombatEvent['type'], data: Record<string, unknown>): void {
   state.events.push({ type, turn: state.turn, data });
+  if (state.events.length > 100) {
+    state.events = state.events.slice(-100);
+  }
 }
 
 export function playCard(state: CombatState, cardIndex: number, targetColumn?: number, asEmplace: boolean = false): CombatState {
@@ -130,6 +133,8 @@ export function playCard(state: CombatState, cardIndex: number, targetColumn?: n
       }
       applyEffect(state, effect, targetColumn ?? 0);
     }
+
+    removeDeadEnemies(state);
 
     if (shouldExhaust) {
       state.exhaustPile.push(card);
@@ -175,7 +180,6 @@ function applyEffect(
           applyDamageToEnemy(state, frontEnemy, effect.value);
         }
       }
-      removeDeadEnemies(state);
       break;
     }
     case 'block':
@@ -204,12 +208,18 @@ function applyEffect(
             applyStatus(enemy, 'vulnerable', effect.value, 3);
           }
         }
-      } else {
+      } else if (effect.target === 'column') {
         const col = state.columns[targetColumn];
         if (col) {
           for (const enemy of col.enemies) {
             applyStatus(enemy, 'vulnerable', effect.value, 3);
           }
+        }
+      } else {
+        const col = state.columns[targetColumn];
+        if (col && col.enemies.length > 0) {
+          const front = col.enemies.reduce((a, b) => (a.row >= b.row ? a : b));
+          applyStatus(front, 'vulnerable', effect.value, 3);
         }
       }
       pushEvent(state, 'status_applied', { type: 'vulnerable', value: effect.value, column: targetColumn });
@@ -222,12 +232,18 @@ function applyEffect(
             applyStatus(enemy, 'weak', effect.value, 3);
           }
         }
-      } else {
+      } else if (effect.target === 'column') {
         const col = state.columns[targetColumn];
         if (col) {
           for (const enemy of col.enemies) {
             applyStatus(enemy, 'weak', effect.value, 3);
           }
+        }
+      } else {
+        const col = state.columns[targetColumn];
+        if (col && col.enemies.length > 0) {
+          const front = col.enemies.reduce((a, b) => (a.row >= b.row ? a : b));
+          applyStatus(front, 'weak', effect.value, 3);
         }
       }
       pushEvent(state, 'status_applied', { type: 'weak', value: effect.value, column: targetColumn });
@@ -274,7 +290,6 @@ function applyEffect(
           }
         }
       }
-      removeDeadEnemies(state);
       break;
     }
     case 'damage_equal_block': {
@@ -284,7 +299,6 @@ function applyEffect(
         const front = col.enemies.reduce((a, b) => (a.row >= b.row ? a : b));
         applyDamageToEnemy(state, front, dmg);
       }
-      removeDeadEnemies(state);
       break;
     }
     case 'draw_per_kills': {
@@ -307,7 +321,6 @@ function applyEffect(
         const dmg = isVulnerable ? effect.value * 2 : effect.value;
         applyDamageToEnemy(state, front, dmg);
       }
-      removeDeadEnemies(state);
       break;
     }
     case 'damage_per_kill_this_action': {
@@ -319,7 +332,6 @@ function applyEffect(
             applyDamageToEnemy(state, enemy, totalDmg);
           }
         }
-        removeDeadEnemies(state);
       }
       break;
     }
@@ -360,7 +372,6 @@ function applyEffect(
         const front = col.enemies.reduce((a, b) => (a.row >= b.row ? a : b));
         applyDamageToEnemy(state, front, totalDmg);
       }
-      removeDeadEnemies(state);
       break;
     }
     case 'replay_last': {
@@ -384,7 +395,6 @@ function applyEffect(
           applyDamageToEnemy(state, enemy, dmg);
         }
       }
-      removeDeadEnemies(state);
       break;
     }
     case 'damage_if_low_hp': {
@@ -395,7 +405,6 @@ function applyEffect(
         const front = col.enemies.reduce((a, b) => (a.row >= b.row ? a : b));
         applyDamageToEnemy(state, front, dmg);
       }
-      removeDeadEnemies(state);
       break;
     }
     case 'damage_per_emplace': {
@@ -407,7 +416,6 @@ function applyEffect(
             applyDamageToEnemy(state, enemy, totalDmg);
           }
         }
-        removeDeadEnemies(state);
       }
       break;
     }
@@ -524,6 +532,7 @@ function resolveEnemyTurn(state: CombatState): void {
 function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: Intent, rng: () => number): void {
   const tmpl = getEnemyTemplate(enemy.templateId);
   const dmgMult = getEnemyDamageMult(enemy);
+  const diffDmgMult = state.difficulty?.enemyDamageMult ?? 1;
 
   applyBurn(enemy);
   tickStatusEffects(enemy);
@@ -552,7 +561,7 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
       if (enemy.row >= ROWS - 1) {
         // Wraith: skip emplacement check, damage gate directly
         if (enemy.templateId === 'wraith') {
-          const dmg = Math.floor((tmpl?.damage ?? 7) * dmgMult);
+          const dmg = Math.floor((tmpl?.damage ?? 7) * dmgMult * diffDmgMult);
           const blocked = Math.min(state.gateBlock, dmg);
           state.gateBlock -= blocked;
           state.gateHp -= (dmg - blocked);
@@ -566,7 +575,7 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
               col.emplacement = null;
             }
           } else {
-            const dmg = Math.floor((tmpl?.damage ?? 4) * dmgMult);
+            const dmg = Math.floor((tmpl?.damage ?? 4) * dmgMult * diffDmgMult);
             const blocked = Math.min(state.gateBlock, dmg);
             state.gateBlock -= blocked;
             state.gateHp -= (dmg - blocked);
@@ -590,7 +599,7 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
         }
       }
 
-      const dmg = Math.floor((tmpl?.damage ?? 4) * dmgMult);
+      const dmg = Math.floor((tmpl?.damage ?? 4) * dmgMult * diffDmgMult);
       const blocked = Math.min(state.gateBlock, dmg);
       state.gateBlock -= blocked;
       state.gateHp -= (dmg - blocked);

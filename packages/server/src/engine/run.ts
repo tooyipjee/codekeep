@@ -1,12 +1,19 @@
 import type { RunState, CardInstance, CombatState, ActMap } from '@codekeep/shared';
 import { STARTING_GATE_HP } from '@codekeep/shared';
-import { createStarterDeck } from './deck.js';
+import { createStarterDeck, makeCardInstance } from './deck.js';
 import { generateActMap, getNodeById } from './map.js';
 import { hashSeed } from './rng.js';
+import { getDifficultyModifiers } from './difficulty.js';
 
 export function createRun(seedStr: string, ascensionLevel: number = 0): RunState {
   const seed = hashSeed(seedStr);
   const map = generateActMap(1, seed);
+  const difficulty = getDifficultyModifiers(1, ascensionLevel);
+
+  const deck = createStarterDeck();
+  if (difficulty.startWithCurse) {
+    deck.push(makeCardInstance('pale_curse'));
+  }
 
   return {
     id: `run-${Date.now()}-${seed}`,
@@ -14,9 +21,9 @@ export function createRun(seedStr: string, ascensionLevel: number = 0): RunState
     act: 1,
     map,
     currentNodeId: null,
-    deck: createStarterDeck(),
-    gateHp: STARTING_GATE_HP,
-    gateMaxHp: STARTING_GATE_HP,
+    deck,
+    gateHp: difficulty.startingGateHp,
+    gateMaxHp: difficulty.startingGateHp,
     fragments: 0,
     potions: [null, null, null],
     relics: [],

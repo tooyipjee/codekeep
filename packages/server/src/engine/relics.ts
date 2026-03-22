@@ -113,6 +113,10 @@ export function applyRelicEffect(
         break;
       }
       case 'heal': {
+        if (trigger === 'on_card_play') {
+          const cardCost = context?.cardCost as number | undefined;
+          if (cardCost !== undefined && cardCost < 2) break;
+        }
         state.gateHp = Math.min(state.gateMaxHp, state.gateHp + def.effect.value);
         break;
       }

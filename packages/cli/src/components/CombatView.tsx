@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { CombatState, CombatEvent } from '@codekeep/shared';
+import { getCardDef } from '@codekeep/shared';
 import { CombatGrid } from './CombatGrid.js';
 import { CardHand } from './CardHand.js';
 
@@ -15,7 +16,10 @@ function formatCombatEvent(evt: CombatEvent): string {
     case 'emplacement_triggered': return `Emplacement triggered in column ${(evt.data.column as number) + 1}`;
     case 'emplacement_destroyed': return `Emplacement destroyed in column ${(evt.data.column as number) + 1}`;
     case 'status_applied': return `Applied ${evt.data.type} (${evt.data.value})`;
-    case 'card_played': return `Played ${evt.data.cardId}`;
+    case 'card_played': {
+      const cardDef = getCardDef(evt.data.cardId as string);
+      return `Played ${cardDef?.name ?? evt.data.cardId}`;
+    }
     case 'turn_start': return `— Turn ${evt.data.turn} —`;
     default: return '';
   }

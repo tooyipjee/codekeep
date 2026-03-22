@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import type { CombatState, CardInstance, PotionDef } from '@codekeep/shared';
+import type { CombatState, CardInstance, PotionDef, DifficultyModifiers } from '@codekeep/shared';
 import { getCardDef, HAND_SIZE } from '@codekeep/shared';
 import { createCombatState, playCard, endPlayerTurn, createStarterDeck, mulberry32, drawCards } from '@codekeep/server';
 
@@ -14,7 +14,7 @@ export interface UseCombatStateReturn {
   confirmPlay: () => void;
   endTurn: () => void;
   toggleEmplace: () => void;
-  startCombat: (deck?: CardInstance[], seed?: number, gateHp?: number, gateMaxHp?: number, wave?: { templateId: string; column: number }[]) => void;
+  startCombat: (deck?: CardInstance[], seed?: number, gateHp?: number, gateMaxHp?: number, wave?: { templateId: string; column: number }[], relics?: string[], difficulty?: DifficultyModifiers) => void;
   applyPotion: (potionDef: PotionDef | null) => void;
   needsTarget: boolean;
 }
@@ -33,10 +33,12 @@ export function useCombatState(): UseCombatStateReturn {
     gateHp?: number,
     gateMaxHp?: number,
     wave?: { templateId: string; column: number }[],
+    relics?: string[],
+    difficulty?: DifficultyModifiers,
   ) => {
     const d = deck ?? createStarterDeck();
     const s = seed ?? Math.floor(Math.random() * 2147483647);
-    const state = createCombatState(d, s, gateHp, gateMaxHp, wave);
+    const state = createCombatState(d, s, gateHp, gateMaxHp, wave, relics ?? [], difficulty);
     combatRef.current = state;
     setCombat({ ...state });
     setSelectedCard(-1);
@@ -51,8 +53,12 @@ export function useCombatState(): UseCombatStateReturn {
     if (!card) return false;
     const def = getCardDef(card.defId);
     if (!def) return false;
+    const targetingTypes = new Set([
+      'damage', 'damage_if_vulnerable', 'damage_equal_block', 'damage_if_emplaced',
+      'damage_plus_block', 'damage_if_low_hp', 'vulnerable', 'weak', 'burn',
+    ]);
     return def.effects.some((e) =>
-      e.type === 'damage' && (e.target === 'single' || e.target === 'column'),
+      targetingTypes.has(e.type) && (e.target === 'single' || e.target === 'column'),
     );
   })();
 
@@ -67,8 +73,12 @@ export function useCombatState(): UseCombatStateReturn {
       return;
     }
     setSelectedCard(index);
+    const targetingTypes = new Set([
+      'damage', 'damage_if_vulnerable', 'damage_equal_block', 'damage_if_emplaced',
+      'damage_plus_block', 'damage_if_low_hp', 'vulnerable', 'weak', 'burn',
+    ]);
     const needsTgt = def.effects.some((e) =>
-      e.type === 'damage' && (e.target === 'single' || e.target === 'column'),
+      targetingTypes.has(e.type) && (e.target === 'single' || e.target === 'column'),
     );
     if (needsTgt) {
       setMessage(`${def.name} selected. Choose column (←→), Enter to play.`);
@@ -91,7 +101,14 @@ export function useCombatState(): UseCombatStateReturn {
     const def = getCardDef(card.defId);
     if (!def) return;
 
+    const handBefore = state.hand.length;
     playCard(state, selectedCard, targetColumn, emplaceMode);
+
+    if (state.hand.length === handBefore) {
+      setMessage(`Cannot play ${def.name}. Not enough Resolve.`);
+      return;
+    }
+
     combatRef.current = state;
     setCombat({ ...state });
     setSelectedCard(-1);
@@ -151,12 +168,15 @@ export function useCombatState(): UseCombatStateReturn {
           state.gateBlock += effect.value;
           break;
         case 'damage': {
+          const col = targetColumn;
           if (effect.target === 'column') {
-            const col = state.columns[2];
-            for (const e of col.enemies) e.hp -= effect.value;
+            const c = state.columns[col];
+            if (c) {
+              for (const e of c.enemies) e.hp -= effect.value;
+            }
           } else if (effect.target === 'all') {
-            for (const col of state.columns) {
-              for (const e of col.enemies) e.hp -= effect.value;
+            for (const c of state.columns) {
+              for (const e of c.enemies) e.hp -= effect.value;
             }
           }
           break;
@@ -177,7 +197,7 @@ export function useCombatState(): UseCombatStateReturn {
     combatRef.current = state;
     setCombat({ ...state });
     setMessage(`Used ${potionDef.name}.`);
-  }, []);
+  }, [targetColumn]);
 
   return {
     combat,

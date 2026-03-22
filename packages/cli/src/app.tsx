@@ -362,7 +362,7 @@ function AppContent({ dryRun }: AppProps) {
     { label: 'The Keep', action: 'keep' },
     { label: 'New Run', action: 'new' },
     ...(cachedSave?.activeRun ? [{ label: 'Resume Run', action: 'resume' }] : []),
-    ...(!cachedSave || cachedSave.keep.totalRuns === 0 ? [{ label: 'Tutorial', action: 'tutorial' }] : []),
+    { label: 'Tutorial', action: 'tutorial' },
     { label: 'Settings', action: 'settings' },
     { label: 'Quit', action: 'quit' },
   ];

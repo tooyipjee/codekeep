@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { exec } from 'node:child_process';
 import { generateGitHubIssueUrl, type CrashReport } from '../lib/crash-reporter.js';
 
 interface SettingsProps {
@@ -17,6 +18,7 @@ export function Settings({ onBack, onResetGame, onReplayTutorial, asciiMode, onT
   const [confirmReset, setConfirmReset] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [bugInput, setBugInput] = useState('');
+  const [bugUrl, setBugUrl] = useState<string | null>(null);
 
   const ITEMS: SettingsItem[] = [
     { key: 'ascii', label: `ASCII Mode: ${asciiMode ? 'ON' : 'OFF'}`, desc: 'Use plain ASCII borders (for basic terminals)' },
@@ -27,6 +29,14 @@ export function Settings({ onBack, onResetGame, onReplayTutorial, asciiMode, onT
   ];
 
   useInput((input, key) => {
+    if (bugUrl) {
+      if (key.escape || key.return || input === 'q') {
+        setBugUrl(null);
+        setShowBugReport(false);
+      }
+      return;
+    }
+
     if (showBugReport) {
       if (key.escape) {
         setShowBugReport(false);
@@ -44,9 +54,10 @@ export function Settings({ onBack, onResetGame, onReplayTutorial, asciiMode, onT
           screen: 'settings',
         };
         const url = generateGitHubIssueUrl(report);
-        process.stderr.write(`\nOpen this URL to report the bug:\n${url}\n\n`);
-        setShowBugReport(false);
+        setBugUrl(url);
         setBugInput('');
+        const openCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+        exec(`${openCmd} "${url}"`, () => {});
         return;
       }
       if (key.backspace || key.delete) {
@@ -91,7 +102,18 @@ export function Settings({ onBack, onResetGame, onReplayTutorial, asciiMode, onT
       <Text bold color="yellow">{'◆ Settings'}</Text>
       <Text> </Text>
 
-      {showBugReport ? (
+      {bugUrl ? (
+        <Box flexDirection="column">
+          <Text bold color="green">Bug report ready!</Text>
+          <Text> </Text>
+          <Text>Opening in your browser...</Text>
+          <Text>If it didn't open, copy this URL:</Text>
+          <Text> </Text>
+          <Text color="cyan" wrap="wrap">{bugUrl}</Text>
+          <Text> </Text>
+          <Text dimColor>Press Enter or Esc to go back</Text>
+        </Box>
+      ) : showBugReport ? (
         <Box flexDirection="column">
           <Text bold color="cyan">Report a Bug</Text>
           <Text>Describe the issue briefly:</Text>

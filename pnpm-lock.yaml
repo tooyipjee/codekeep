@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@hono/node-server':
+        specifier: ^1
+        version: 1.19.11(hono@4.12.8)
       '@libsql/client':
         specifier: ^0.14
         version: 0.14.0

@@ -1,5 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "TURSO_DATABASE_URL",
+    "TURSO_AUTH_TOKEN",
+    "JWT_SECRET",
+    "SENTRY_DSN",
+    "LOGTAIL_TOKEN",
+    "GITHUB_TOKEN",
+    "GITHUB_REPO",
+    "NODE_ENV",
+    "CODEKEEP_PORT",
+    "CODEKEEP_HOST",
+    "CODEKEEP_DB_PATH"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

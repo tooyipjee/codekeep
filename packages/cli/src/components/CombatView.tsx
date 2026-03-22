@@ -104,12 +104,13 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
       )}
 
       {combat.outcome !== 'undecided' && (
-        <Box marginTop={1} paddingX={1}>
+        <Box flexDirection="column" marginTop={1} paddingX={1}>
           <Text bold color={combat.outcome === 'win' ? 'green' : 'red'}>
             {combat.outcome === 'win'
               ? '★ VICTORY — The siege is broken!'
               : '✗ DEFEAT — The Gate has fallen.'}
           </Text>
+          <Text dimColor>{'Press Enter to continue.'}</Text>
         </Box>
       )}
     </Box>

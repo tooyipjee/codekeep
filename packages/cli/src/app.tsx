@@ -113,6 +113,16 @@ function AppContent({ dryRun }: AppProps) {
 
   // Tutorial
   const [tutorialPage, setTutorialPage] = useState(0);
+  const [tutorialSource, setTutorialSource] = useState<'new_game' | 'menu' | 'settings'>('new_game');
+
+  // Navigation tracking
+  const [previousScreen, setPreviousScreen] = useState<Screen>('map');
+
+  // Shop message
+  const [shopMessage, setShopMessage] = useState('');
+
+  // End turn confirmation
+  const [confirmEndTurn, setConfirmEndTurn] = useState(false);
 
   // Settings
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
@@ -154,8 +164,18 @@ function AppContent({ dryRun }: AppProps) {
   }, [dryRun, keep, ensureSave]);
 
   const beginRun = useCallback(() => {
-    const seedStr = `run-${Date.now()}`;
     const save = ensureSave();
+    if (save.keep.totalRuns === 0) {
+      save.keep.totalRuns++;
+      saveGame(save);
+      setCachedSave(save);
+      setKeep(save.keep);
+      setTutorialPage(0);
+      setTutorialSource('new_game');
+      setScreen('tutorial');
+      return;
+    }
+    const seedStr = `run-${Date.now()}`;
     const r = createRun(seedStr, save.keep.highestAscension);
     setRun(r);
     setSelectedNodeIdx(0);
@@ -164,12 +184,7 @@ function AppContent({ dryRun }: AppProps) {
     setKeep(save.keep);
     saveGame(save);
     setCachedSave(save);
-    if (save.keep.totalRuns === 1) {
-      setTutorialPage(0);
-      setScreen('tutorial');
-    } else {
-      setScreen('map');
-    }
+    setScreen('map');
   }, [ensureSave]);
 
   const resumeRun = useCallback(() => {
@@ -373,12 +388,17 @@ function AppContent({ dryRun }: AppProps) {
       else if (key.leftArrow) setTutorialPage(p => Math.max(0, p - 1));
       else if (key.return) {
         if (tutorialPage === TUTORIAL_PAGE_COUNT - 1) {
-          beginRun();
+          if (tutorialSource === 'new_game') beginRun();
+          else if (tutorialSource === 'settings') setScreen('settings');
+          else setScreen('menu');
         } else {
           setTutorialPage(p => Math.min(TUTORIAL_PAGE_COUNT - 1, p + 1));
         }
       }
-      else if (input === 'q' || key.escape) setScreen('menu');
+      else if (input === 'q' || key.escape) {
+        if (tutorialSource === 'settings') setScreen('settings');
+        else setScreen('menu');
+      }
       return;
     }
 
@@ -404,6 +424,7 @@ function AppContent({ dryRun }: AppProps) {
           setSettings(s => ({ ...s, combatLogSize: s.combatLogSize >= 8 ? 0 : s.combatLogSize + 2 }));
         } else if (item === 'tutorial') {
           setTutorialPage(0);
+          setTutorialSource('settings');
           setScreen('tutorial');
         } else if (item === 'controls') {
           setScreen('controls');
@@ -443,7 +464,7 @@ function AppContent({ dryRun }: AppProps) {
         if (action === 'keep') goToKeep();
         else if (action === 'new') beginRun();
         else if (action === 'resume') resumeRun();
-        else if (action === 'tutorial') { setTutorialPage(0); setScreen('tutorial'); }
+        else if (action === 'tutorial') { setTutorialPage(0); setTutorialSource('menu'); setScreen('tutorial'); }
         else if (action === 'settings') { setSettingsIndex(0); setSettingsMessage(''); setConfirmingReset(false); setScreen('settings'); }
         else exit();
       }
@@ -452,7 +473,7 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'deck') {
-      if (input === 'q' || key.escape) setScreen('map');
+      if (input === 'q' || key.escape) setScreen(previousScreen);
       return;
     }
 
@@ -461,7 +482,7 @@ function AppContent({ dryRun }: AppProps) {
       if (key.upArrow) setSelectedNodeIdx((i) => Math.max(0, i - 1));
       else if (key.downArrow) setSelectedNodeIdx((i) => Math.min(reachable.length - 1, i + 1));
       else if (key.return && reachable[selectedNodeIdx]) enterNode(reachable[selectedNodeIdx]);
-      else if (input === 'd') setScreen('deck');
+      else if (input === 'd') { setPreviousScreen('map'); setScreen('deck'); }
       else if (input === 'q') { doSave(run); setScreen('menu'); }
       return;
     }
@@ -486,6 +507,11 @@ function AppContent({ dryRun }: AppProps) {
       }
       else if (key.return) {
         const item = shopItems[shopIndex];
+        if (item && run.fragments < item.cost) {
+          setShopMessage(`Not enough fragments (need ${item.cost}, have ${run.fragments}).`);
+          return;
+        }
+        setShopMessage('');
         if (item && run.fragments >= item.cost) {
           let r = spendFragments(run, item.cost);
           if (!r) return;
@@ -703,7 +729,7 @@ function AppContent({ dryRun }: AppProps) {
         return;
       }
       if (input === 'q') { setScreen('menu'); return; }
-      if (input === 'd' && run) { setScreen('deck'); return; }
+      if (input === 'd' && run) { setPreviousScreen('combat'); setScreen('deck'); return; }
       if (input === 'e') { toggleEmplace(); return; }
       if (input === 'p' && run) {
         const slotIdx = run.potions.findIndex((p) => p !== null);
@@ -718,11 +744,19 @@ function AppContent({ dryRun }: AppProps) {
         }
         return;
       }
-      if (input >= '1' && input <= '9') { selectCard(parseInt(input) - 1); return; }
+      if (input >= '1' && input <= '9') { setConfirmEndTurn(false); selectCard(parseInt(input) - 1); return; }
       if (key.leftArrow) { selectTarget(Math.max(0, targetColumn - 1)); return; }
       if (key.rightArrow) { selectTarget(Math.min(4, targetColumn + 1)); return; }
       if (key.return && selectedCard >= 0) { confirmPlay(); return; }
-      if (input === ' ') { endTurn(); return; }
+      if (input === ' ') {
+        if (combat.resolve > 0 && combat.hand.some(c => { const d = getCardDef(c.defId); return d && d.cost <= combat.resolve; }) && !confirmEndTurn) {
+          setConfirmEndTurn(true);
+          return;
+        }
+        setConfirmEndTurn(false);
+        endTurn();
+        return;
+      }
       if (key.escape) { selectCard(-1); return; }
     }
   });
@@ -762,7 +796,7 @@ function AppContent({ dryRun }: AppProps) {
           );
         })}
         <Text> </Text>
-        <Text dimColor>{'↑↓ navigate  Enter select  q quit'}</Text>
+        <Text dimColor>{'↑↓ navigate  Enter select  q exit'}</Text>
       </Box>
     );
   }
@@ -791,7 +825,7 @@ function AppContent({ dryRun }: AppProps) {
   }
 
   if (screen === 'keep' && keep) {
-    return <KeepView keep={keep} selectedId={KEEP_ENTITIES[keepIndex]?.id ?? 'forge'} message={keepMessage} />;
+    return <KeepView keep={keep} selectedId={KEEP_ENTITIES[keepIndex]?.id ?? 'forge'} message={keepMessage} isFirstVisit={isFirstRun} />;
   }
 
   if ((screen === 'deck_remove' || screen === 'shop_remove') && run) {
@@ -822,6 +856,12 @@ function AppContent({ dryRun }: AppProps) {
         <Box justifyContent="space-between" paddingX={1}>
           <Text>Gate <Text bold color={run.gateHp > 40 ? 'green' : run.gateHp > 20 ? 'yellow' : 'red'}>{run.gateHp}/{run.gateMaxHp}</Text></Text>
           <Text>Fragments <Text bold color="yellow">{run.fragments}</Text></Text>
+          {run.potions.filter(p => p !== null).length > 0 && (
+            <Text>Potions <Text color="magenta">{run.potions.filter(p => p !== null).length}</Text></Text>
+          )}
+          {run.relics.length > 0 && (
+            <Text>Relics <Text color="magenta">★{run.relics.length}</Text></Text>
+          )}
           <Text>Deck <Text dimColor>{run.deck.length}</Text></Text>
         </Box>
         {isFirstRun && settings.showTutorialHints && !run.currentNodeId && (
@@ -881,7 +921,7 @@ function AppContent({ dryRun }: AppProps) {
   }
 
   if (screen === 'shop' && run) {
-    return <ShopView items={shopItems} selectedIndex={shopIndex} fragments={run.fragments} />;
+    return <ShopView items={shopItems} selectedIndex={shopIndex} fragments={run.fragments} message={shopMessage} />;
   }
 
   if (screen === 'event' && currentEvent) {
@@ -950,7 +990,12 @@ function AppContent({ dryRun }: AppProps) {
     ) : null;
     return (
       <Box flexDirection="column" paddingX={1}>
-        <Text dimColor>Act {run.act}  |  Gate {run.gateHp}/{run.gateMaxHp}  |  Fragments {run.fragments}  |  d=deck  i=inspect</Text>
+        <Text dimColor>
+          {'Act '}{run.act}{'  |  Gate '}{run.gateHp}/{run.gateMaxHp}{'  |  Fragments '}{run.fragments}
+          {run.potions.filter(p => p !== null).length > 0 && `  |  Potions ${run.potions.filter(p => p !== null).map(p => { const pd = POTION_DEFS.find(d => d.id === p); return pd?.name ?? p; }).join(', ')}`}
+          {run.relics.length > 0 && `  |  ★ ${run.relics.length}`}
+          {'  |  d=deck  i=inspect'}
+        </Text>
         {tutorialHint && <Text color="green" bold>{tutorialHint}</Text>}
         {bossDialogue && (
           <Box borderStyle="single" borderColor="magenta" paddingX={1} marginBottom={1}>
@@ -962,7 +1007,7 @@ function AppContent({ dryRun }: AppProps) {
           selectedCard={selectedCard}
           targetColumn={targetColumn}
           needsTarget={needsTarget}
-          message={message}
+          message={confirmEndTurn ? `End turn with ${combat.resolve} Resolve remaining? Press Space again to confirm.` : message}
         />
         {inspectMode && (() => {
           const col = combat.columns[inspectCol];

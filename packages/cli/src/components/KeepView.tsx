@@ -103,9 +103,10 @@ interface KeepViewProps {
   keep: KeepState;
   selectedId: string;
   message: string;
+  isFirstVisit?: boolean;
 }
 
-export function KeepView({ keep, selectedId, message }: KeepViewProps) {
+export function KeepView({ keep, selectedId, message, isFirstVisit }: KeepViewProps) {
   type CellMeta = { color: string; bold: boolean; dim: boolean };
   const grid: string[][] = [];
   const meta: CellMeta[][] = [];
@@ -376,8 +377,11 @@ export function KeepView({ keep, selectedId, message }: KeepViewProps) {
         ) : (
           <Text dimColor italic>Select a building or NPC.</Text>
         )}
+        {isFirstVisit && !message && (
+          <Text color="green">TIP: Upgrade buildings with Echoes. Talk to NPCs. Enter the Gate to start a run.</Text>
+        )}
         {message ? <Text color="yellow" bold>{message}</Text> : null}
-        <Text dimColor>{'←→ select  Enter interact  q menu'}</Text>
+        <Text dimColor>{'↑↓/←→ select  Enter interact  q back'}</Text>
       </Box>
     </Box>
   );

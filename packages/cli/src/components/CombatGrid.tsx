@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { Column, EnemyInstance } from '@codekeep/shared';
-import { getEnemyTemplate, ROWS } from '@codekeep/shared';
+import { getCardDef, getEnemyTemplate, ROWS } from '@codekeep/shared';
 
 interface CombatGridProps {
   columns: Column[];
@@ -140,9 +140,14 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
       <Text>
         <Text dimColor>{'│'}</Text>
         {columns.map((col, i) => {
-          const cell = col.emplacement
-            ? ` ◇${col.emplacement.hp}hp `.padEnd(colWidth).slice(0, colWidth)
-            : ' '.repeat(colWidth);
+          let cell: string;
+          if (col.emplacement) {
+            const empDef = getCardDef(col.emplacement.cardDefId);
+            const empName = empDef?.name ?? 'Wall';
+            cell = ` ◇${empName} ${col.emplacement.hp}hp `.padEnd(colWidth).slice(0, colWidth);
+          } else {
+            cell = ' '.repeat(colWidth);
+          }
           return (
             <React.Fragment key={i}>
               <Text color={col.emplacement ? 'cyan' : undefined}>{cell}</Text>

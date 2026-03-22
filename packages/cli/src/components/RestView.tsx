@@ -11,11 +11,12 @@ interface RestViewProps {
 export function RestView({ gateHp, gateMaxHp, selectedChoice, deckSize }: RestViewProps) {
   const healAmount = Math.floor(gateMaxHp * 0.3);
   const healed = Math.min(gateMaxHp, gateHp + healAmount);
+  const canThin = deckSize > 5;
 
   const choices = [
-    { label: 'Rest', detail: `Heal ${healAmount} Gate HP (${gateHp} → ${healed}/${gateMaxHp})`, color: 'green' as const },
-    { label: 'Thin', detail: `Remove a card from your deck (${deckSize} cards)`, color: 'cyan' as const },
-    { label: 'Leave', detail: 'Continue without resting', color: 'white' as const },
+    { label: 'Rest', detail: `Heal ${healAmount} Gate HP (${gateHp} → ${healed}/${gateMaxHp})`, color: 'green' as const, available: true },
+    { label: 'Thin', detail: canThin ? `Remove a card from your deck (${deckSize} cards)` : `Minimum deck size reached (${deckSize} cards)`, color: 'cyan' as const, available: canThin },
+    { label: 'Leave', detail: 'Continue without resting', color: 'white' as const, available: true },
   ];
 
   return (
@@ -26,7 +27,7 @@ export function RestView({ gateHp, gateMaxHp, selectedChoice, deckSize }: RestVi
       <Text dimColor italic>The campfire crackles against the encroaching Pale.</Text>
       <Text dimColor italic>A moment of warmth in the endless grey.</Text>
       <Text> </Text>
-      {choices.map(({ label, detail, color }, i) => {
+      {choices.map(({ label, detail, color, available }, i) => {
         const selected = i === selectedChoice;
         return (
           <Box key={i} flexDirection="column">
@@ -34,7 +35,8 @@ export function RestView({ gateHp, gateMaxHp, selectedChoice, deckSize }: RestVi
               <Text bold={selected} color={selected ? 'yellow' : 'white'}>
                 {selected ? ' ▶ ' : '   '}
               </Text>
-              <Text color={selected ? color : 'white'} bold={selected}>{label}</Text>
+              <Text color={!available ? 'gray' : selected ? color : 'white'} bold={selected} dimColor={!available}>{label}</Text>
+              {!available && <Text dimColor>{' (unavailable)'}</Text>}
             </Text>
             {selected && <Text dimColor>{'      '}{detail}</Text>}
           </Box>

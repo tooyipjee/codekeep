@@ -53,36 +53,48 @@ function enemyDisplay(enemy: EnemyInstance): string {
 export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxHp, gateBlock }: CombatGridProps) {
   const colWidth = 14;
   const numCols = columns.length;
+  const innerWidth = colWidth * numCols + (numCols - 1);
 
   const gatePercent = gateMaxHp > 0 ? Math.round((gateHp / gateMaxHp) * 100) : 0;
   const gateColor = gatePercent > 60 ? 'green' : gatePercent > 30 ? 'yellow' : 'red';
 
-  const colSep = (ch: string) => columns.map((_, i) => {
-    const label = `  Col ${i + 1}  `;
-    const pad = colWidth - label.length;
-    return '─'.repeat(Math.max(0, Math.floor(pad / 2))) + label + '─'.repeat(Math.max(0, Math.ceil(pad / 2)));
-  }).join(ch);
+  const paleLabel = 't h e   p a l e';
+  const borderWidth = innerWidth + 2;
+  const leftPad = Math.floor((borderWidth - paleLabel.length) / 2);
+  const rightPad = borderWidth - leftPad - paleLabel.length;
+  const dots = '· '.repeat(40);
+  const paleHeader = dots.slice(0, leftPad) + paleLabel + dots.slice(0, rightPad);
 
-  const bottomBorder = '└' + columns.map((_, i) =>
-    '─'.repeat(colWidth) + (i < numCols - 1 ? '┴' : '')
-  ).join('') + '┘';
+  const topBorder = '┌' + Array.from({ length: numCols }, (_, i) =>
+    '─'.repeat(colWidth) + (i < numCols - 1 ? '┬' : '')).join('') + '┐';
+
+  const wallTop = '╞' + Array.from({ length: numCols }, (_, i) =>
+    '═'.repeat(colWidth) + (i < numCols - 1 ? '╪' : '')).join('') + '╡';
+
+  const wallBot = '╘' + Array.from({ length: numCols }, (_, i) =>
+    '═'.repeat(colWidth) + (i < numCols - 1 ? '╧' : '')).join('') + '╛';
+
+  const gateInfo = ` ◆ GATE ${hpBar(gateHp, gateMaxHp, 20)} ${gateHp}/${gateMaxHp}`;
+  const blockInfo = gateBlock > 0 ? `  ◇${gateBlock}` : '';
 
   return (
     <Box flexDirection="column">
-      {/* Header */}
-      <Text dimColor>{'┌' + colSep('┬') + '┐'}</Text>
+      <Text dimColor>{paleHeader}</Text>
+      <Text dimColor>{topBorder}</Text>
 
-      {/* Target indicator row */}
       {showTarget && (
         <Text>
           <Text dimColor>{'│'}</Text>
           {columns.map((_, i) => {
             const isTarget = i === targetColumn;
-            const content = isTarget ? ' ▼ TARGET ▼ ' : '';
+            const marker = isTarget ? '▼' : '';
+            const cell = marker
+              .padStart(Math.ceil((colWidth + marker.length) / 2))
+              .padEnd(colWidth);
             return (
               <React.Fragment key={i}>
                 <Text color={isTarget ? 'yellow' : undefined} bold={isTarget}>
-                  {content.padEnd(colWidth).slice(0, colWidth)}
+                  {cell}
                 </Text>
                 <Text dimColor>{'│'}</Text>
               </React.Fragment>
@@ -91,7 +103,6 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
         </Text>
       )}
 
-      {/* Grid rows */}
       {Array.from({ length: ROWS }, (_, r) => (
         <Text key={r}>
           <Text dimColor>{'│'}</Text>
@@ -124,7 +135,8 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
         </Text>
       ))}
 
-      {/* Emplacements row */}
+      <Text>{wallTop}</Text>
+
       <Text>
         <Text dimColor>{'│'}</Text>
         {columns.map((col, i) => {
@@ -140,17 +152,11 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
         })}
       </Text>
 
-      {/* Bottom border with column separators */}
-      <Text dimColor>{bottomBorder}</Text>
+      <Text>{wallBot}</Text>
 
-      {/* Gate HP bar */}
       <Box paddingX={1}>
-        <Text bold color={gateColor}>
-          {'◆ Gate '}
-          {hpBar(gateHp, gateMaxHp, 20)}
-          {` ${gateHp}/${gateMaxHp}`}
-        </Text>
-        {gateBlock > 0 && <Text color="cyan"> ◇{gateBlock}</Text>}
+        <Text bold color={gateColor}>{gateInfo}</Text>
+        {gateBlock > 0 && <Text color="cyan">{blockInfo}</Text>}
       </Box>
     </Box>
   );

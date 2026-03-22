@@ -1,26 +1,35 @@
 {
-  "name": "@codekeep/cli",
+  "name": "codekeep",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "description": "Async tower defense terminal game — build ASCII fortresses powered by your coding activity",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tooyipjee/codekeep.git",
+    "directory": "packages/cli"
+  },
+  "keywords": ["terminal", "game", "tower-defense", "ascii", "cli", "tui", "pvp"],
   "bin": {
     "codekeep": "./dist/index.js"
   },
+  "files": ["dist"],
   "scripts": {
     "build": "tsup",
     "dev": "tsx src/index.tsx",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "tsup"
   },
   "dependencies": {
-    "@codekeep/server": "workspace:*",
-    "@codekeep/shared": "workspace:*",
     "chalk": "^5",
     "commander": "^13",
     "ink": "^6",
     "react": "^19"
   },
   "devDependencies": {
+    "@codekeep/server": "workspace:*",
+    "@codekeep/shared": "workspace:*",
     "@types/react": "^19",
     "@vitest/coverage-v8": "3",
     "ink-testing-library": "^4",

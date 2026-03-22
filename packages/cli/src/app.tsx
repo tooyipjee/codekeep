@@ -579,14 +579,14 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
             <StructurePicker selected={selectedStructure} />
             <Box marginTop={1}>
               <Text dimColor>
-                {'e place  u upgrade  x demo\n[ ] cycle  1-6 select\nc collect  r raid  v replay\ng jump  Tab next  f +res\n?help  Esc menu  q quit'}
+                {'e place  u upgrade  x demo\n[ ] cycle  1-6 select\nr raid  v replay  f +res\ng jump  Tab next  ~ auto\n?help  Esc menu  q quit'}
               </Text>
             </Box>
           </Box>
         )}
       </Box>
       {isCompact && (
-        <Text dimColor>e/u/x build  c collect  r raid  v replay  f +res  q quit</Text>
+        <Text dimColor>e/u/x build  r raid  v replay  f +res  ~ auto-collect  q quit</Text>
       )}
     </Box>
   );

@@ -368,7 +368,7 @@ describe('useGameState hook', () => {
     expect(capturedState!.cursor).toEqual({ x: 3, y: 5 });
   });
 
-  it('collectAtCursor with no fragment shows error', async () => {
+  it('collectAtCursor with no fragment is a silent no-op', async () => {
     let capturedMsg = '';
     function Comp() {
       const state = useGameState(false);
@@ -384,7 +384,7 @@ describe('useGameState hook', () => {
     }
     render(<Comp />);
     await delay(200);
-    expect(capturedMsg).toContain('Nothing');
+    expect(capturedMsg).toBe('');
   });
 
   it('watchLastRaid returns false when no quick raid was done', async () => {

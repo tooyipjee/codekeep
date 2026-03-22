@@ -608,10 +608,7 @@ export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
   const collectAtCursor = useCallback(() => {
     if (!gameSave) return;
     const result = collectFragment(fragments, cursor, gameSave.keep.grid);
-    if (!result) {
-      showMessage('!Nothing to collect here');
-      return;
-    }
+    if (!result) return;
     setFragments(result.updatedFragments);
     const y = result.yield;
     const updated = {

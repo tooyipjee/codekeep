@@ -1,6 +1,6 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm build && mkdir -p public",
+  "buildCommand": "pnpm build && mkdir -p public && echo '{}' > public/index.json",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api" }
   ]

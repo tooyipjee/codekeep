@@ -153,7 +153,7 @@ function simulateBackgroundRaids(save: GameSave, elapsedMs: number): { save: Gam
   return { save: current, results };
 }
 
-export function useGameState(forceTutorial: boolean) {
+export function useGameState(forceTutorial: boolean, dryRun?: boolean) {
   const [gameSave, setGameSave] = useState<GameSave | null>(null);
   const [cursor, setCursor] = useState<GridCoord>({ x: 8, y: 8 });
   const [structureIndex, setStructureIndex] = useState(0);
@@ -174,6 +174,7 @@ export function useGameState(forceTutorial: boolean) {
     grid: KeepGridState;
     summary: RaidSummary;
   } | null>(null);
+  const pendingAutoCollectRef = useRef<GridCoord | null>(null);
 
   const selectedStructure = ALL_STRUCTURE_KINDS[structureIndex];
 
@@ -182,7 +183,7 @@ export function useGameState(forceTutorial: boolean) {
       if (!prev) return prev;
       const updatedKeep = grantCodingEventResources(prev.keep, event);
       const updated = { ...prev, keep: updatedKeep, lastPlayedAtUnixMs: Date.now() };
-      saveGame(updated);
+      if (!dryRun) saveGame(updated);
       return updated;
     });
   });
@@ -251,7 +252,7 @@ export function useGameState(forceTutorial: boolean) {
     save = { ...save, lastPlayedAtUnixMs: Date.now() };
     if (forceTutorial) save = { ...save, tutorialCompleted: false };
     setGameSave(save);
-    saveGame(save);
+    if (!dryRun) saveGame(save);
   }, []);
 
   // Passive income timer
@@ -266,12 +267,12 @@ export function useGameState(forceTutorial: boolean) {
           keep: { ...prev.keep, resources: capResources(addResources(prev.keep.resources, bonus)) },
           lastPlayedAtUnixMs: Date.now(),
         };
-        saveGame(updated);
+        if (!dryRun) saveGame(updated);
         return updated;
       });
     }, PASSIVE_TICK_MS);
     return () => { if (passiveTimerRef.current) clearInterval(passiveTimerRef.current); };
-  }, []);
+  }, [dryRun]);
 
   // Fragment spawn/decay timer
   useEffect(() => {
@@ -287,11 +288,32 @@ export function useGameState(forceTutorial: boolean) {
   }, [gameSave]);
 
   useEffect(() => {
+    const pos = pendingAutoCollectRef.current;
+    if (!pos || !gameSave) return;
+    pendingAutoCollectRef.current = null;
+    const result = collectFragment(fragments, pos, gameSave.keep.grid);
+    if (!result) return;
+    setFragments(result.updatedFragments);
+    const y = result.yield;
+    const updated = {
+      ...gameSave,
+      keep: { ...gameSave.keep, resources: capResources(addResources(gameSave.keep.resources, y)) },
+    };
+    persist(updated);
+    const parts: string[] = [];
+    if (y.gold > 0) parts.push(`+${y.gold}${RESOURCE_ICONS.gold}`);
+    if (y.wood > 0) parts.push(`+${y.wood}${RESOURCE_ICONS.wood}`);
+    if (y.stone > 0) parts.push(`+${y.stone}${RESOURCE_ICONS.stone}`);
+    const typeName = result.collected[0]?.type.replace('_', ' ') ?? 'fragment';
+    const multi = result.collected.length > 1 ? ` (${result.collected.length}x)` : '';
+    showMessage(`${parts.join(' ')} ${typeName}${multi}`);
+  }, [cursor]);
+
+  useEffect(() => {
     return () => { if (messageTimerRef.current) clearTimeout(messageTimerRef.current); };
   }, []);
 
   const persist = useCallback((save: GameSave) => {
-    // Check achievements on every persist
     const newAch = checkAchievements(save);
     let updated = { ...save, lastPlayedAtUnixMs: Date.now() };
     if (newAch.length > 0) {
@@ -307,12 +329,12 @@ export function useGameState(forceTutorial: boolean) {
       }
     }
     setGameSave(updated);
-    saveGame(updated);
+    if (!dryRun) saveGame(updated);
     if (newAch.length > 0) {
       const names = newAch.map((id) => ACHIEVEMENTS.find((a) => a.id === id)?.name || id);
       showMessage(`🏆 ${names.join(', ')}!`);
     }
-  }, []);
+  }, [dryRun]);
 
   const showMessage = useCallback((msg: string) => {
     if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
@@ -324,10 +346,14 @@ export function useGameState(forceTutorial: boolean) {
   }, []);
 
   const moveCursor = useCallback((dx: number, dy: number) => {
-    setCursor((c) => ({
-      x: Math.max(0, Math.min(GRID_SIZE - 1, c.x + dx)),
-      y: Math.max(0, Math.min(GRID_SIZE - 1, c.y + dy)),
-    }));
+    setCursor((c) => {
+      const next = {
+        x: Math.max(0, Math.min(GRID_SIZE - 1, c.x + dx)),
+        y: Math.max(0, Math.min(GRID_SIZE - 1, c.y + dy)),
+      };
+      pendingAutoCollectRef.current = next;
+      return next;
+    });
   }, []);
 
   const cycleStructure = useCallback((dir: number) => {

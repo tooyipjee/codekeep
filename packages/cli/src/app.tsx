@@ -54,9 +54,10 @@ interface AppProps {
   forceTutorial: boolean;
   autoResume: boolean;
   serverUrl?: string;
+  dryRun?: boolean;
 }
 
-function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoResume, serverUrl }: AppProps) {
+function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoResume, serverUrl, dryRun }: AppProps) {
   const { exit } = useApp();
   const { columns, rows } = useTerminalSize();
   const [screen, setScreen] = useState<Screen>(serverUrl ? 'auth' : autoResume ? 'keep' : 'menu');
@@ -115,7 +116,7 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
     jumpToCoord,
     jumpToNextStructure,
     clearOfflineReport,
-  } = useGameState(forceTutorial);
+  } = useGameState(forceTutorial, dryRun);
 
   const handleQuit = useCallback(() => {
     exit();
@@ -563,6 +564,7 @@ function AppContent({ asciiMode: initialAsciiMode, compact, forceTutorial, autoR
         compact={isCompact}
         structureAtCursor={structureAtCursor}
         fragmentCount={fragments.length}
+        dryRun={dryRun}
       />
       <Box flexDirection="row">
         <KeepGrid

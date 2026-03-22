@@ -17,18 +17,20 @@ interface MenuProps {
 
 function getMenuItems(online: boolean) {
   const items = [
-    { key: 'keep', label: 'Build Keep', desc: 'Place and upgrade structures' },
-    { key: 'defend', label: 'Defend Keep', desc: 'Watch NPCs attack YOUR defenses' },
-    { key: 'attack', label: 'Attack NPC', desc: 'Raid an NPC keep for resources' },
+    { key: 'keep', label: 'Build Keep', desc: 'Place and upgrade structures', disabled: false },
+    { key: 'defend', label: 'Defend Keep', desc: 'Watch NPCs attack YOUR defenses', disabled: false },
+    { key: 'attack', label: 'Attack NPC', desc: 'Raid an NPC keep for resources', disabled: false },
   ];
   if (online) {
-    items.push({ key: 'pvp', label: '⚔ PvP Arena', desc: 'Fight real players for trophies' });
+    items.push({ key: 'pvp', label: '⚔ PvP Arena', desc: 'Fight real players for trophies', disabled: false });
+  } else {
+    items.push({ key: 'pvp-locked', label: '⚔ PvP Arena', desc: 'Coming soon — use --online to connect', disabled: true });
   }
   items.push(
-    { key: 'friendRaid', label: 'Raid Rival Keep', desc: "Plunder a rival lord's fortress" },
-    { key: 'raidLog', label: 'Raid Log', desc: 'View recent raid history' },
-    { key: 'settings', label: 'Settings', desc: 'Game options and reset' },
-    { key: 'quit', label: 'Rest for the Night', desc: 'Save and exit' },
+    { key: 'friendRaid', label: 'Raid Rival Keep', desc: "Plunder a rival lord's fortress", disabled: false },
+    { key: 'raidLog', label: 'Raid Log', desc: 'View recent raid history', disabled: false },
+    { key: 'settings', label: 'Settings', desc: 'Game options and reset', disabled: false },
+    { key: 'quit', label: 'Rest for the Night', desc: 'Save and exit', disabled: false },
   );
   return items;
 }
@@ -39,11 +41,20 @@ export function Menu({ gameSave, onlineMode, onKeep, onAttack, onDefend, onFrien
 
   useInput((input, key) => {
     if (input === 'k' || input === 'w' || key.upArrow) {
-      setSelected((s) => Math.max(0, s - 1));
+      setSelected((s) => {
+        let next = s - 1;
+        while (next >= 0 && menuItems[next].disabled) next--;
+        return next >= 0 ? next : s;
+      });
     } else if (input === 'j' || input === 's' || key.downArrow) {
-      setSelected((s) => Math.min(menuItems.length - 1, s + 1));
+      setSelected((s) => {
+        let next = s + 1;
+        while (next < menuItems.length && menuItems[next].disabled) next++;
+        return next < menuItems.length ? next : s;
+      });
     } else if (key.return) {
       const item = menuItems[selected];
+      if (item.disabled) return;
       if (item.key === 'keep') onKeep();
       else if (item.key === 'defend') onDefend();
       else if (item.key === 'attack') onAttack();
@@ -84,8 +95,8 @@ export function Menu({ gameSave, onlineMode, onKeep, onAttack, onDefend, onFrien
 
       {menuItems.map((item, i) => (
         <Box key={item.key}>
-          <Text color={i === selected ? 'yellow' : undefined} bold={i === selected}>
-            {i === selected ? ' ▸ ' : '   '}
+          <Text color={item.disabled ? undefined : (i === selected ? 'yellow' : undefined)} bold={!item.disabled && i === selected} dimColor={item.disabled}>
+            {i === selected && !item.disabled ? ' ▸ ' : '   '}
             {item.label}
           </Text>
           <Text dimColor>  {item.desc}</Text>

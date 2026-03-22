@@ -10,6 +10,7 @@ interface HUDProps {
   compact?: boolean;
   structureAtCursor?: PlacedStructure | null;
   fragmentCount?: number;
+  dryRun?: boolean;
 }
 
 const COMPACT_NAMES: Record<StructureKind, string> = {
@@ -29,7 +30,7 @@ function formatCost(cost: Resources): string {
   return parts.join(' ');
 }
 
-export function HUD({ resources, selectedStructure, message, compact, structureAtCursor, fragmentCount = 0 }: HUDProps) {
+export function HUD({ resources, selectedStructure, message, compact, structureAtCursor, fragmentCount = 0, dryRun }: HUDProps) {
   if (compact) {
     const name = COMPACT_NAMES[selectedStructure];
     return (
@@ -62,6 +63,7 @@ export function HUD({ resources, selectedStructure, message, compact, structureA
     <Box flexDirection="column" marginBottom={1}>
       <Box flexDirection="row" gap={1}>
         <Text bold color="yellow">{'◆ CodeKeep'}</Text>
+        {dryRun && <Text color="magenta" bold>{' [DRY RUN]'}</Text>}
         <Text dimColor>{'│'}</Text>
         <Text color="yellow">{RESOURCE_ICONS.gold} {resources.gold}</Text>
         <Text color="green">{RESOURCE_ICONS.wood} {resources.wood}</Text>

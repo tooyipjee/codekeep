@@ -2,6 +2,7 @@
   "name": "codekeep",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Async tower defense terminal game powered by your coding activity",
   "scripts": {
     "dev": "turbo dev",
@@ -9,7 +10,7 @@
     "test": "turbo test",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "play": "pnpm --filter @codekeep/cli dev"
+    "play": "pnpm --filter codekeep dev"
   },
   "devDependencies": {
     "turbo": "^2",

@@ -1,7 +1,6 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm build",
-  "outputDirectory": ".",
+  "buildCommand": "pnpm build && mkdir -p public",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api" }
   ]

@@ -6,8 +6,20 @@ Build a deck. Defend the Gate. Push back the Pale.
 
 ## Install
 
+**Via npx** (requires npm):
 ```bash
 npx codekeep
+```
+
+**Via curl** (requires Node.js 20+, no npm needed):
+```bash
+curl -fsSL https://raw.githubusercontent.com/tooyipjee/codekeep/main/install.sh | sh
+```
+
+**Via npm** (global install):
+```bash
+npm install -g codekeep
+codekeep
 ```
 
 ## What Is It?

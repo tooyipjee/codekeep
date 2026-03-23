@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
-import type { CombatState, CardInstance, PotionDef, DifficultyModifiers } from '@codekeep/shared';
-import { getCardDef, HAND_SIZE } from '@codekeep/shared';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import type { CombatState, CombatEvent, CardInstance, PotionDef, DifficultyModifiers } from '@codekeep/shared';
+import { getCardDef, getEnemyTemplate, HAND_SIZE } from '@codekeep/shared';
 import { createCombatState, playCard, endPlayerTurn, createStarterDeck, mulberry32, drawCards, hasFirstCardFree } from '@codekeep/server';
 
 export interface UseCombatStateReturn {
@@ -9,6 +9,7 @@ export interface UseCombatStateReturn {
   targetColumn: number;
   message: string;
   emplaceMode: boolean;
+  animating: boolean;
   selectCard: (index: number) => void;
   selectTarget: (col: number) => void;
   confirmPlay: () => void;
@@ -19,13 +20,56 @@ export interface UseCombatStateReturn {
   needsTarget: boolean;
 }
 
+function describeEnemyEvent(evt: CombatEvent): string | null {
+  switch (evt.type) {
+    case 'enemy_advance': return `Enemy advances to row ${evt.data.row}`;
+    case 'gate_hit': {
+      const blocked = evt.data.blocked ? ` (${evt.data.blocked} blocked)` : '';
+      return evt.data.self ? `Gate takes ${evt.data.damage} self-damage` : `Enemy hits gate for ${evt.data.damage}${blocked}!`;
+    }
+    case 'enemy_killed': return 'An enemy is destroyed!';
+    case 'emplacement_destroyed': return `Emplacement in column ${(evt.data.column as number) + 1} destroyed!`;
+    case 'emplacement_triggered': return `Emplacement fires in column ${(evt.data.column as number) + 1}`;
+    case 'status_applied': return `${evt.data.type} applied (${evt.data.value} stacks)`;
+    case 'damage_dealt': return `${evt.data.damage} damage dealt`;
+    case 'block_gained': return `+${evt.data.value} Block`;
+    default: return null;
+  }
+}
+
 export function useCombatState(): UseCombatStateReturn {
   const [combat, setCombat] = useState<CombatState | null>(null);
   const [selectedCard, setSelectedCard] = useState(-1);
   const [targetColumn, setTargetColumn] = useState(2);
   const [message, setMessage] = useState('');
   const [emplaceMode, setEmplaceMode] = useState(false);
+  const [animating, setAnimating] = useState(false);
+  const [animQueue, setAnimQueue] = useState<string[]>([]);
   const combatRef = useRef<CombatState | null>(null);
+
+  useEffect(() => {
+    if (!animating || animQueue.length === 0) return;
+    const timer = setTimeout(() => {
+      const [current, ...rest] = animQueue;
+      setMessage(current);
+      if (rest.length === 0) {
+        setAnimating(false);
+        const state = combatRef.current;
+        if (state) {
+          if (state.outcome === 'win') {
+            setMessage('Victory! The Pale recedes.');
+          } else if (state.outcome === 'lose') {
+            setMessage('The Gate has fallen...');
+          } else {
+            setMessage(`Turn ${state.turn}. Your move.`);
+          }
+        }
+      } else {
+        setAnimQueue(rest);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [animating, animQueue]);
 
   const startCombat = useCallback((
     deck?: CardInstance[],
@@ -144,21 +188,35 @@ export function useCombatState(): UseCombatStateReturn {
 
   const endTurn = useCallback(() => {
     const state = combatRef.current;
-    if (!state || state.phase !== 'player') return;
+    if (!state || state.phase !== 'player' || animating) return;
 
+    const eventsBefore = state.events.length;
     endPlayerTurn(state);
     combatRef.current = state;
     setCombat({ ...state });
     setSelectedCard(-1);
 
-    if (state.outcome === 'win') {
-      setMessage('Victory! The Pale recedes.');
-    } else if (state.outcome === 'lose') {
-      setMessage('The Gate has fallen...');
-    } else {
-      setMessage(`Turn ${state.turn}. Your move.`);
+    const newEvents = state.events.slice(eventsBefore);
+    const descriptions: string[] = [];
+    for (const evt of newEvents) {
+      const desc = describeEnemyEvent(evt);
+      if (desc) descriptions.push(desc);
     }
-  }, []);
+
+    if (descriptions.length > 0) {
+      setAnimating(true);
+      setMessage('⚡ Enemy turn...');
+      setAnimQueue(descriptions);
+    } else {
+      if (state.outcome === 'win') {
+        setMessage('Victory! The Pale recedes.');
+      } else if (state.outcome === 'lose') {
+        setMessage('The Gate has fallen...');
+      } else {
+        setMessage(`Turn ${state.turn}. Your move.`);
+      }
+    }
+  }, [animating]);
 
   const applyPotion = useCallback((potionDef: PotionDef | null) => {
     const state = combatRef.current;
@@ -210,6 +268,7 @@ export function useCombatState(): UseCombatStateReturn {
     targetColumn,
     message,
     emplaceMode,
+    animating,
     selectCard,
     selectTarget,
     confirmPlay,

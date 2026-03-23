@@ -31,9 +31,10 @@ interface CombatViewProps {
   targetColumn: number;
   needsTarget: boolean;
   message: string;
+  animating?: boolean;
 }
 
-export function CombatView({ combat, selectedCard, targetColumn, needsTarget, message }: CombatViewProps) {
+export function CombatView({ combat, selectedCard, targetColumn, needsTarget, message, animating = false }: CombatViewProps) {
   const totalEnemies = combat.columns.reduce((s, c) => s + c.enemies.length, 0);
 
   return (
@@ -94,13 +95,16 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
       })()}
 
       {message && (
-        <Text color="yellow" bold>{'  '}{message}</Text>
+        <Text color={animating ? 'red' : 'yellow'} bold>{'  '}{animating ? '⚡ ' : ''}{message}</Text>
       )}
 
-      {combat.phase === 'player' && (
+      {combat.phase === 'player' && !animating && (
         <Text dimColor>
           {'  '}{combat.hand.length > 0 ? `1-${combat.hand.length} card  ` : ''}←→ column  Enter play  e emplace  p potion  Space end  d deck  q quit
         </Text>
+      )}
+      {animating && (
+        <Text dimColor>{'  '}Resolving enemy actions...</Text>
       )}
 
       {combat.outcome !== 'undecided' && (

@@ -101,7 +101,7 @@ function AppContent({ dryRun }: AppProps) {
 
   // Combat
   const combatHook = useCombatState();
-  const { combat, selectedCard, targetColumn, message, emplaceMode, selectCard, selectTarget, confirmPlay, endTurn, toggleEmplace, startCombat, applyPotion: _applyPotion, needsTarget } = combatHook;
+  const { combat, selectedCard, targetColumn, message, emplaceMode, animating, selectCard, selectTarget, confirmPlay, endTurn, toggleEmplace, startCombat, applyPotion: _applyPotion, needsTarget } = combatHook;
 
   // Inspect mode
   const [inspectMode, setInspectMode] = useState(false);
@@ -703,6 +703,7 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'combat' && combat) {
+      if (animating) return;
       if (combat.outcome !== 'undecided') {
         if (key.return || input === ' ') afterCombat();
         return;
@@ -1011,6 +1012,7 @@ function AppContent({ dryRun }: AppProps) {
           targetColumn={targetColumn}
           needsTarget={needsTarget}
           message={confirmEndTurn ? `End turn with ${combat.resolve} Resolve remaining? Press Space again to confirm.` : message}
+          animating={animating}
         />
         {inspectMode && (() => {
           const col = combat.columns[inspectCol];

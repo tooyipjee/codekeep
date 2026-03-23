@@ -12,31 +12,31 @@ interface CombatGridProps {
   gateBlock: number;
 }
 
-function intentLabel(intent: EnemyInstance['intent']): string {
-  if (!intent) return '';
+function intentLabel(intent: EnemyInstance['intent']): { text: string; color: string } {
+  if (!intent) return { text: '', color: 'white' };
   switch (intent.type) {
-    case 'advance': return `↓${intent.value}`;
-    case 'attack': return `⚔${intent.value}`;
-    case 'buff': return `▲${intent.value}`;
-    case 'debuff': return `▼${intent.value}`;
-    case 'shield': return `◈${intent.value}`;
-    case 'summon': return `+${intent.value}`;
-    default: return '';
+    case 'advance': return { text: `↓Mv`, color: 'white' };
+    case 'attack': return { text: `⚔${intent.value}`, color: 'red' };
+    case 'buff': return { text: `▲Buff`, color: 'magenta' };
+    case 'debuff': return { text: `▼Hex`, color: 'magenta' };
+    case 'shield': return { text: `◈Shd`, color: 'blue' };
+    case 'summon': return { text: `+Call`, color: 'magenta' };
+    default: return { text: '', color: 'white' };
   }
 }
 
-function statusIcons(enemy: EnemyInstance): string {
-  const parts: string[] = [];
+function statusIcons(enemy: EnemyInstance): { text: string; color: string }[] {
+  const tags: { text: string; color: string }[] = [];
   for (const s of enemy.statusEffects) {
     switch (s.type) {
-      case 'vulnerable': parts.push(`V${s.stacks}`); break;
-      case 'weak': parts.push(`W${s.stacks}`); break;
-      case 'burn': parts.push(`B${s.stacks}`); break;
-      case 'empowered': parts.push(`E${s.stacks}`); break;
-      case 'fortified': parts.push(`F${s.stacks}`); break;
+      case 'vulnerable': tags.push({ text: `vul${s.stacks}`, color: 'yellow' }); break;
+      case 'weak': tags.push({ text: `wk${s.stacks}`, color: 'green' }); break;
+      case 'burn': tags.push({ text: `🔥${s.stacks}`, color: 'red' }); break;
+      case 'empowered': tags.push({ text: `pwr${s.stacks}`, color: 'magenta' }); break;
+      case 'fortified': tags.push({ text: `frt${s.stacks}`, color: 'blue' }); break;
     }
   }
-  return parts.join('');
+  return tags;
 }
 
 function hpBar(current: number, max: number, width: number): string {
@@ -108,26 +108,34 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
           <Text dimColor>{'│'}</Text>
           {columns.map((col, i) => {
             const enemies = col.enemies.filter((e) => e.row === r);
-            let cell: string;
-            if (enemies.length === 0) {
-              cell = '·'.padStart(Math.floor((colWidth + 1) / 2)).padEnd(colWidth);
-            } else {
-              const display = enemies.map((e) => {
-                const intent = intentLabel(e.intent);
-                const statuses = statusIcons(e);
-                let txt = enemyDisplay(e);
-                if (intent) txt += ` ${intent}`;
-                if (statuses) txt += ` ${statuses}`;
-                return txt;
-              }).join(' ');
-              cell = display.slice(0, colWidth).padEnd(colWidth);
-            }
             const isTarget = showTarget && i === targetColumn;
+            if (enemies.length === 0) {
+              const cell = '·'.padStart(Math.floor((colWidth + 1) / 2)).padEnd(colWidth);
+              return (
+                <React.Fragment key={i}>
+                  <Text>{cell}</Text>
+                  <Text dimColor>{'│'}</Text>
+                </React.Fragment>
+              );
+            }
+            const enemy = enemies[0];
+            const sym = getEnemyTemplate(enemy.templateId)?.symbol ?? '?';
+            const intent = intentLabel(enemy.intent);
+            const statuses = statusIcons(enemy);
+            const hpStr = `${enemy.hp}`;
+            const baseLen = sym.length + hpStr.length + 1 + (intent.text ? intent.text.length + 1 : 0);
+            const statusLen = statuses.reduce((s, t) => s + t.text.length + 1, 0);
+            const showStatuses = baseLen + statusLen <= colWidth;
+
             return (
               <React.Fragment key={i}>
-                <Text color={isTarget && enemies.length > 0 ? 'yellow' : undefined}>
-                  {cell}
-                </Text>
+                <Text color={isTarget ? 'yellow' : 'red'} bold>{sym}</Text>
+                <Text color={isTarget ? 'yellow' : 'white'}>{hpStr}</Text>
+                {intent.text ? <Text color={intent.color}>{' '}{intent.text}</Text> : null}
+                {showStatuses && statuses.map((st, si) => (
+                  <Text key={si} color={st.color}>{' '}{st.text}</Text>
+                ))}
+                <Text>{' '.repeat(Math.max(0, colWidth - baseLen - (showStatuses ? statusLen : 0)))}</Text>
                 <Text dimColor>{'│'}</Text>
               </React.Fragment>
             );

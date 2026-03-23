@@ -129,6 +129,7 @@ function AppContent({ dryRun }: AppProps) {
   const [settingsIndex, setSettingsIndex] = useState(0);
   const [settingsMessage, setSettingsMessage] = useState('');
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const [confirmingNewRun, setConfirmingNewRun] = useState(false);
 
   // Cached save data (avoid disk I/O on every render)
   const [cachedSave, setCachedSave] = useState<GameSave | null>(() => loadGame());
@@ -393,10 +394,15 @@ function AppContent({ dryRun }: AppProps) {
     }
   }, [run, doSave, finishRun]);
 
+  const hasActiveRun = !!cachedSave?.activeRun;
   const menuItems = [
     { label: 'The Keep', action: 'keep' },
-    { label: 'New Run', action: 'new' },
-    ...(cachedSave?.activeRun ? [{ label: 'Resume Run', action: 'resume' }] : []),
+    ...(hasActiveRun ? [
+      { label: 'Resume Run', action: 'resume' },
+      { label: confirmingNewRun ? 'Abandon run? Enter to confirm' : 'New Run', action: 'new' },
+    ] : [
+      { label: 'New Run', action: 'new' },
+    ]),
     { label: 'Tutorial', action: 'tutorial' },
     { label: 'Settings', action: 'settings' },
     { label: 'Quit', action: 'quit' },
@@ -477,12 +483,20 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'menu') {
-      if (key.upArrow) setMenuIndex((i) => Math.max(0, i - 1));
-      else if (key.downArrow) setMenuIndex((i) => Math.min(menuItems.length - 1, i + 1));
+      if (key.upArrow) { setMenuIndex((i) => Math.max(0, i - 1)); setConfirmingNewRun(false); }
+      else if (key.downArrow) { setMenuIndex((i) => Math.min(menuItems.length - 1, i + 1)); setConfirmingNewRun(false); }
+      else if (key.escape) { setConfirmingNewRun(false); }
       else if (key.return) {
         const action = menuItems[menuIndex]?.action;
         if (action === 'keep') goToKeep();
-        else if (action === 'new') beginRun();
+        else if (action === 'new') {
+          if (hasActiveRun && !confirmingNewRun) {
+            setConfirmingNewRun(true);
+          } else {
+            setConfirmingNewRun(false);
+            beginRun();
+          }
+        }
         else if (action === 'resume') resumeRun();
         else if (action === 'tutorial') { setTutorialPage(0); setTutorialSource('menu'); setScreen('tutorial'); }
         else if (action === 'settings') { setSettingsIndex(0); setSettingsMessage(''); setConfirmingReset(false); setScreen('settings'); }
@@ -829,8 +843,9 @@ function AppContent({ dryRun }: AppProps) {
         <Text> </Text>
         {menuItems.map((item, i) => {
           const selected = i === menuIndex;
+          const isConfirm = item.action === 'new' && confirmingNewRun && selected;
           return (
-            <Text key={item.action} bold={selected} color={selected ? 'yellow' : 'white'}>
+            <Text key={item.action + (isConfirm ? '-confirm' : '')} bold={selected} color={isConfirm ? 'red' : selected ? 'yellow' : 'white'}>
               {selected ? ' ▶ ' : '   '}{item.label}
             </Text>
           );

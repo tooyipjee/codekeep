@@ -59,6 +59,13 @@ function effectSummary(def: CardDef): string {
       case 'exhaust_draw': parts.push(`exile+${e.value} draw`); break;
       case 'damage_if_emplaced': parts.push(`${e.value} dmg if wall`); break;
       case 'damage_per_emplace': parts.push(`${e.value}×wall dmg`); break;
+      case 'damage_if_low_hp': parts.push(`${e.value} dmg (×2 low hp)`); break;
+      case 'draw_per_kills': parts.push('draw/kill'); break;
+      case 'exhaust_self': parts.push('exile'); break;
+      case 'damage_per_kill_this_action': parts.push(`+${e.value} chain`); break;
+      case 'replay_last': parts.push('replay last'); break;
+      case 'burn_if_burning': parts.push(`${e.value} burn (×2)`); break;
+      case 'draw_per_empty_potions': parts.push('draw/slot'); break;
       default: break;
     }
   }

@@ -107,7 +107,7 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
         <Text dimColor>{'  '}Resolving enemy actions...</Text>
       )}
 
-      {combat.outcome !== 'undecided' && (
+      {combat.outcome !== 'undecided' && !animating && (
         <Box flexDirection="column" marginTop={1} paddingX={1}>
           <Text bold color={combat.outcome === 'win' ? 'green' : 'red'}>
             {combat.outcome === 'win'

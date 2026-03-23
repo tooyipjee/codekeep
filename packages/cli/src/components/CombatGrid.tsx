@@ -41,17 +41,24 @@ function intentInfo(intent: EnemyInstance['intent']): { text: string; color: str
 interface StatusTag { text: string; color: string }
 
 function statusTags(enemy: EnemyInstance): StatusTag[] {
-  const tags: StatusTag[] = [];
+  const all: StatusTag[] = [];
   for (const s of enemy.statusEffects) {
     switch (s.type) {
-      case 'vulnerable': tags.push({ text: `vul${s.stacks}`, color: 'yellow' }); break;
-      case 'weak': tags.push({ text: `wk${s.stacks}`, color: 'green' }); break;
-      case 'burn': tags.push({ text: `brn${s.stacks}`, color: 'red' }); break;
-      case 'empowered': tags.push({ text: `pwr${s.stacks}`, color: 'magenta' }); break;
-      case 'fortified': tags.push({ text: `frt${s.stacks}`, color: 'blue' }); break;
+      case 'vulnerable': all.push({ text: `v${s.stacks}`, color: 'yellow' }); break;
+      case 'weak': all.push({ text: `w${s.stacks}`, color: 'green' }); break;
+      case 'burn': all.push({ text: `b${s.stacks}`, color: 'red' }); break;
+      case 'empowered': all.push({ text: `p${s.stacks}`, color: 'magenta' }); break;
+      case 'fortified': all.push({ text: `f${s.stacks}`, color: 'blue' }); break;
     }
   }
-  return tags;
+  let used = 0;
+  const visible: StatusTag[] = [];
+  for (const t of all) {
+    if (used + t.text.length + 1 > INNER) break;
+    visible.push(t);
+    used += t.text.length + 1;
+  }
+  return visible;
 }
 
 function EnemyCard({ enemy, isTarget }: { enemy: EnemyInstance; isTarget: boolean }) {
@@ -62,13 +69,17 @@ function EnemyCard({ enemy, isTarget }: { enemy: EnemyInstance; isTarget: boolea
   const bDim = !isTarget;
 
   const nameTag = `${sym} ${name}`;
-  const topFill = Math.max(0, INNER - 1 - nameTag.length);
+  const maxNameLen = INNER - 1;
+  const displayTag = nameTag.length > maxNameLen
+    ? nameTag.slice(0, maxNameLen - 1) + '…'
+    : nameTag;
+  const topFill = Math.max(0, INNER - 1 - displayTag.length);
 
   const bar = hpBar(enemy.hp, enemy.maxHp, 4);
   const hp = `${enemy.hp}`;
   const intent = intentInfo(enemy.intent);
-  const leftContent = ` ${bar} ${hp} `;
-  const gap = Math.max(0, INNER - leftContent.length - intent.text.length);
+  const leftWidth = 1 + 4 + 1 + hp.length;
+  const gap = Math.max(0, INNER - leftWidth - intent.text.length);
 
   const tags = statusTags(enemy);
   const tagLen = tags.reduce((a, t) => a + t.text.length + 1, 0);
@@ -78,7 +89,7 @@ function EnemyCard({ enemy, isTarget }: { enemy: EnemyInstance; isTarget: boolea
     <Box flexDirection="column">
       <Text>
         <Text color={bc} dimColor={bDim} bold={isTarget}>{'╭─'}</Text>
-        <Text color={isTarget ? 'yellow' : 'red'} bold>{nameTag}</Text>
+        <Text color={isTarget ? 'yellow' : 'red'} bold>{displayTag}</Text>
         <Text color={bc} dimColor={bDim}>{'─'.repeat(topFill)}{'╮'}</Text>
       </Text>
       <Text>
@@ -123,15 +134,21 @@ function EmplacementCard({ col }: { col: Column }) {
   if (!col.emplacement) {
     return (
       <Box flexDirection="column">
-        <Text dimColor>{'╌'.repeat(14)}</Text>
+        <Text>{' '.repeat(INNER + 2)}</Text>
+        <Text dimColor>{'  '}{'╌'.repeat(INNER - 2)}{'  '}</Text>
+        <Text>{' '.repeat(INNER + 2)}</Text>
       </Box>
     );
   }
   const empDef = getCardDef(col.emplacement.cardDefId);
-  const empName = empDef?.name ?? 'Wall';
+  const rawName = empDef?.name ?? 'Wall';
   const hp = col.emplacement.hp;
   const bar = hpBar(hp, col.emplacement.maxHp, 4);
-  const content = ` ◇${empName} ${bar}${hp}`.padEnd(INNER).slice(0, INNER);
+  const hpStr = `${hp}`;
+  const fixedLen = 3 + 1 + 4 + hpStr.length; // " ◇" + space + bar + hp
+  const maxName = INNER - fixedLen;
+  const empName = rawName.length > maxName ? rawName.slice(0, Math.max(1, maxName - 1)) + '…' : rawName;
+  const content = ` ◇${empName} ${bar}${hpStr}`.padEnd(INNER).slice(0, INNER);
 
   return (
     <Box flexDirection="column">

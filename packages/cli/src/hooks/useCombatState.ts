@@ -37,6 +37,11 @@ function describeEnemyEvent(evt: CombatEvent): string | null {
   }
 }
 
+const TARGETING_EFFECT_TYPES = new Set([
+  'damage', 'damage_if_vulnerable', 'damage_equal_block', 'damage_if_emplaced',
+  'damage_plus_block', 'damage_if_low_hp', 'vulnerable', 'weak', 'burn',
+]);
+
 export function useCombatState(): UseCombatStateReturn {
   const [combat, setCombat] = useState<CombatState | null>(null);
   const [selectedCard, setSelectedCard] = useState(-1);
@@ -97,12 +102,8 @@ export function useCombatState(): UseCombatStateReturn {
     if (!card) return false;
     const def = getCardDef(card.defId);
     if (!def) return false;
-    const targetingTypes = new Set([
-      'damage', 'damage_if_vulnerable', 'damage_equal_block', 'damage_if_emplaced',
-      'damage_plus_block', 'damage_if_low_hp', 'vulnerable', 'weak', 'burn',
-    ]);
     return def.effects.some((e) =>
-      targetingTypes.has(e.type) && (e.target === 'single' || e.target === 'column'),
+      TARGETING_EFFECT_TYPES.has(e.type) && (e.target === 'single' || e.target === 'column'),
     );
   })();
 
@@ -122,12 +123,8 @@ export function useCombatState(): UseCombatStateReturn {
       return;
     }
     setSelectedCard(index);
-    const targetingTypes = new Set([
-      'damage', 'damage_if_vulnerable', 'damage_equal_block', 'damage_if_emplaced',
-      'damage_plus_block', 'damage_if_low_hp', 'vulnerable', 'weak', 'burn',
-    ]);
     const needsTgt = def.effects.some((e) =>
-      targetingTypes.has(e.type) && (e.target === 'single' || e.target === 'column'),
+      TARGETING_EFFECT_TYPES.has(e.type) && (e.target === 'single' || e.target === 'column'),
     );
     if (needsTgt) {
       setMessage(`${def.name} selected. Choose column (←→), Enter to play.`);

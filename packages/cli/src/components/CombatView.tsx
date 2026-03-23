@@ -30,11 +30,15 @@ interface CombatViewProps {
   selectedCard: number;
   targetColumn: number;
   needsTarget: boolean;
+  emplaceMode?: boolean;
   message: string;
   animating?: boolean;
+  inspectCol?: number;
+  inspectEnemyIdx?: number;
+  inspectMode?: boolean;
 }
 
-export function CombatView({ combat, selectedCard, targetColumn, needsTarget, message, animating = false }: CombatViewProps) {
+export function CombatView({ combat, selectedCard, targetColumn, needsTarget, emplaceMode = false, message, animating = false, inspectCol, inspectEnemyIdx, inspectMode = false }: CombatViewProps) {
   const totalEnemies = combat.columns.reduce((s, c) => s + c.enemies.length, 0);
 
   return (
@@ -59,10 +63,12 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
       <CombatGrid
         columns={combat.columns}
         targetColumn={targetColumn}
-        showTarget={needsTarget && selectedCard >= 0}
+        showTarget={(needsTarget || emplaceMode) && selectedCard >= 0}
         gateHp={combat.gateHp}
         gateMaxHp={combat.gateMaxHp}
         gateBlock={combat.gateBlock}
+        inspectCol={inspectMode ? inspectCol : undefined}
+        inspectEnemyIdx={inspectMode ? inspectEnemyIdx : undefined}
       />
 
       <CardHand
@@ -100,7 +106,7 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, me
 
       {combat.phase === 'player' && !animating && (
         <Text dimColor>
-          {'  '}{combat.hand.length > 0 ? `1-${combat.hand.length} card  ` : ''}←→ column  Enter play  e emplace  p potion  Space end  d deck  q quit
+          {'  '}{combat.hand.length > 0 ? `1-${combat.hand.length} card  ` : ''}←→ column  Enter play  e emplace  p potion  i inspect  Space end  d deck  q quit
         </Text>
       )}
       {animating && (

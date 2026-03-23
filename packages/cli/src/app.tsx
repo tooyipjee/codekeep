@@ -210,21 +210,30 @@ function AppContent({ dryRun }: AppProps) {
 
   const getReachable = useCallback((): MapNode[] => {
     if (!run) return [];
+    if (run.currentNodeId) {
+      const current = run.map.nodes.find(n => n.id === run.currentNodeId);
+      if (current && !current.visited) {
+        return [current];
+      }
+    }
     return getReachableNodes(run.map, run.currentNodeId);
   }, [run]);
 
   const enterNode = useCallback((node: MapNode) => {
     if (!run) return;
-    let r = visitNode(run, node.id);
 
     if (node.type === 'combat' || node.type === 'elite') {
+      const r = { ...run, currentNodeId: node.id };
       const seed = hashSeed(run.seed + node.id);
       const rng = mulberry32(seed);
       const encounter = pickEncounter(run.act, rng, node.type === 'elite');
       startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, encounter.enemies, r.relics, getDifficultyModifiers(run.act, run.ascensionLevel));
       setRun(r);
+      doSave(r);
       setScreen('combat');
+      return;
     } else if (node.type === 'boss') {
+      const r = { ...run, currentNodeId: node.id };
       const seed = hashSeed(run.seed + '-boss-' + run.act);
       const wave = getBossWave(run.act);
       startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, wave, r.relics, getDifficultyModifiers(run.act, run.ascensionLevel));
@@ -239,8 +248,13 @@ function AppContent({ dryRun }: AppProps) {
       }
 
       setRun(r);
+      doSave(r);
       setScreen('combat');
-    } else if (node.type === 'shop') {
+      return;
+    }
+
+    let r = visitNode(run, node.id);
+    if (node.type === 'shop') {
       const rng = mulberry32(hashSeed(run.seed + node.id));
       setShopItems(generateShop(rng));
       setShopIndex(0);
@@ -286,6 +300,10 @@ function AppContent({ dryRun }: AppProps) {
     if (combat.outcome === 'lose') {
       finishRun(r, false);
       return;
+    }
+
+    if (r.currentNodeId) {
+      r = visitNode(r, r.currentNodeId);
     }
 
     const currentNode = run.currentNodeId ? getNodeById(run.map, run.currentNodeId) : null;
@@ -480,9 +498,9 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'map' && run) {
-      const reachable = getReachable();
-      if (key.upArrow) setSelectedNodeIdx((i) => Math.max(0, i - 1));
-      else if (key.downArrow) setSelectedNodeIdx((i) => Math.min(reachable.length - 1, i + 1));
+      const reachable = getReachable().sort((a, b) => a.column - b.column);
+      if (key.leftArrow) setSelectedNodeIdx((i) => Math.max(0, i - 1));
+      else if (key.rightArrow) setSelectedNodeIdx((i) => Math.min(reachable.length - 1, i + 1));
       else if (key.return && reachable[selectedNodeIdx]) enterNode(reachable[selectedNodeIdx]);
       else if (input === 'd') { setPreviousScreen('map'); setScreen('deck'); }
       else if (input === 'q') { doSave(run); setScreen('menu'); }
@@ -749,8 +767,26 @@ function AppContent({ dryRun }: AppProps) {
         return;
       }
       if (input >= '1' && input <= '9') { setConfirmEndTurn(false); selectCard(parseInt(input) - 1); return; }
-      if (key.leftArrow) { selectTarget(Math.max(0, targetColumn - 1)); return; }
-      if (key.rightArrow) { selectTarget(Math.min(4, targetColumn + 1)); return; }
+      if (key.leftArrow) {
+        if (needsTarget && combat) {
+          let next = targetColumn - 1;
+          while (next >= 0 && combat.columns[next].enemies.length === 0) next--;
+          if (next >= 0) selectTarget(next);
+        } else {
+          selectTarget(Math.max(0, targetColumn - 1));
+        }
+        return;
+      }
+      if (key.rightArrow) {
+        if (needsTarget && combat) {
+          let next = targetColumn + 1;
+          while (next < 5 && combat.columns[next].enemies.length === 0) next++;
+          if (next < 5) selectTarget(next);
+        } else {
+          selectTarget(Math.min(4, targetColumn + 1));
+        }
+        return;
+      }
       if (key.return && selectedCard >= 0) { confirmPlay(); return; }
       if (input === ' ') {
         if (combat.resolve > 0 && combat.hand.some(c => { const d = getCardDef(c.defId); return d && d.cost <= combat.resolve; }) && !confirmEndTurn) {
@@ -854,7 +890,7 @@ function AppContent({ dryRun }: AppProps) {
   }
 
   if (screen === 'map' && run) {
-    const reachable = getReachable();
+    const reachable = getReachable().sort((a, b) => a.column - b.column);
     return (
       <Box flexDirection="column">
         <Box justifyContent="space-between" paddingX={1}>
@@ -868,9 +904,16 @@ function AppContent({ dryRun }: AppProps) {
           )}
           <Text>Deck <Text dimColor>{run.deck.length}</Text></Text>
         </Box>
-        {isFirstRun && settings.showTutorialHints && !run.currentNodeId && (
-          <Text color="green" bold>  TIP: ⚔=combat ★=elite(harder, more reward) △=rest $=shop ?=event ◆=boss. ↑↓ select, Enter to go.</Text>
-        )}
+        {(() => {
+          const currentNode = run.currentNodeId ? run.map.nodes.find(n => n.id === run.currentNodeId) : null;
+          if (currentNode && !currentNode.visited) {
+            return <Text color="yellow" bold>{'  '}Battle in progress — Enter to continue.</Text>;
+          }
+          if (isFirstRun && settings.showTutorialHints && !run.currentNodeId) {
+            return <Text color="green" bold>  TIP: ⚔=combat ★=elite(harder, more reward) △=rest $=shop ?=event ◆=boss. ←→ select, Enter to go.</Text>;
+          }
+          return null;
+        })()}
         <MapView
           map={run.map}
           currentNodeId={run.currentNodeId}
@@ -1011,23 +1054,50 @@ function AppContent({ dryRun }: AppProps) {
           selectedCard={selectedCard}
           targetColumn={targetColumn}
           needsTarget={needsTarget}
+          emplaceMode={emplaceMode}
           message={confirmEndTurn ? `End turn with ${combat.resolve} Resolve remaining? Press Space again to confirm.` : message}
           animating={animating}
+          inspectCol={inspectCol}
+          inspectEnemyIdx={inspectEnemy}
+          inspectMode={inspectMode}
         />
         {inspectMode && (() => {
           const col = combat.columns[inspectCol];
           const enemy = col?.enemies[inspectEnemy];
           if (!enemy) return <Text dimColor>No enemy in column {inspectCol + 1}. ←→ to navigate.</Text>;
           const tmpl = getEnemyTemplate(enemy.templateId);
+          const intentDesc = (() => {
+            if (!enemy.intent) return 'Unknown';
+            switch (enemy.intent.type) {
+              case 'attack': return `Will attack the Gate for ${enemy.intent.value} damage`;
+              case 'advance': return 'Will advance one row closer to the Gate';
+              case 'buff': return 'Will buff nearby enemies';
+              case 'debuff': return 'Will apply a debuff to your defenses';
+              case 'shield': return 'Will shield adjacent enemies (Fortified)';
+              case 'summon': return 'Will summon reinforcements';
+              default: return `${enemy.intent.type} (${enemy.intent.value})`;
+            }
+          })();
+          const statusDescs = enemy.statusEffects.map(s => {
+            switch (s.type) {
+              case 'vulnerable': return `Vulnerable ×${s.stacks} (${s.duration}t) — takes 50% more damage`;
+              case 'weak': return `Weak ×${s.stacks} (${s.duration}t) — deals 25% less damage`;
+              case 'burn': return `Burn ×${s.stacks} (${s.duration}t) — takes ${s.stacks} damage/turn`;
+              case 'empowered': return `Empowered ×${s.stacks} (${s.duration}t) — deals 50% more damage`;
+              case 'fortified': return `Fortified ×${s.stacks} (${s.duration}t) — takes 25% less damage`;
+              default: return `${s.type} ×${s.stacks} (${s.duration}t)`;
+            }
+          });
           return (
             <Box flexDirection="column" borderStyle="single" borderColor="cyan" paddingX={1}>
-              <Text bold color="cyan">Inspecting: {tmpl?.name ?? enemy.templateId} (Col {inspectCol + 1})</Text>
-              <Text>HP: {enemy.hp}/{enemy.maxHp}  Row: {enemy.row}</Text>
-              <Text dimColor>{tmpl?.description ?? ''}</Text>
-              {enemy.statusEffects.length > 0 && (
-                <Text>Status: {enemy.statusEffects.map(s => `${s.type}(${s.stacks}x, ${s.duration}t)`).join(', ')}</Text>
-              )}
-              <Text>Intent: {enemy.intent ? `${enemy.intent.type} ${enemy.intent.value}` : 'unknown'}</Text>
+              <Text bold color="cyan">{tmpl?.symbol ?? '?'} {tmpl?.name ?? enemy.templateId} — Col {inspectCol + 1}, Row {enemy.row}</Text>
+              <Text>HP: <Text bold color={enemy.hp > enemy.maxHp * 0.6 ? 'green' : enemy.hp > enemy.maxHp * 0.3 ? 'yellow' : 'red'}>{enemy.hp}/{enemy.maxHp}</Text>  Base Damage: <Text bold>{tmpl?.damage ?? '?'}</Text>  Speed: <Text bold>{tmpl?.speed ?? '?'}</Text></Text>
+              <Text dimColor italic>{tmpl?.description ?? ''}</Text>
+              <Text>Next: <Text color="red" bold>{intentDesc}</Text></Text>
+              {statusDescs.length > 0 && statusDescs.map((sd, i) => (
+                <Text key={i} color="yellow">  {sd}</Text>
+              ))}
+              {statusDescs.length === 0 && <Text dimColor>  No status effects</Text>}
               <Text dimColor>←→ column  ↑↓ enemy  i/Esc close</Text>
             </Box>
           );

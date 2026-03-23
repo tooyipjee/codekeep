@@ -151,7 +151,11 @@ export function useCombatState(): UseCombatStateReturn {
     playCard(state, selectedCard, targetColumn, emplaceMode);
 
     if (state.events.length === eventsBefore) {
-      setMessage(`Cannot play ${def.name}. Not enough Resolve.`);
+      if (emplaceMode && state.columns[targetColumn]?.emplacement) {
+        setMessage(`Column ${targetColumn + 1} already has an emplacement. Choose another column.`);
+      } else {
+        setMessage(`Cannot play ${def.name}. Not enough Resolve.`);
+      }
       return;
     }
 

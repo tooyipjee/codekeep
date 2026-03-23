@@ -148,7 +148,7 @@ export function MapView({ map, currentNodeId, reachableIds, selectedNodeId }: Ma
         <Text dimColor color="magenta">? event</Text>
         <Text dimColor color="red">◆ boss</Text>
       </Box>
-      <Text dimColor>{'↑↓ select  Enter proceed  d deck  q quit'}</Text>
+      <Text dimColor>{'←→ select  Enter proceed  d deck  q quit'}</Text>
     </Box>
   );
 }

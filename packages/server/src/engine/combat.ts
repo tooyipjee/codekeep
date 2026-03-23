@@ -111,7 +111,7 @@ export function playCard(state: CombatState, cardIndex: number, targetColumn?: n
     if (cost > state.resolve) return state;
     const col = targetColumn ?? 0;
     const emplaceHpBonus = getEmplaceHpBonus(state.relics);
-    const placed = placeEmplacement(state, def, col, emplaceHpBonus) || reinforceEmplacement(state, col, def);
+    const placed = placeEmplacement(state, def, col, emplaceHpBonus);
     if (!placed) return state;
     state.resolve -= cost;
     state.hand.splice(cardIndex, 1);

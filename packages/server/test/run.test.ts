@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createRun, visitNode, healGate, gainFragments, spendFragments, addCardToRunDeck, advanceAct, addPotion, usePotion, removeCardFromRunDeck } from '../src/engine/run.js';
 import { makeCardInstance, resetInstanceIdCounter } from '../src/engine/deck.js';
 import { resetEnemyIdCounter } from '../src/engine/enemies.js';
+import { getReachableNodes } from '../src/engine/map.js';
 import { STARTING_GATE_HP } from '@codekeep/shared';
 
 describe('run state', () => {
@@ -41,6 +42,30 @@ describe('run state', () => {
     const firstNode = run.map.nodes.find((n) => n.row === 0)!;
     const updated = visitNode(run, firstNode.id);
     expect(updated.currentNodeId).toBe(firstNode.id);
+  });
+
+  it('setting currentNodeId without visitNode does not mark visited', () => {
+    const run = createRun('test-seed');
+    const firstNode = run.map.nodes.find((n) => n.row === 0)!;
+    const updated = { ...run, currentNodeId: firstNode.id };
+    const node = updated.map.nodes.find(n => n.id === firstNode.id)!;
+    expect(node.visited).toBe(false);
+    expect(updated.currentNodeId).toBe(firstNode.id);
+  });
+
+  it('unvisited current node blocks progression to children', () => {
+    const run = createRun('test-seed');
+    const firstNode = run.map.nodes.find((n) => n.row === 0)!;
+    const withPos = { ...run, currentNodeId: firstNode.id };
+    const reachable = getReachableNodes(withPos.map, withPos.currentNodeId);
+    expect(reachable.length).toBeGreaterThan(0);
+    expect(reachable.every(n => n.row > firstNode.row)).toBe(true);
+
+    const visited = visitNode(withPos, firstNode.id);
+    const node = visited.map.nodes.find(n => n.id === firstNode.id)!;
+    expect(node.visited).toBe(true);
+    const reachableAfter = getReachableNodes(visited.map, visited.currentNodeId);
+    expect(reachableAfter.length).toBeGreaterThan(0);
   });
 
   it('heals gate HP capped at max', () => {

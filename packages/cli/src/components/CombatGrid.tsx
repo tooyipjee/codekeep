@@ -10,6 +10,8 @@ interface CombatGridProps {
   gateHp: number;
   gateMaxHp: number;
   gateBlock: number;
+  inspectCol?: number;
+  inspectEnemyIdx?: number;
 }
 
 const INNER = 12;
@@ -61,12 +63,12 @@ function statusTags(enemy: EnemyInstance): StatusTag[] {
   return visible;
 }
 
-function EnemyCard({ enemy, isTarget }: { enemy: EnemyInstance; isTarget: boolean }) {
+function EnemyCard({ enemy, isPrimaryTarget, isInColumn, isInspected }: { enemy: EnemyInstance; isPrimaryTarget: boolean; isInColumn: boolean; isInspected: boolean }) {
   const tmpl = getEnemyTemplate(enemy.templateId);
   const name = tmpl?.name ?? '???';
   const sym = tmpl?.symbol ?? '?';
-  const bc = isTarget ? 'yellow' : undefined;
-  const bDim = !isTarget;
+  const bc = isInspected ? 'cyan' : isPrimaryTarget ? 'yellow' : isInColumn ? 'yellow' : undefined;
+  const bDim = !isPrimaryTarget && !isInColumn && !isInspected;
 
   const nameTag = `${sym} ${name}`;
   const maxNameLen = INNER - 1;
@@ -88,8 +90,8 @@ function EnemyCard({ enemy, isTarget }: { enemy: EnemyInstance; isTarget: boolea
   return (
     <Box flexDirection="column">
       <Text>
-        <Text color={bc} dimColor={bDim} bold={isTarget}>{'╭─'}</Text>
-        <Text color={isTarget ? 'yellow' : 'red'} bold>{displayTag}</Text>
+        <Text color={bc} dimColor={bDim} bold={isPrimaryTarget || isInspected}>{'╭─'}</Text>
+        <Text color={isInspected ? 'cyan' : isPrimaryTarget ? 'yellow' : 'red'} bold>{displayTag}</Text>
         <Text color={bc} dimColor={bDim}>{'─'.repeat(topFill)}{'╮'}</Text>
       </Text>
       <Text>
@@ -171,9 +173,17 @@ function EmplacementCard({ col }: { col: Column }) {
   );
 }
 
-export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxHp, gateBlock }: CombatGridProps) {
+export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxHp, gateBlock, inspectCol, inspectEnemyIdx }: CombatGridProps) {
   const gatePercent = gateMaxHp > 0 ? Math.round((gateHp / gateMaxHp) * 100) : 0;
   const gateColor = gatePercent > 60 ? 'green' : gatePercent > 30 ? 'yellow' : 'red';
+
+  const frontEnemyIds = new Set<string>();
+  for (const col of columns) {
+    if (col.enemies.length > 0) {
+      const front = col.enemies.reduce((a, b) => (a.row >= b.row ? a : b));
+      frontEnemyIds.add(front.instanceId);
+    }
+  }
 
   return (
     <Box flexDirection="column">
@@ -197,11 +207,13 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
         <Box key={r}>
           {columns.map((col, ci) => {
             const enemy = col.enemies.find(e => e.row === r);
-            const isTarget = showTarget && ci === targetColumn;
+            const isInColumn = showTarget && ci === targetColumn;
+            const isPrimary = isInColumn && !!enemy && frontEnemyIds.has(enemy.instanceId);
+            const isInspected = inspectCol === ci && !!enemy && col.enemies.indexOf(enemy) === (inspectEnemyIdx ?? -1);
             return (
               <Box key={ci} width={16}>
                 {enemy
-                  ? <EnemyCard enemy={enemy} isTarget={isTarget} />
+                  ? <EnemyCard enemy={enemy} isPrimaryTarget={isPrimary} isInColumn={isInColumn && !isPrimary} isInspected={isInspected} />
                   : <EmptySlot />}
               </Box>
             );

@@ -35,7 +35,7 @@ import { ControlsView } from './components/ControlsView.js';
 import { useCombatState } from './hooks/useCombatState.js';
 
 const MIN_COLS = 60;
-const MIN_ROWS = 18;
+const MIN_ROWS = 24;
 
 function useTerminalSize() {
   const { stdout } = useStdout();

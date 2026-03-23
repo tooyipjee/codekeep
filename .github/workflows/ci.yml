@@ -86,6 +86,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
 
       - name: Build standalone bundle
         run: node scripts/build-standalone.mjs

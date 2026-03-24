@@ -42,7 +42,9 @@ const TARGETING_EFFECT_TYPES = new Set([
   'damage_plus_block', 'damage_if_low_hp', 'vulnerable', 'weak', 'burn',
 ]);
 
-export function useCombatState(): UseCombatStateReturn {
+const ANIM_STEP_MS = 700;
+
+export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn {
   const [combat, setCombat] = useState<CombatState | null>(null);
   const [selectedCard, setSelectedCard] = useState(-1);
   const [targetColumn, setTargetColumn] = useState(2);
@@ -55,6 +57,24 @@ export function useCombatState(): UseCombatStateReturn {
 
   useEffect(() => {
     if (!animating || animQueue.length === 0) return;
+
+    if (skipEnemyAnimation) {
+      setMessage(animQueue[animQueue.length - 1]);
+      setAnimQueue([]);
+      setAnimating(false);
+      const state = combatRef.current;
+      if (state) {
+        if (state.outcome === 'win') {
+          setMessage('Victory! The Pale recedes.');
+        } else if (state.outcome === 'lose') {
+          setMessage('The Gate has fallen...');
+        } else {
+          setMessage(`Turn ${state.turn}. Your move.`);
+        }
+      }
+      return;
+    }
+
     const timer = setTimeout(() => {
       const [current, ...rest] = animQueue;
       setMessage(current);
@@ -73,9 +93,9 @@ export function useCombatState(): UseCombatStateReturn {
       } else {
         setAnimQueue(rest);
       }
-    }, 350);
+    }, ANIM_STEP_MS);
     return () => clearTimeout(timer);
-  }, [animating, animQueue]);
+  }, [animating, animQueue, skipEnemyAnimation]);
 
   const startCombat = useCallback((
     deck?: CardInstance[],

@@ -71,11 +71,13 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, em
         inspectEnemyIdx={inspectMode ? inspectEnemyIdx : undefined}
       />
 
-      <CardHand
-        hand={combat.hand}
-        selectedIndex={selectedCard}
-        resolve={combat.resolve}
-      />
+      {(combat.outcome === 'undecided' || animating) && (
+        <CardHand
+          hand={combat.hand}
+          selectedIndex={selectedCard}
+          resolve={combat.resolve}
+        />
+      )}
 
       {/* Event log */}
       {(() => {

@@ -5,6 +5,7 @@ export interface GameSettings {
   asciiMode: boolean;
   showTutorialHints: boolean;
   combatLogSize: number;
+  skipEnemyAnimation: boolean;
 }
 
 interface SettingsViewProps {
@@ -25,6 +26,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   asciiMode: false,
   showTutorialHints: true,
   combatLogSize: 4,
+  skipEnemyAnimation: false,
 };
 
 export function SettingsView({ settings, selectedIndex, saveInfo, confirmingReset, message }: SettingsViewProps) {
@@ -32,6 +34,7 @@ export function SettingsView({ settings, selectedIndex, saveInfo, confirmingRese
     { id: 'ascii', label: `ASCII Mode: ${settings.asciiMode ? 'ON' : 'OFF'}`, description: 'Use plain ASCII characters (no Unicode symbols)' },
     { id: 'hints', label: `Tutorial Hints: ${settings.showTutorialHints ? 'ON' : 'OFF'}`, description: 'Show helpful tips during first runs' },
     { id: 'log', label: `Combat Log Lines: ${settings.combatLogSize}`, description: 'Number of recent combat events shown (0-8)' },
+    { id: 'anim', label: `Enemy Animations: ${settings.skipEnemyAnimation ? 'OFF' : 'ON'}`, description: 'Step through enemy moves one by one' },
     { id: 'tutorial', label: 'View Tutorial', description: 'Re-read the game tutorial' },
     { id: 'controls', label: 'Controls Reference', description: 'View all keybindings' },
     { id: 'reset', label: 'Reset Save Data', description: 'Delete all progress and start fresh' },

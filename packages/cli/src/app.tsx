@@ -99,8 +99,13 @@ function AppContent({ dryRun }: AppProps) {
   // Deck remove state
   const [removeIndex, setRemoveIndex] = useState(0);
 
+  // Settings (declared early — combat hook depends on it)
+  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const [settingsIndex, setSettingsIndex] = useState(0);
+  const [settingsMessage, setSettingsMessage] = useState('');
+
   // Combat
-  const combatHook = useCombatState();
+  const combatHook = useCombatState(settings.skipEnemyAnimation);
   const { combat, selectedCard, targetColumn, message, emplaceMode, animating, selectCard, selectTarget, confirmPlay, endTurn, toggleEmplace, startCombat, applyPotion: _applyPotion, needsTarget } = combatHook;
 
   // Inspect mode
@@ -124,10 +129,6 @@ function AppContent({ dryRun }: AppProps) {
   // End turn confirmation
   const [confirmEndTurn, setConfirmEndTurn] = useState(false);
 
-  // Settings
-  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
-  const [settingsIndex, setSettingsIndex] = useState(0);
-  const [settingsMessage, setSettingsMessage] = useState('');
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [confirmingNewRun, setConfirmingNewRun] = useState(false);
 
@@ -449,7 +450,7 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'settings') {
-      const settingsItems = ['ascii', 'hints', 'log', 'tutorial', 'controls', 'reset', 'back'];
+      const settingsItems = ['ascii', 'hints', 'log', 'anim', 'tutorial', 'controls', 'reset', 'back'];
       if (key.upArrow) { setSettingsIndex(i => Math.max(0, i - 1)); setConfirmingReset(false); }
       else if (key.downArrow) { setSettingsIndex(i => Math.min(settingsItems.length - 1, i + 1)); setConfirmingReset(false); }
       else if (input === 'q' || key.escape) { setScreen('menu'); setConfirmingReset(false); }
@@ -463,6 +464,9 @@ function AppContent({ dryRun }: AppProps) {
           setSettingsMessage('Tutorial hints ' + (!settings.showTutorialHints ? 'enabled' : 'disabled'));
         } else if (item === 'log') {
           setSettings(s => ({ ...s, combatLogSize: s.combatLogSize >= 8 ? 0 : s.combatLogSize + 2 }));
+        } else if (item === 'anim') {
+          setSettings(s => ({ ...s, skipEnemyAnimation: !s.skipEnemyAnimation }));
+          setSettingsMessage('Enemy animations ' + (settings.skipEnemyAnimation ? 'enabled' : 'disabled'));
         } else if (item === 'tutorial') {
           setTutorialPage(0);
           setTutorialSource('settings');

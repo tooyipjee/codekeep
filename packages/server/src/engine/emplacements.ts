@@ -92,9 +92,11 @@ function applyEmplacementEffect(state: CombatState, column: number, effect: Card
     case 'block':
       state.gateBlock += effect.value;
       break;
-    case 'heal':
-      state.gateHp = Math.min(state.gateMaxHp, state.gateHp + effect.value);
+    case 'heal': {
+      const healAmt = Math.floor(effect.value * (state.difficulty?.healMult ?? 1));
+      state.gateHp = Math.min(state.gateMaxHp, state.gateHp + healAmt);
       break;
+    }
     case 'weak':
       for (const enemy of col.enemies) {
         applyStatus(enemy, 'weak', effect.value, 2);

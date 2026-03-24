@@ -13,7 +13,9 @@ export function generateShop(rng: () => number): ShopItem[] {
   const pool = CARD_DEFS.filter((c) => c.rarity !== 'common' || c.id === 'slash' || c.id === 'flare');
 
   const picked = new Set<string>();
-  for (let i = 0; i < 5 && picked.size < 5; i++) {
+  let attempts = 0;
+  for (let i = 0; i < 5 && picked.size < 5 && attempts < 50; i++) {
+    attempts++;
     const card = pool[Math.floor(rng() * pool.length)];
     if (picked.has(card.id)) { i--; continue; }
     picked.add(card.id);

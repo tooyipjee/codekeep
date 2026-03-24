@@ -45,3 +45,12 @@ export function drawCards(
 export function resetInstanceIdCounter(): void {
   nextInstanceId = 1;
 }
+
+export function syncInstanceIdCounter(cards: CardInstance[]): void {
+  let max = 0;
+  for (const card of cards) {
+    const m = card.instanceId.match(/^card-(\d+)$/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  if (max >= nextInstanceId) nextInstanceId = max + 1;
+}

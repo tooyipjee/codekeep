@@ -147,7 +147,7 @@ function EmplacementCard({ col }: { col: Column }) {
   const hp = col.emplacement.hp;
   const bar = hpBar(hp, col.emplacement.maxHp, 4);
   const hpStr = `${hp}`;
-  const fixedLen = 3 + 1 + 4 + hpStr.length; // " ◇" + space + bar + hp
+  const fixedLen = 2 + 1 + 4 + hpStr.length; // " ◇" (2) + space (1) + bar (4) + hp
   const maxName = INNER - fixedLen;
   const empName = rawName.length > maxName ? rawName.slice(0, Math.max(1, maxName - 1)) + '…' : rawName;
   const content = ` ◇${empName} ${bar}${hpStr}`.padEnd(INNER).slice(0, INNER);
@@ -191,17 +191,15 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
         <Text dimColor>{'· · · · · · ·  t h e   p a l e  · · · · · · ·'}</Text>
       </Box>
 
-      {showTarget && (
-        <Box>
-          {columns.map((_, i) => (
-            <Box key={i} width={16} justifyContent="center">
-              {i === targetColumn
-                ? <Text color="yellow" bold>{'  ▼▼▼'}</Text>
-                : <Text>{''}</Text>}
-            </Box>
-          ))}
-        </Box>
-      )}
+      <Box>
+        {columns.map((_, i) => (
+          <Box key={i} width={16} justifyContent="center">
+            {showTarget && i === targetColumn
+              ? <Text color="yellow" bold>{'  ▼▼▼'}</Text>
+              : <Text>{' '}</Text>}
+          </Box>
+        ))}
+      </Box>
 
       {Array.from({ length: ROWS }, (_, r) => (
         <Box key={r}>

@@ -186,9 +186,11 @@ function applyEffect(
       state.gateBlock += effect.value;
       pushEvent(state, 'block_gained', { value: effect.value });
       break;
-    case 'heal':
-      state.gateHp = Math.min(state.gateMaxHp, state.gateHp + effect.value);
+    case 'heal': {
+      const healAmt = Math.floor(effect.value * (state.difficulty?.healMult ?? 1));
+      state.gateHp = Math.min(state.gateMaxHp, state.gateHp + healAmt);
       break;
+    }
     case 'draw': {
       const { drawn, newDrawPile, newDiscardPile } = drawCards(
         state.drawPile, state.discardPile, effect.value, mulberry32(state.seed + state.turn),
@@ -199,7 +201,7 @@ function applyEffect(
       break;
     }
     case 'resolve':
-      state.resolve = Math.min(state.maxResolve + 5, state.resolve + effect.value);
+      state.resolve = Math.min(state.maxResolve * 2, state.resolve + effect.value);
       break;
     case 'vulnerable': {
       if (effect.target === 'all') {
@@ -273,7 +275,7 @@ function applyEffect(
       break;
     }
     case 'self_damage': {
-      state.gateHp -= effect.value;
+      state.gateHp = Math.max(0, state.gateHp - effect.value);
       pushEvent(state, 'gate_hit', { self: true, damage: effect.value });
       break;
     }
@@ -325,11 +327,7 @@ function applyEffect(
         const front = col.enemies.reduce((a, b) => (a.row >= b.row ? a : b));
         const isVulnerable = hasStatus(front, 'vulnerable') > 0;
         const baseDmg = isVulnerable ? effect.value * 2 : effect.value;
-        const fortMult = hasStatus(front, 'fortified') > 0
-          ? Math.max(0.25, 1 - hasStatus(front, 'fortified') * 0.15) : 1;
-        const actual = Math.max(0, Math.floor(baseDmg * fortMult));
-        front.hp -= actual;
-        pushEvent(state, 'damage_dealt', { targetId: front.instanceId, damage: actual });
+        applyDamageToEnemy(state, front, baseDmg);
       }
       break;
     }
@@ -531,7 +529,7 @@ function resolveEnemyTurn(state: CombatState): void {
   checkCombatEnd(state);
   if (state.outcome !== 'undecided') return;
 
-  state.resolve = state.maxResolve;
+  state.resolve = Math.min(state.resolve + state.maxResolve, state.maxResolve * 2);
 
   for (const col of state.columns) {
     for (const enemy of col.enemies) {
@@ -614,7 +612,8 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
         }
       }
 
-      const dmg = Math.floor((tmpl?.damage ?? 4) * dmgMult * diffDmgMult);
+      const baseDmg = intent.value ?? tmpl?.damage ?? 4;
+      const dmg = Math.floor(baseDmg * dmgMult * diffDmgMult);
       const blocked = Math.min(state.gateBlock, dmg);
       state.gateBlock -= blocked;
       state.gateHp -= (dmg - blocked);
@@ -637,11 +636,13 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
       break;
     }
     case 'summon': {
-      const emptyCol = state.columns.findIndex((c) => c.enemies.length === 0);
-      if (emptyCol >= 0) {
+      const count = intent.value ?? 1;
+      for (let s = 0; s < count; s++) {
+        const emptyCol = state.columns.findIndex((c) => c.enemies.length === 0);
+        if (emptyCol < 0) break;
         const spawned = spawnEnemy('wisp', emptyCol);
         state.columns[emptyCol].enemies.push(spawned);
-        spawned.intent = rollEnemyIntent(spawned, mulberry32(state.seed + state.turn * 97), state.turn, false, state);
+        spawned.intent = rollEnemyIntent(spawned, mulberry32(state.seed + state.turn * 97 + s), state.turn, false, state);
       }
       break;
     }
@@ -649,18 +650,19 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
 }
 
 function checkCombatEnd(state: CombatState): void {
+  const totalEnemies = state.columns.reduce((sum, col) => sum + col.enemies.length, 0);
+  if (totalEnemies === 0) {
+    state.gateHp = Math.max(1, state.gateHp);
+    state.outcome = 'win';
+    state.phase = 'ended';
+    pushEvent(state, 'combat_end', { outcome: 'win' });
+    return;
+  }
   if (state.gateHp <= 0) {
     state.gateHp = 0;
     state.outcome = 'lose';
     state.phase = 'ended';
     pushEvent(state, 'combat_end', { outcome: 'lose' });
-    return;
-  }
-  const totalEnemies = state.columns.reduce((sum, col) => sum + col.enemies.length, 0);
-  if (totalEnemies === 0) {
-    state.outcome = 'win';
-    state.phase = 'ended';
-    pushEvent(state, 'combat_end', { outcome: 'win' });
   }
 }
 

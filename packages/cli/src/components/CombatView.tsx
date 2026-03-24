@@ -42,14 +42,14 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, em
   const totalEnemies = combat.columns.reduce((s, c) => s + c.enemies.length, 0);
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" width={82}>
       {/* Status bar */}
       <Box justifyContent="space-between">
         <Text bold color="yellow">{'◆ The Pale'}</Text>
         <Text>
           Turn <Text bold color="white">{combat.turn}</Text>
           {'  '}
-          <Text color="cyan">{'◆'.repeat(Math.max(0, combat.resolve))}</Text>
+          <Text color={combat.resolve > combat.maxResolve ? 'yellow' : 'cyan'}>{'◆'.repeat(Math.max(0, combat.resolve))}</Text>
           <Text dimColor>{'◇'.repeat(Math.max(0, combat.maxResolve - combat.resolve))}</Text>
           {'  '}
           Enemies <Text bold color="red">{totalEnemies}</Text>
@@ -93,7 +93,7 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, em
               if (!txt) return null;
               const isTurnHeader = evt.type === 'turn_start';
               return (
-                <Text key={i} dimColor={!isTurnHeader} color={isTurnHeader ? 'white' : undefined}>
+                <Text key={`${evt.turn}-${evt.type}-${i}`} dimColor={!isTurnHeader} color={isTurnHeader ? 'white' : undefined}>
                   {txt}
                 </Text>
               );

@@ -33,8 +33,8 @@ const TUTORIAL_PAGES = [
   {
     title: 'Combat Basics',
     lines: [
-      'Each turn you have 3 Resolve (mana) to play cards.',
-      'Cards cost 0-4 Resolve. Your hand refreshes each turn.',
+      'Each turn you gain 3 Resolve (mana) to play cards.',
+      'Unspent Resolve carries over (up to 6 max). Your hand refreshes each turn.',
       '',
       '  1-5 .... Select a card from your hand',
       '  ←→  .... Choose target column',

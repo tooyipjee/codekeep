@@ -14,6 +14,7 @@ import {
   createDefaultNpcs, getNextDialogue, markDialogueSeen,
   getCurrentStoryLayer, getDifficultyModifiers,
   pickRelicReward, getBossDef,
+  syncInstanceIdCounter, syncEnemyIdCounter,
 } from '@codekeep/server';
 import type { ShopItem, GameEvent } from '@codekeep/server';
 import {
@@ -34,7 +35,7 @@ import type { GameSettings } from './components/SettingsView.js';
 import { ControlsView } from './components/ControlsView.js';
 import { useCombatState } from './hooks/useCombatState.js';
 
-const MIN_COLS = 80;
+const MIN_COLS = 90;
 const MIN_ROWS = 24;
 
 function useTerminalSize() {
@@ -189,11 +190,12 @@ function AppContent({ dryRun }: AppProps) {
     saveGame(save);
     setCachedSave(save);
     setScreen('map');
-  }, [ensureSave]);
+  }, [ensureSave, settings]);
 
   const resumeRun = useCallback(() => {
     const save = loadGame();
     if (save?.activeRun) {
+      syncInstanceIdCounter(save.activeRun.deck);
       setRun(save.activeRun);
       setKeep(save.keep);
       setSelectedNodeIdx(0);
@@ -274,7 +276,7 @@ function AppContent({ dryRun }: AppProps) {
       setScreen('rest');
     }
     doSave(r);
-  }, [run, startCombat, doSave]);
+  }, [run, startCombat, doSave, settings, storyLayer]);
 
   const finishRun = useCallback((r: RunState, won: boolean) => {
     setRunWon(won);
@@ -368,7 +370,7 @@ function AppContent({ dryRun }: AppProps) {
     setRun(r);
     doSave(r);
     setScreen('reward');
-  }, [combat, run, doSave, finishRun]);
+  }, [combat, run, doSave, finishRun, storyLayer]);
 
   const pickReward = useCallback((cardDef: CardDef | null) => {
     if (!run) return;
@@ -1104,59 +1106,70 @@ function AppContent({ dryRun }: AppProps) {
             <Text color="magenta" italic>"{bossDialogue}"</Text>
           </Box>
         )}
-        <CombatView
-          combat={combat}
-          selectedCard={selectedCard}
-          targetColumn={targetColumn}
-          needsTarget={needsTarget}
-          emplaceMode={emplaceMode}
-          message={confirmEndTurn ? `End turn with ${combat.resolve} Resolve remaining? Press Space again to confirm.` : message}
-          animating={animating}
-          inspectCol={inspectCol}
-          inspectEnemyIdx={inspectEnemy}
-          inspectMode={inspectMode}
-        />
-        {inspectMode && (() => {
-          const col = combat.columns[inspectCol];
-          const enemy = col?.enemies[inspectEnemy];
-          if (!enemy) return <Text dimColor>No enemy in column {inspectCol + 1}. ←→ to navigate.</Text>;
-          const tmpl = getEnemyTemplate(enemy.templateId);
-          const intentDesc = (() => {
-            if (!enemy.intent) return 'Unknown';
-            switch (enemy.intent.type) {
-              case 'attack': return `Will attack the Gate for ${enemy.intent.value} damage`;
-              case 'advance': return 'Will advance one row closer to the Gate';
-              case 'buff': return 'Will buff nearby enemies';
-              case 'debuff': return 'Will apply a debuff to your defenses';
-              case 'shield': return 'Will shield adjacent enemies (Fortified)';
-              case 'summon': return 'Will summon reinforcements';
-              default: return `${enemy.intent.type} (${enemy.intent.value})`;
-            }
-          })();
-          const statusDescs = enemy.statusEffects.map(s => {
-            switch (s.type) {
-              case 'vulnerable': return `Vulnerable ×${s.stacks} (${s.duration}t) — takes +${s.stacks * 25}% damage`;
-              case 'weak': return `Weak ×${s.stacks} (${s.duration}t) — deals -${s.stacks * 15}% damage`;
-              case 'burn': return `Burn ×${s.stacks} (${s.duration}t) — takes ${s.stacks} damage/turn`;
-              case 'empowered': return `Empowered ×${s.stacks} (${s.duration}t) — deals +${s.stacks * 25}% damage`;
-              case 'fortified': return `Fortified ×${s.stacks} (${s.duration}t) — takes -${s.stacks * 15}% damage`;
-              default: return `${s.type} ×${s.stacks} (${s.duration}t)`;
-            }
-          });
-          return (
-            <Box flexDirection="column" borderStyle="single" borderColor="cyan" paddingX={1}>
-              <Text bold color="cyan">{tmpl?.symbol ?? '?'} {tmpl?.name ?? enemy.templateId} — Col {inspectCol + 1}, Row {enemy.row}</Text>
-              <Text>HP: <Text bold color={enemy.hp > enemy.maxHp * 0.6 ? 'green' : enemy.hp > enemy.maxHp * 0.3 ? 'yellow' : 'red'}>{enemy.hp}/{enemy.maxHp}</Text>  Base Damage: <Text bold>{tmpl?.damage ?? '?'}</Text>  Speed: <Text bold>{tmpl?.speed ?? '?'}</Text></Text>
-              <Text dimColor italic>{tmpl?.description ?? ''}</Text>
-              <Text>Next: <Text color="red" bold>{intentDesc}</Text></Text>
-              {statusDescs.length > 0 && statusDescs.map((sd, i) => (
-                <Text key={i} color="yellow">  {sd}</Text>
-              ))}
-              {statusDescs.length === 0 && <Text dimColor>  No status effects</Text>}
-              <Text dimColor>←→ column  ↑↓ enemy  i/Esc close</Text>
-            </Box>
-          );
-        })()}
+        <Box flexDirection="row">
+          <Box flexDirection="column">
+            <CombatView
+              combat={combat}
+              selectedCard={selectedCard}
+              targetColumn={targetColumn}
+              needsTarget={needsTarget}
+              emplaceMode={emplaceMode}
+              message={confirmEndTurn ? `End turn with ${combat.resolve} Resolve remaining? (carries over) Press Space again to confirm.` : message}
+              animating={animating}
+              inspectCol={inspectCol}
+              inspectEnemyIdx={inspectEnemy}
+              inspectMode={inspectMode}
+            />
+          </Box>
+          {inspectMode && (() => {
+            const col = combat.columns[inspectCol];
+            const enemy = col?.enemies[inspectEnemy];
+            if (!enemy) return (
+              <Box flexDirection="column" width={28} borderStyle="single" borderColor="cyan" paddingX={1} marginLeft={1}>
+                <Text dimColor>No enemy in col {inspectCol + 1}.</Text>
+                <Text dimColor>←→ to navigate.</Text>
+              </Box>
+            );
+            const tmpl = getEnemyTemplate(enemy.templateId);
+            const intentDesc = (() => {
+              if (!enemy.intent) return 'Unknown';
+              switch (enemy.intent.type) {
+                case 'attack': return `Attack ${enemy.intent.value} dmg`;
+                case 'advance': return 'Advance →';
+                case 'buff': return 'Buff allies';
+                case 'debuff': return 'Debuff gate';
+                case 'shield': return 'Shield allies';
+                case 'summon': return 'Summon';
+                default: return `${enemy.intent.type} (${enemy.intent.value})`;
+              }
+            })();
+            const statusDescs = enemy.statusEffects.map(s => {
+              switch (s.type) {
+                case 'vulnerable': return `VLN ×${s.stacks} (${s.duration}t)`;
+                case 'weak': return `WK ×${s.stacks} (${s.duration}t)`;
+                case 'burn': return `BRN ×${s.stacks} (${s.duration}t)`;
+                case 'empowered': return `EMP ×${s.stacks} (${s.duration}t)`;
+                case 'fortified': return `FRT ×${s.stacks} (${s.duration}t)`;
+                default: return `${s.type} ×${s.stacks}`;
+              }
+            });
+            return (
+              <Box flexDirection="column" width={28} borderStyle="single" borderColor="cyan" paddingX={1} marginLeft={1}>
+                <Text bold color="cyan">{tmpl?.symbol ?? '?'} {tmpl?.name ?? enemy.templateId}</Text>
+                <Text dimColor>Col {inspectCol + 1}, Row {enemy.row}</Text>
+                <Text>HP: <Text bold color={enemy.hp > enemy.maxHp * 0.6 ? 'green' : enemy.hp > enemy.maxHp * 0.3 ? 'yellow' : 'red'}>{enemy.hp}/{enemy.maxHp}</Text></Text>
+                <Text>Dmg: <Text bold>{tmpl?.damage ?? '?'}</Text> Spd: <Text bold>{tmpl?.speed ?? '?'}</Text></Text>
+                <Text dimColor italic>{tmpl?.description ?? ''}</Text>
+                <Text>Next: <Text color="red" bold>{intentDesc}</Text></Text>
+                {statusDescs.length > 0 && statusDescs.map((sd, i) => (
+                  <Text key={i} color="yellow">{sd}</Text>
+                ))}
+                {statusDescs.length === 0 && <Text dimColor>No effects</Text>}
+                <Text dimColor>←→ ↑↓ nav  i close</Text>
+              </Box>
+            );
+          })()}
+        </Box>
       </Box>
     );
   }

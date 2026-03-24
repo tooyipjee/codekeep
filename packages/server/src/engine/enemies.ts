@@ -76,3 +76,14 @@ export function rollEnemyIntent(
 export function resetEnemyIdCounter(): void {
   nextEnemyId = 1;
 }
+
+export function syncEnemyIdCounter(columns: { enemies: EnemyInstance[] }[]): void {
+  let max = 0;
+  for (const col of columns) {
+    for (const e of col.enemies) {
+      const m = e.instanceId.match(/^enemy-(\d+)$/);
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    }
+  }
+  if (max >= nextEnemyId) nextEnemyId = max + 1;
+}

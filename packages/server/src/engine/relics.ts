@@ -78,8 +78,7 @@ export function applyRelicEffect(
         break;
       }
       case 'gain_resolve': {
-        const cap = state.maxResolve + 2;
-        state.resolve = Math.min(cap, state.resolve + def.effect.value);
+        state.resolve = Math.min(state.maxResolve * 2, state.resolve + def.effect.value);
         break;
       }
       case 'draw_cards': {
@@ -119,7 +118,8 @@ export function applyRelicEffect(
           const cardCost = context?.cardCost as number | undefined;
           if (cardCost !== undefined && cardCost < 2) break;
         }
-        state.gateHp = Math.min(state.gateMaxHp, state.gateHp + def.effect.value);
+        const healAmt = Math.floor(def.effect.value * (state.difficulty?.healMult ?? 1));
+        state.gateHp = Math.min(state.gateMaxHp, state.gateHp + healAmt);
         break;
       }
       case 'apply_vulnerable_all': {

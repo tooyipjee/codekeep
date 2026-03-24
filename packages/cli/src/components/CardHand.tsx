@@ -9,6 +9,8 @@ interface CardHandProps {
   resolve: number;
 }
 
+const CARD_W = 16;
+
 function rarityColor(rarity: string): string {
   switch (rarity) {
     case 'uncommon': return 'green';
@@ -28,48 +30,78 @@ function categorySymbol(category: string): string {
   }
 }
 
-function costPips(cost: number, resolve: number): React.ReactNode {
-  const nodes: React.ReactNode[] = [];
-  for (let i = 0; i < cost; i++) {
-    nodes.push(
-      <Text key={i} color={i < resolve ? 'cyan' : 'red'} bold>{'◆'}</Text>
-    );
-  }
-  return nodes;
+function costPipsStr(cost: number, resolve: number): { text: string; affordable: boolean } {
+  const text = '◆'.repeat(cost);
+  return { text, affordable: cost <= resolve };
 }
 
-function effectSummary(def: CardDef): string {
+function shortSummary(def: CardDef): string {
   const parts: string[] = [];
   for (const e of def.effects) {
     switch (e.type) {
-      case 'damage': parts.push(`${e.value} dmg${e.target === 'all' ? ' ALL' : e.target === 'column' ? ' col' : ''}`); break;
-      case 'block': parts.push(`${e.value} blk`); break;
-      case 'draw': parts.push(`+${e.value} draw`); break;
-      case 'heal': parts.push(`${e.value} heal`); break;
-      case 'resolve': parts.push(`+${e.value} res`); break;
-      case 'burn': parts.push(`${e.value} burn`); break;
-      case 'vulnerable': parts.push(`${e.value} vuln`); break;
-      case 'weak': parts.push(`${e.value} weak`); break;
-      case 'self_damage': parts.push(`${e.value} self-dmg`); break;
-      case 'damage_if_vulnerable': parts.push(`${e.value} dmg (×2 if vuln)`); break;
-      case 'damage_equal_block': parts.push('dmg=blk'); break;
-      case 'damage_per_burn': parts.push(`${e.value}×burn dmg`); break;
-      case 'trigger_emplacements': parts.push('trigger walls'); break;
-      case 'damage_plus_block': parts.push(`${e.value} dmg+blk`); break;
-      case 'exhaust_draw': parts.push(`exile+${e.value} draw`); break;
-      case 'damage_if_emplaced': parts.push(`${e.value} dmg if wall`); break;
-      case 'damage_per_emplace': parts.push(`${e.value}×wall dmg`); break;
-      case 'damage_if_low_hp': parts.push(`${e.value} dmg (×2 low hp)`); break;
-      case 'draw_per_kills': parts.push('draw/kill'); break;
+      case 'damage': parts.push(`${e.value}dmg${e.target === 'all' ? '★' : e.target === 'column' ? '↕' : ''}`); break;
+      case 'block': parts.push(`${e.value}blk`); break;
+      case 'draw': parts.push(`+${e.value}drw`); break;
+      case 'heal': parts.push(`${e.value}hp`); break;
+      case 'resolve': parts.push(`+${e.value}res`); break;
+      case 'burn': parts.push(`${e.value}brn`); break;
+      case 'vulnerable': parts.push(`vuln`); break;
+      case 'weak': parts.push(`weak`); break;
+      case 'self_damage': parts.push(`-${e.value}hp`); break;
       case 'exhaust_self': parts.push('exile'); break;
-      case 'damage_per_kill_this_action': parts.push(`+${e.value} chain`); break;
-      case 'replay_last': parts.push('replay last'); break;
-      case 'burn_if_burning': parts.push(`${e.value} burn (×2)`); break;
-      case 'draw_per_empty_potions': parts.push('draw/slot'); break;
       default: break;
     }
   }
-  return parts.join(', ');
+  const joined = parts.join(' ');
+  const maxLen = CARD_W - 2;
+  return joined.length > maxLen ? joined.slice(0, maxLen - 1) + '…' : joined;
+}
+
+function padRight(str: string, len: number): string {
+  const visual = [...str].length;
+  return visual >= len ? str.slice(0, len) : str + ' '.repeat(len - visual);
+}
+
+function CardBox({ def, index, isSelected, resolve }: { def: CardDef; index: number; isSelected: boolean; resolve: number }) {
+  const inner = CARD_W - 2;
+  const bc = isSelected ? 'yellow' : undefined;
+  const dim = !isSelected;
+  const canAfford = def.cost <= resolve;
+  const pips = costPipsStr(def.cost, resolve);
+  const emplace = def.type === 'emplace' ? '⚒' : '';
+
+  const numStr = `${index + 1}`;
+  const topContent = ` ${numStr} ${pips.text}`;
+  const topPad = Math.max(0, inner - numStr.length - 1 - pips.text.length - 1);
+
+  const nameLine = `${categorySymbol(def.category)} ${def.name}${emplace}`;
+  const clippedName = nameLine.length > inner ? nameLine.slice(0, inner - 1) + '…' : nameLine;
+
+  const summary = shortSummary(def);
+
+  return (
+    <Box flexDirection="column">
+      <Text>
+        <Text color={bc} dimColor={dim}>{'┌'}</Text>
+        <Text bold={isSelected} dimColor={dim && !isSelected}>{topContent}</Text>
+        <Text color={pips.affordable ? 'cyan' : 'red'}>{''}</Text>
+        <Text color={bc} dimColor={dim}>{' '.repeat(topPad)}{'┐'}</Text>
+      </Text>
+      <Text>
+        <Text color={bc} dimColor={dim}>{'│'}</Text>
+        <Text color={canAfford ? rarityColor(def.rarity) : 'gray'} bold={isSelected}>{padRight(clippedName, inner)}</Text>
+        <Text color={bc} dimColor={dim}>{'│'}</Text>
+      </Text>
+      <Text>
+        <Text color={bc} dimColor={dim}>{'│'}</Text>
+        <Text dimColor>{padRight(summary, inner)}</Text>
+        <Text color={bc} dimColor={dim}>{'│'}</Text>
+      </Text>
+      <Text>
+        <Text color={bc} dimColor={dim}>{'└'}{'─'.repeat(inner)}{'┘'}</Text>
+      </Text>
+    </Box>
+  );
 }
 
 export function CardHand({ hand, selectedIndex, resolve }: CardHandProps) {
@@ -77,37 +109,20 @@ export function CardHand({ hand, selectedIndex, resolve }: CardHandProps) {
     return <Text dimColor>{'  '}No cards in hand.</Text>;
   }
 
+  const selectedDef = selectedIndex >= 0 ? getCardDef(hand[selectedIndex]?.defId) : null;
+
   return (
     <Box flexDirection="column">
-      <Text dimColor>{'─── Hand (' + hand.length + ') ───'}</Text>
-      {hand.map((card, i) => {
-        const def = getCardDef(card.defId);
-        if (!def) return null;
-        const isSelected = i === selectedIndex;
-        const canAfford = def.cost <= resolve;
-        const summary = effectSummary(def);
-
-        return (
-          <Box key={card.instanceId} flexDirection="column">
-            <Text>
-              <Text bold={isSelected} color={isSelected ? 'yellow' : 'white'}>
-                {isSelected ? ' ▶ ' : '   '}
-              </Text>
-              <Text dimColor>{i + 1}. </Text>
-              <Text color={canAfford ? rarityColor(def.rarity) : 'gray'} bold={isSelected}>
-                {categorySymbol(def.category)} {def.name}
-              </Text>
-              <Text> </Text>
-              {costPips(def.cost, resolve)}
-              <Text dimColor>{' '}{summary}</Text>
-              {def.type === 'emplace' && <Text color="cyan" dimColor={!isSelected}>{' '}⚒</Text>}
-            </Text>
-            {isSelected && (
-              <Text dimColor>{'      '}{def.description}</Text>
-            )}
-          </Box>
-        );
-      })}
+      <Box flexDirection="row">
+        {hand.map((card, i) => {
+          const def = getCardDef(card.defId);
+          if (!def) return null;
+          return <CardBox key={card.instanceId} def={def} index={i} isSelected={i === selectedIndex} resolve={resolve} />;
+        })}
+      </Box>
+      {selectedDef && (
+        <Text dimColor>{'  '}{selectedDef.description}</Text>
+      )}
     </Box>
   );
 }

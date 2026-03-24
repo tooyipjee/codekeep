@@ -31,7 +31,7 @@ export function ShopView({ items, selectedIndex, fragments, message }: ShopViewP
           label = 'Remove a card from your deck';
         }
         return (
-          <Text key={i} bold={isSelected} color={isSelected ? 'yellow' : canAfford ? 'white' : 'gray'}>
+          <Text key={`${item.type}-${item.cardDef?.id ?? item.potionDef?.id ?? 'remove'}-${i}`} bold={isSelected} color={isSelected ? 'yellow' : canAfford ? 'white' : 'gray'}>
             {isSelected ? '▶ ' : '  '}{typeTag} {label}  [{item.cost}f]
           </Text>
         );

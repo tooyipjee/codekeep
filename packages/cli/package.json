@@ -1,6 +1,6 @@
 {
   "name": "codekeep",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "CodeKeep: The Pale — deck-building tactical roguelike in your terminal",
   "license": "MIT",

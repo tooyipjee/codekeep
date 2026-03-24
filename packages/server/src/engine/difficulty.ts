@@ -2,11 +2,21 @@ import type { DifficultyModifiers } from '@codekeep/shared';
 
 export type { DifficultyModifiers };
 
-export function getDifficultyModifiers(act: number, ascensionLevel: number = 0): DifficultyModifiers {
+export type DifficultyPreset = 'easy' | 'normal' | 'hard';
+
+const PRESET_SCALES: Record<DifficultyPreset, { hp: number; dmg: number; gateHpBonus: number }> = {
+  easy:   { hp: 0.7,  dmg: 0.7,  gateHpBonus: 20 },
+  normal: { hp: 1.0,  dmg: 1.0,  gateHpBonus: 0 },
+  hard:   { hp: 1.25, dmg: 1.25, gateHpBonus: -10 },
+};
+
+export function getDifficultyModifiers(act: number, ascensionLevel: number = 0, preset: DifficultyPreset = 'normal'): DifficultyModifiers {
+  const scale = PRESET_SCALES[preset];
+
   const base: DifficultyModifiers = {
     enemyHpMult: 1,
     enemyDamageMult: 1,
-    startingGateHp: 70,
+    startingGateHp: 70 + scale.gateHpBonus,
     extraEnemies: 0,
     shopCostMult: 1,
     healMult: 1,
@@ -27,8 +37,8 @@ export function getDifficultyModifiers(act: number, ascensionLevel: number = 0):
     base.enemyDamageMult += 0.15;
   }
   if (act >= 3) {
-    base.enemyHpMult += 0.3;
-    base.enemyDamageMult += 0.25;
+    base.enemyHpMult += 0.15;
+    base.enemyDamageMult += 0.1;
   }
 
   // Ascension modifiers (cumulative)
@@ -47,6 +57,10 @@ export function getDifficultyModifiers(act: number, ascensionLevel: number = 0):
   if (ascensionLevel >= 13) base.bossExtraMinions = 2;
   if (ascensionLevel >= 14) base.reducedHandSize = true;
   if (ascensionLevel >= 15) base.reducedMaxResolve = true;
+
+  // Apply preset scaling to enemy stats
+  base.enemyHpMult *= scale.hp;
+  base.enemyDamageMult *= scale.dmg;
 
   return base;
 }

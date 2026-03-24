@@ -56,10 +56,10 @@ export const BOSS_DEFS: BossDef[] = [
       { hpThreshold: 1.0, intentPattern: [
         { type: 'debuff', value: 2 },
         { type: 'attack', value: 10 },
-        { type: 'shield', value: 15 },
+        { type: 'shield', value: 3 },
       ] },
       { hpThreshold: 0.5, intentPattern: [
-        { type: 'attack', value: 18 },
+        { type: 'attack', value: 15 },
         { type: 'debuff', value: 3 },
         { type: 'summon', value: 3 },
       ] },
@@ -80,14 +80,14 @@ export const BOSS_DEFS: BossDef[] = [
         { type: 'summon', value: 2 },
       ] },
       { hpThreshold: 0.6, intentPattern: [
-        { type: 'attack', value: 20 },
+        { type: 'attack', value: 16 },
         { type: 'debuff', value: 3 },
-        { type: 'attack', value: 15 },
+        { type: 'attack', value: 12 },
       ] },
       { hpThreshold: 0.3, intentPattern: [
-        { type: 'attack', value: 25 },
-        { type: 'summon', value: 3 },
         { type: 'attack', value: 20 },
+        { type: 'summon', value: 3 },
+        { type: 'attack', value: 16 },
       ] },
     ],
     dialogue: [

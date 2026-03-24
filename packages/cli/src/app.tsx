@@ -180,7 +180,7 @@ function AppContent({ dryRun }: AppProps) {
       return;
     }
     const seedStr = `run-${Date.now()}`;
-    const r = createRun(seedStr, save.keep.highestAscension);
+    const r = createRun(seedStr, save.keep.highestAscension, settings.difficulty);
     setRun(r);
     setSelectedNodeIdx(0);
     save.activeRun = r;
@@ -229,7 +229,7 @@ function AppContent({ dryRun }: AppProps) {
       const seed = hashSeed(run.seed + node.id);
       const rng = mulberry32(seed);
       const encounter = pickEncounter(run.act, rng, node.type === 'elite');
-      startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, encounter.enemies, r.relics, getDifficultyModifiers(run.act, run.ascensionLevel));
+      startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, encounter.enemies, r.relics, getDifficultyModifiers(run.act, run.ascensionLevel, settings.difficulty));
       setRun(r);
       doSave(r);
       setScreen('combat');
@@ -238,7 +238,7 @@ function AppContent({ dryRun }: AppProps) {
       const r = { ...run, currentNodeId: node.id };
       const seed = hashSeed(run.seed + '-boss-' + run.act);
       const wave = getBossWave(run.act);
-      startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, wave, r.relics, getDifficultyModifiers(run.act, run.ascensionLevel));
+      startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, wave, r.relics, getDifficultyModifiers(run.act, run.ascensionLevel, settings.difficulty));
 
       const bossDef = getBossDef(run.act);
       if (bossDef?.dialogue) {
@@ -450,7 +450,7 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'settings') {
-      const settingsItems = ['ascii', 'hints', 'log', 'anim', 'tutorial', 'controls', 'reset', 'back'];
+      const settingsItems = ['ascii', 'hints', 'log', 'anim', 'difficulty', 'tutorial', 'controls', 'reset', 'back'];
       if (key.upArrow) { setSettingsIndex(i => Math.max(0, i - 1)); setConfirmingReset(false); }
       else if (key.downArrow) { setSettingsIndex(i => Math.min(settingsItems.length - 1, i + 1)); setConfirmingReset(false); }
       else if (input === 'q' || key.escape) { setScreen('menu'); setConfirmingReset(false); }
@@ -467,6 +467,11 @@ function AppContent({ dryRun }: AppProps) {
         } else if (item === 'anim') {
           setSettings(s => ({ ...s, skipEnemyAnimation: !s.skipEnemyAnimation }));
           setSettingsMessage('Enemy animations ' + (settings.skipEnemyAnimation ? 'enabled' : 'disabled'));
+        } else if (item === 'difficulty') {
+          const cycle = { easy: 'normal', normal: 'hard', hard: 'easy' } as const;
+          const next = cycle[settings.difficulty];
+          setSettings(s => ({ ...s, difficulty: next }));
+          setSettingsMessage(`Difficulty set to ${next.charAt(0).toUpperCase() + next.slice(1)}. Takes effect on next run.`);
         } else if (item === 'tutorial') {
           setTutorialPage(0);
           setTutorialSource('settings');

@@ -256,14 +256,14 @@ export const ENEMY_TEMPLATES: EnemyTemplate[] = [
     description: 'Shifts columns before attacking.' },
   { id: 'shielder', name: 'Shielder', symbol: '◇', hp: 20, damage: 4, speed: 1, act: 2,
     description: 'Grants shield to adjacent enemies.' },
-  { id: 'echo', name: 'Echo', symbol: '∞', hp: 35, damage: 12, speed: 1, act: 3,
+  { id: 'echo', name: 'Echo', symbol: '∞', hp: 28, damage: 10, speed: 1, act: 3,
     description: 'A memory of something that should not exist.' },
   // ── Bosses ──
   { id: 'boss_suture', name: 'The Suture', symbol: '◈', hp: 60, damage: 8, speed: 1, act: 1,
     description: 'Stitched from fragments of the Pale. The first true threat.' },
   { id: 'boss_archivist', name: 'The Archivist', symbol: '▣', hp: 90, damage: 10, speed: 1, act: 2,
     description: 'Keeper of forgotten records. Debuffs and shields methodically.' },
-  { id: 'boss_pale', name: 'The Pale Itself', symbol: '◉', hp: 130, damage: 12, speed: 1, act: 3,
+  { id: 'boss_pale', name: 'The Pale Itself', symbol: '◉', hp: 100, damage: 12, speed: 1, act: 3,
     description: 'The void given form. Three phases of escalating horror.' },
 ];
 

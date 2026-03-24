@@ -1,11 +1,14 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 
+export type DifficultyPreset = 'easy' | 'normal' | 'hard';
+
 export interface GameSettings {
   asciiMode: boolean;
   showTutorialHints: boolean;
   combatLogSize: number;
   skipEnemyAnimation: boolean;
+  difficulty: DifficultyPreset;
 }
 
 interface SettingsViewProps {
@@ -27,6 +30,13 @@ export const DEFAULT_SETTINGS: GameSettings = {
   showTutorialHints: true,
   combatLogSize: 4,
   skipEnemyAnimation: false,
+  difficulty: 'normal',
+};
+
+const DIFFICULTY_LABELS: Record<DifficultyPreset, string> = {
+  easy: 'Easy — enemies have 30% less HP/damage, +20 gate HP',
+  normal: 'Normal — the intended experience',
+  hard: 'Hard — enemies have 25% more HP/damage, −10 gate HP',
 };
 
 export function SettingsView({ settings, selectedIndex, saveInfo, confirmingReset, message }: SettingsViewProps) {
@@ -35,6 +45,7 @@ export function SettingsView({ settings, selectedIndex, saveInfo, confirmingRese
     { id: 'hints', label: `Tutorial Hints: ${settings.showTutorialHints ? 'ON' : 'OFF'}`, description: 'Show helpful tips during first runs' },
     { id: 'log', label: `Combat Log Lines: ${settings.combatLogSize}`, description: 'Number of recent combat events shown (0-8)' },
     { id: 'anim', label: `Enemy Animations: ${settings.skipEnemyAnimation ? 'OFF' : 'ON'}`, description: 'Step through enemy moves one by one' },
+    { id: 'difficulty', label: `Difficulty: ${settings.difficulty.charAt(0).toUpperCase() + settings.difficulty.slice(1)}`, description: DIFFICULTY_LABELS[settings.difficulty] },
     { id: 'tutorial', label: 'View Tutorial', description: 'Re-read the game tutorial' },
     { id: 'controls', label: 'Controls Reference', description: 'View all keybindings' },
     { id: 'reset', label: 'Reset Save Data', description: 'Delete all progress and start fresh' },

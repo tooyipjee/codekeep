@@ -4,11 +4,12 @@ import { createStarterDeck, makeCardInstance } from './deck.js';
 import { generateActMap, getNodeById } from './map.js';
 import { hashSeed } from './rng.js';
 import { getDifficultyModifiers } from './difficulty.js';
+import type { DifficultyPreset } from './difficulty.js';
 
-export function createRun(seedStr: string, ascensionLevel: number = 0): RunState {
+export function createRun(seedStr: string, ascensionLevel: number = 0, preset: DifficultyPreset = 'normal'): RunState {
   const seed = hashSeed(seedStr);
   const map = generateActMap(1, seed);
-  const difficulty = getDifficultyModifiers(1, ascensionLevel);
+  const difficulty = getDifficultyModifiers(1, ascensionLevel, preset);
 
   const deck = createStarterDeck();
   if (difficulty.startWithCurse) {

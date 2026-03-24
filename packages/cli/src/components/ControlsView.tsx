@@ -24,7 +24,7 @@ export function ControlsView() {
       <Text>  d           View deck</Text>
       <Text> </Text>
       <Text bold>Map</Text>
-      <Text>  ↑↓          Select next node</Text>
+      <Text>  ←→          Select next node</Text>
       <Text>  Enter       Enter node</Text>
       <Text>  d           View deck</Text>
       <Text> </Text>

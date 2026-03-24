@@ -39,8 +39,9 @@ export const BOSS_DEFS: BossDef[] = [
     ],
     dialogue: [
       { storyLayer: 'surface', onAppear: 'I will stitch this Keep into silence.', onDefeat: 'Unraveled... but the thread remains...' },
-      { storyLayer: 'cracks', onAppear: 'You again. How many times have we done this?', onPhaseChange: 'I remember you. Every time.' },
-      { storyLayer: 'truth', onAppear: 'I was a warden once. Before the stitching.' },
+      { storyLayer: 'cracks', onAppear: 'You again. How many times have we done this?', onPhaseChange: 'I remember you. Every time.', onDefeat: 'Same ending. Different stitch.' },
+      { storyLayer: 'truth', onAppear: 'I was a Warden once. Before the stitching.', onDefeat: 'Free... at last. Until the next stitch.' },
+      { storyLayer: 'true_ending', onAppear: 'We were both Wardens. We both chose to hold. The only difference is which side of the stitching we\'re on.', onDefeat: 'The thread... was mine all along.' },
     ],
     onPhaseChange: (state, _boss, _phase) => {
       const col = state.columns[2];
@@ -65,8 +66,9 @@ export const BOSS_DEFS: BossDef[] = [
     ],
     dialogue: [
       { storyLayer: 'surface', onAppear: 'Everything must be recorded. Including your defeat.', onDefeat: 'The records... will continue... without me...' },
-      { storyLayer: 'cracks', onAppear: 'Sable? Is that... no. Not yet. Not this time.' },
-      { storyLayer: 'truth', onAppear: 'I am what Sable will become. I am what the Archive demands.' },
+      { storyLayer: 'cracks', onAppear: 'Sable? Is that... no. Not yet. Not this time.', onDefeat: 'The pages scatter... but the ink remembers.' },
+      { storyLayer: 'truth', onAppear: 'I am what Sable will become. I am what the Archive demands.', onDefeat: 'Tell Sable... it doesn\'t have to end this way.' },
+      { storyLayer: 'true_ending', onAppear: 'I remember being Sable. It was the last thing I chose to forget.', onDefeat: 'The record is complete. At last.' },
     ],
   },
   {

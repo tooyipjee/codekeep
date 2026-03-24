@@ -508,15 +508,12 @@ function resolveEnemyTurn(state: CombatState): void {
 
   state.turn++;
   state.phase = 'player';
-  state.resolve = state.maxResolve;
   state.gateBlock = 0;
 
   triggerEmplacements(state);
   removeDeadEnemies(state);
   checkCombatEnd(state);
   if (state.outcome !== 'undecided') return;
-
-  applyRelicEffect(state, state.relics, 'on_turn_start');
 
   state.discardPile.push(...state.hand);
   state.hand = [];
@@ -528,6 +525,13 @@ function resolveEnemyTurn(state: CombatState): void {
   state.hand = drawn;
   state.drawPile = newDrawPile;
   state.discardPile = newDiscardPile;
+
+  applyRelicEffect(state, state.relics, 'on_turn_start');
+  removeDeadEnemies(state);
+  checkCombatEnd(state);
+  if (state.outcome !== 'undecided') return;
+
+  state.resolve = state.maxResolve;
 
   for (const col of state.columns) {
     for (const enemy of col.enemies) {

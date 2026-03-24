@@ -51,6 +51,7 @@ export function useCombatState(): UseCombatStateReturn {
   const [animating, setAnimating] = useState(false);
   const [animQueue, setAnimQueue] = useState<string[]>([]);
   const combatRef = useRef<CombatState | null>(null);
+  const targetColumnRef = useRef(2);
 
   useEffect(() => {
     if (!animating || animQueue.length === 0) return;
@@ -92,6 +93,7 @@ export function useCombatState(): UseCombatStateReturn {
     setCombat({ ...state });
     setSelectedCard(-1);
     setTargetColumn(2);
+    targetColumnRef.current = 2;
     setEmplaceMode(false);
     setMessage('Your turn. Select a card (1-5) and a column (←→).');
   }, []);
@@ -127,6 +129,19 @@ export function useCombatState(): UseCombatStateReturn {
       TARGETING_EFFECT_TYPES.has(e.type) && (e.target === 'single' || e.target === 'column'),
     );
     if (needsTgt) {
+      const cols = combatRef.current.columns;
+      const cur = targetColumnRef.current;
+      if (cols[cur].enemies.length === 0) {
+        let best = -1;
+        let bestDist = 99;
+        for (let c = 0; c < cols.length; c++) {
+          if (cols[c].enemies.length > 0 && Math.abs(c - cur) < bestDist) {
+            best = c;
+            bestDist = Math.abs(c - cur);
+          }
+        }
+        if (best >= 0) { setTargetColumn(best); targetColumnRef.current = best; }
+      }
       setMessage(`${def.name} selected. Choose column (←→), Enter to play.`);
     } else {
       setMessage(`${def.name} selected. Enter to play.`);
@@ -136,6 +151,7 @@ export function useCombatState(): UseCombatStateReturn {
   const selectTarget = useCallback((col: number) => {
     if (col >= 0 && col < 5) {
       setTargetColumn(col);
+      targetColumnRef.current = col;
     }
   }, []);
 
@@ -146,6 +162,17 @@ export function useCombatState(): UseCombatStateReturn {
     if (!card) return;
     const def = getCardDef(card.defId);
     if (!def) return;
+
+    const needsSingleTarget = !emplaceMode && def.effects.some((e) =>
+      TARGETING_EFFECT_TYPES.has(e.type) && e.target === 'single',
+    );
+    if (needsSingleTarget) {
+      const col = state.columns[targetColumn];
+      if (!col || col.enemies.length === 0) {
+        setMessage(`No enemies in column ${targetColumn + 1}. Move target (←→) to an enemy.`);
+        return;
+      }
+    }
 
     const eventsBefore = state.events.length;
     playCard(state, selectedCard, targetColumn, emplaceMode);

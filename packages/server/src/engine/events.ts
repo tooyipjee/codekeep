@@ -99,8 +99,8 @@ const ACT2_EVENTS: GameEvent[] = [
     description: 'Behind a collapsed wall, you find supplies left by someone who fled the Keep long ago.',
     choices: [
       { label: 'Take everything. (Gain 30 fragments)', effect: { type: 'fragments', value: 30 } },
-      { label: 'Take only what you need. (Heal 10 HP, gain 10 fragments)', effect: { type: 'heal', value: 10 } },
-      { label: 'Leave it for the next warden.', effect: { type: 'nothing' } },
+      { label: 'Take only what you need. (Gain 10 fragments)', effect: { type: 'fragments', value: 10 } },
+      { label: 'Leave it for the next Warden.', effect: { type: 'nothing' } },
     ],
   },
 ];
@@ -177,7 +177,7 @@ const ACT3_EVENTS: GameEvent[] = [
   {
     id: 'echo_of_a_warden',
     name: 'Echo of a Warden',
-    description: 'A ghostly figure in warden\'s garb appears. "I held this keep once. Take what remains of my strength."',
+    description: 'A ghostly figure in Warden\'s garb appears. "I held this Keep once. Take what remains of my strength."',
     choices: [
       { label: 'Accept their gift. (Gain a card, lose 5 HP)', effect: { type: 'card_reward' } },
       { label: 'Ask them to strengthen the gate. (Heal 25 HP)', effect: { type: 'heal', value: 25 } },

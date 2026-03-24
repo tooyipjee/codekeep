@@ -93,13 +93,14 @@ export function CardHand({ hand, selectedIndex, resolve }: CardHandProps) {
               <Text bold={isSelected} color={isSelected ? 'yellow' : 'white'}>
                 {isSelected ? ' ▶ ' : '   '}
               </Text>
+              <Text dimColor>{i + 1}. </Text>
               <Text color={canAfford ? rarityColor(def.rarity) : 'gray'} bold={isSelected}>
                 {categorySymbol(def.category)} {def.name}
               </Text>
               <Text> </Text>
               {costPips(def.cost, resolve)}
               <Text dimColor>{' '}{summary}</Text>
-              {isSelected && def.type === 'emplace' && <Text color="cyan">{' '}[emplaceable]</Text>}
+              {def.type === 'emplace' && <Text color="cyan" dimColor={!isSelected}>{' '}⚒</Text>}
             </Text>
             {isSelected && (
               <Text dimColor>{'      '}{def.description}</Text>

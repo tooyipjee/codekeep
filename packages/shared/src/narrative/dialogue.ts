@@ -41,7 +41,7 @@ export const NPC_DIALOGUES: DialogueSet[] = [
   // ── Sable (Archivist) ──
   { npcId: 'sable', tier: 0, lines: [
     { id: 'sable_t0_1', speaker: 'Sable', text: 'Hmm? Oh, another Warden. The Archive is open, if you can read the old script.' },
-    { id: 'sable_t0_2', speaker: 'Sable', text: 'Cards, Warden. That\'s what the old records call them. Patterns of power, crystallized.' },
+    { id: 'sable_t0_2', speaker: 'Sable', text: 'The old records call them "recollections." You\'d call them cards. Patterns of power, crystallized.' },
     { id: 'sable_t0_3', speaker: 'Sable', text: 'The Pale erases. But patterns — true patterns — resist erasure. That\'s what your deck is.' },
   ]},
   { npcId: 'sable', tier: 1, lines: [
@@ -72,7 +72,7 @@ export const NPC_DIALOGUES: DialogueSet[] = [
   // ── Duskmar (First Wall) ──
   { npcId: 'duskmar', tier: 0, lines: [
     { id: 'dusk_t0_1', speaker: 'Duskmar', text: 'I was the first to man these walls. And I\'ll be the last, if it comes to that.' },
-    { id: 'dusk_t0_2', speaker: 'Duskmar', text: 'The Hollows are nothing. Wait until you face the Shades. Or the things in Act 3.' },
+    { id: 'dusk_t0_2', speaker: 'Duskmar', text: 'The Hollows are nothing. Wait until you face the Shades. Or the things that stir at the Pale\'s heart.' },
     { id: 'dusk_t0_3', speaker: 'Duskmar', text: 'Block. Always block. The Pale punishes the reckless.' },
   ]},
   { npcId: 'duskmar', tier: 1, lines: [
@@ -82,6 +82,10 @@ export const NPC_DIALOGUES: DialogueSet[] = [
   { npcId: 'duskmar', tier: 2, lines: [
     { id: 'dusk_t2_1', speaker: 'Duskmar', text: 'I died once, you know. In the Pale. Wren brought me back with Echoes.' },
     { id: 'dusk_t2_2', speaker: 'Duskmar', text: 'Death isn\'t permanent here. That should worry you more than it comforts you.' },
+  ]},
+  { npcId: 'duskmar', tier: 3, lines: [
+    { id: 'dusk_t3_1', speaker: 'Duskmar', text: 'I\'ve started counting. Not enemies. Dawns. Each one feels borrowed.' },
+    { id: 'dusk_t3_2', speaker: 'Duskmar', text: 'The new emplacements fight like they remember being alive. Is that what I am now?' },
   ]},
   { npcId: 'duskmar', tier: 4, lines: [
     { id: 'duskmar_t4_1', speaker: 'Duskmar', text: 'I remember dying, Warden. Not the pain — that faded. The silence after.' },
@@ -100,8 +104,12 @@ export const NPC_DIALOGUES: DialogueSet[] = [
     { id: 'mott_t1_2', speaker: 'Mott', text: 'The relics aren\'t just powerful. They\'re pieces of the old world. Before the Pale.' },
   ]},
   { npcId: 'mott', tier: 2, lines: [
-    { id: 'mott_t2_1', speaker: 'Mott', text: 'I figured it out. The fragments? They\'re not resources. They\'re memories — compressed.' },
+    { id: 'mott_t2_1', speaker: 'Mott', text: 'I figured it out. The fragments? They\'re raw memories — sharp, unprocessed. Bring them home and the Keep compresses them into Echoes.' },
     { id: 'mott_t2_2', speaker: 'Mott', text: 'When you spend fragments, you\'re spending someone\'s past. Heavy, right?' },
+  ]},
+  { npcId: 'mott', tier: 3, lines: [
+    { id: 'mott_t3_1', speaker: 'Mott', text: 'I keep finding fragments that feel familiar. Like I\'ve sold them before.' },
+    { id: 'mott_t3_2', speaker: 'Mott', text: 'The shop in the Pale — the one that looks like mine. It had inventory I haven\'t collected yet.' },
   ]},
   { npcId: 'mott', tier: 4, lines: [
     { id: 'mott_t4_1', speaker: 'Mott', text: 'I can\'t sell this one. It\'s... it\'s someone\'s last birthday. The whole day, compressed into a shard.' },

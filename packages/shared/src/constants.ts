@@ -179,7 +179,7 @@ export const CARD_DEFS: CardDef[] = [
   { id: 'recycle', name: 'Recycle', cost: 1, type: 'cast', category: 'edict', rarity: 'common',
     description: 'Exhaust a card from hand, draw 2.',
     effects: [{ type: 'exhaust_draw', value: 2 }] },
-  { id: 'keepers_ward', name: "Keeper's Ward", cost: 1, type: 'emplace', category: 'fortification', rarity: 'uncommon',
+  { id: 'keepers_ward', name: "Warden's Ward", cost: 1, type: 'emplace', category: 'fortification', rarity: 'uncommon',
     description: 'Cast: Gain 5 Block. Emplace: 6 HP, gives +1 damage to adjacent emplacements/turn.',
     effects: [{ type: 'block', value: 5, target: 'self' }],
     emplaceCost: 1, emplaceHp: 6, emplaceEffects: [{ type: 'damage', value: 1, target: 'adjacent' }] },

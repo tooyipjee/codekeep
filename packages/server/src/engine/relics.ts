@@ -1,5 +1,5 @@
 import type { RelicDef, CombatState } from '@codekeep/shared';
-import { applyStatus } from './status.js';
+import { applyStatus, getDamageMult } from './status.js';
 
 export const RELIC_DEFS: RelicDef[] = [
   { id: 'wardens_signet', name: "Warden's Signet", description: '+1 max Resolve.',
@@ -95,7 +95,8 @@ export function applyRelicEffect(
       case 'deal_damage_all': {
         for (const col of state.columns) {
           for (const enemy of col.enemies) {
-            enemy.hp -= def.effect.value;
+            const mult = getDamageMult(enemy);
+            enemy.hp -= Math.floor(def.effect.value * mult);
           }
         }
         break;
@@ -106,7 +107,8 @@ export function applyRelicEffect(
           const col = state.columns[killedCol];
           if (col) {
             for (const enemy of col.enemies) {
-              enemy.hp -= def.effect.value;
+              const mult = getDamageMult(enemy);
+              enemy.hp -= Math.floor(def.effect.value * mult);
             }
           }
         }

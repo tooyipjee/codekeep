@@ -20,7 +20,7 @@ export function EventView({ event, selectedChoice }: EventViewProps) {
         </Text>
       ))}
       <Text> </Text>
-      <Text dimColor>↑↓ navigate  Enter choose</Text>
+      <Text dimColor>↑↓ navigate  Enter choose  (you must choose)</Text>
     </Box>
   );
 }

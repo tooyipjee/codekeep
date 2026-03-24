@@ -34,7 +34,7 @@ import type { GameSettings } from './components/SettingsView.js';
 import { ControlsView } from './components/ControlsView.js';
 import { useCombatState } from './hooks/useCombatState.js';
 
-const MIN_COLS = 60;
+const MIN_COLS = 80;
 const MIN_ROWS = 24;
 
 function useTerminalSize() {
@@ -65,7 +65,7 @@ function AppContent({ dryRun }: AppProps) {
   const { exit } = useApp();
   const { columns, rows } = useTerminalSize();
   const [screen, setScreen] = useState<Screen>('menu');
-  const [menuIndex, setMenuIndex] = useState(0);
+  const [menuIndex, setMenuIndex] = useState(1);
 
   // Run state
   const [run, setRun] = useState<RunState | null>(null);
@@ -299,8 +299,23 @@ function AppContent({ dryRun }: AppProps) {
     let r = { ...run, gateHp: combat.gateHp };
 
     if (combat.outcome === 'lose') {
+      setBossDialogue(null);
       finishRun(r, false);
       return;
+    }
+
+    const currentNodeForBoss = run.currentNodeId ? getNodeById(run.map, run.currentNodeId) : null;
+    if (currentNodeForBoss?.type === 'boss') {
+      const bossDef = getBossDef(run.act);
+      if (bossDef?.dialogue) {
+        const layerDialogue = bossDef.dialogue.find(d => d.storyLayer === storyLayer)
+          ?? bossDef.dialogue[0];
+        setBossDialogue(layerDialogue?.onDefeat ?? null);
+      } else {
+        setBossDialogue(null);
+      }
+    } else {
+      setBossDialogue(null);
     }
 
     if (r.currentNodeId) {
@@ -555,6 +570,7 @@ function AppContent({ dryRun }: AppProps) {
             doSave(r);
             setShopItems((items) => items.filter((_, i) => i !== shopIndex));
             setShopIndex(0);
+            setShopMessage(`Purchased ${item.cardDef.name}!`);
           } else if (item.type === 'potion' && item.potionDef) {
             const result = addPotion(r, item.potionDef.id);
             if (result) r = result;
@@ -562,11 +578,13 @@ function AppContent({ dryRun }: AppProps) {
             doSave(r);
             setShopItems((items) => items.filter((_, i) => i !== shopIndex));
             setShopIndex(0);
+            setShopMessage(`Purchased ${item.potionDef.name}!`);
           } else if (item.type === 'card_remove') {
             setRun(r);
             doSave(r);
             setRemoveIndex(0);
             setShopItems((items) => items.filter((_, i) => i !== shopIndex));
+            setShopIndex(0);
             setScreen('shop_remove');
           }
         }
@@ -589,7 +607,12 @@ function AppContent({ dryRun }: AppProps) {
             break;
           }
           case 'fragments': r = gainFragments(r, choice.effect.value); break;
-          case 'max_hp': r = { ...r, gateMaxHp: r.gateMaxHp + choice.effect.value }; break;
+          case 'max_hp': {
+            r = { ...r, gateMaxHp: r.gateMaxHp + choice.effect.value };
+            const hpLoss = choice.label.match(/lose\s+(\d+)\s*hp/i);
+            if (hpLoss) r = { ...r, gateHp: Math.max(1, r.gateHp - parseInt(hpLoss[1])) };
+            break;
+          }
           case 'card_reward': {
             const hpMatch = choice.label.match(/lose\s+(\d+)\s*hp/i);
             if (hpMatch) r = { ...r, gateHp: Math.max(1, r.gateHp - parseInt(hpMatch[1])) };
@@ -629,10 +652,12 @@ function AppContent({ dryRun }: AppProps) {
           doSave(r);
           setSelectedNodeIdx(0);
           setScreen('map');
-        } else if (restChoice === 1 && r.deck.length > 5) {
-          setRun(r);
-          setRemoveIndex(0);
-          setScreen('deck_remove');
+        } else if (restChoice === 1) {
+          if (r.deck.length > 5) {
+            setRun(r);
+            setRemoveIndex(0);
+            setScreen('deck_remove');
+          }
         } else {
           setRun(r);
           doSave(r);
@@ -782,6 +807,7 @@ function AppContent({ dryRun }: AppProps) {
       }
       if (input >= '1' && input <= '9') { setConfirmEndTurn(false); selectCard(parseInt(input) - 1); return; }
       if (key.leftArrow) {
+        setConfirmEndTurn(false);
         if (needsTarget && combat) {
           let next = targetColumn - 1;
           while (next >= 0 && combat.columns[next].enemies.length === 0) next--;
@@ -792,6 +818,7 @@ function AppContent({ dryRun }: AppProps) {
         return;
       }
       if (key.rightArrow) {
+        setConfirmEndTurn(false);
         if (needsTarget && combat) {
           let next = targetColumn + 1;
           while (next < 5 && combat.columns[next].enemies.length === 0) next++;
@@ -801,7 +828,7 @@ function AppContent({ dryRun }: AppProps) {
         }
         return;
       }
-      if (key.return && selectedCard >= 0) { confirmPlay(); return; }
+      if (key.return && selectedCard >= 0) { setConfirmEndTurn(false); confirmPlay(); return; }
       if (input === ' ') {
         if (combat.resolve > 0 && combat.hand.some(c => { const d = getCardDef(c.defId); return d && d.cost <= combat.resolve; }) && !confirmEndTurn) {
           setConfirmEndTurn(true);
@@ -857,7 +884,7 @@ function AppContent({ dryRun }: AppProps) {
   }
 
   if (screen === 'tutorial') {
-    return <TutorialView page={tutorialPage} totalPages={TUTORIAL_PAGE_COUNT} />;
+    return <TutorialView page={tutorialPage} totalPages={TUTORIAL_PAGE_COUNT} source={tutorialSource} />;
   }
 
   if (screen === 'controls') {
@@ -1004,7 +1031,11 @@ function AppContent({ dryRun }: AppProps) {
             <Text bold color="green">{'│       ★ RUN COMPLETE         │'}</Text>
             <Text bold color="green">{'└──────────────────────────────┘'}</Text>
             <Text> </Text>
-            <Text italic>The Pale recedes. The Keep endures.</Text>
+            {bossDialogue ? (
+              <Text italic color="magenta">"{bossDialogue}"</Text>
+            ) : (
+              <Text italic>The Pale recedes. The Keep endures.</Text>
+            )}
             <Text italic dimColor>Another dawn. Another day of resistance.</Text>
           </>
         ) : (
@@ -1095,11 +1126,11 @@ function AppContent({ dryRun }: AppProps) {
           })();
           const statusDescs = enemy.statusEffects.map(s => {
             switch (s.type) {
-              case 'vulnerable': return `Vulnerable ×${s.stacks} (${s.duration}t) — takes 50% more damage`;
-              case 'weak': return `Weak ×${s.stacks} (${s.duration}t) — deals 25% less damage`;
+              case 'vulnerable': return `Vulnerable ×${s.stacks} (${s.duration}t) — takes +${s.stacks * 25}% damage`;
+              case 'weak': return `Weak ×${s.stacks} (${s.duration}t) — deals -${s.stacks * 15}% damage`;
               case 'burn': return `Burn ×${s.stacks} (${s.duration}t) — takes ${s.stacks} damage/turn`;
-              case 'empowered': return `Empowered ×${s.stacks} (${s.duration}t) — deals 50% more damage`;
-              case 'fortified': return `Fortified ×${s.stacks} (${s.duration}t) — takes 25% less damage`;
+              case 'empowered': return `Empowered ×${s.stacks} (${s.duration}t) — deals +${s.stacks * 25}% damage`;
+              case 'fortified': return `Fortified ×${s.stacks} (${s.duration}t) — takes -${s.stacks * 15}% damage`;
               default: return `${s.type} ×${s.stacks} (${s.duration}t)`;
             }
           });

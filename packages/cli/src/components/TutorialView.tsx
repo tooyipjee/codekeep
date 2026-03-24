@@ -4,6 +4,7 @@ import { Box, Text } from 'ink';
 interface TutorialViewProps {
   page: number;
   totalPages: number;
+  source?: 'new_game' | 'menu' | 'settings';
 }
 
 const TUTORIAL_PAGES = [
@@ -138,26 +139,32 @@ function progressBar(current: number, total: number, width: number): string {
   return '█'.repeat(filled) + '░'.repeat(Math.max(0, width - filled));
 }
 
-export function TutorialView({ page, totalPages }: TutorialViewProps) {
+export function TutorialView({ page, totalPages, source = 'new_game' }: TutorialViewProps) {
   const content = TUTORIAL_PAGES[page];
   if (!content) return null;
+
+  const isLast = page >= totalPages - 1;
+  const lastPageAction = source === 'new_game' ? 'Enter begin' : 'Enter return';
 
   return (
     <Box flexDirection="column" padding={1}>
       <Text bold color="yellow">{'◆ Tutorial — '}{content.title}</Text>
       <Text dimColor>{'─'.repeat(44)}</Text>
       <Text> </Text>
-      {content.lines.map((line, i) => (
-        <Text key={i}>{line || ' '}</Text>
-      ))}
+      {content.lines.map((line, i) => {
+        if (isLast && line === 'Press Enter to begin.' && source !== 'new_game') {
+          return <Text key={i}>Press Enter to return.</Text>;
+        }
+        return <Text key={i}>{line || ' '}</Text>;
+      })}
       <Text> </Text>
       <Text dimColor>{'─'.repeat(44)}</Text>
       <Box>
         <Text dimColor>{progressBar(page + 1, totalPages, 20)} {page + 1}/{totalPages}  </Text>
         <Text dimColor>
-          {page < totalPages - 1
-            ? '← prev  → next  q close'
-            : '← prev  Enter start  q close'}
+          {isLast
+            ? `← prev  ${lastPageAction}  q close`
+            : '← prev  → next  q close'}
         </Text>
       </Box>
     </Box>

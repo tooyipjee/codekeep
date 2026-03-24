@@ -46,11 +46,11 @@ function statusTags(enemy: EnemyInstance): StatusTag[] {
   const all: StatusTag[] = [];
   for (const s of enemy.statusEffects) {
     switch (s.type) {
-      case 'vulnerable': all.push({ text: `v${s.stacks}`, color: 'yellow' }); break;
-      case 'weak': all.push({ text: `w${s.stacks}`, color: 'green' }); break;
-      case 'burn': all.push({ text: `b${s.stacks}`, color: 'red' }); break;
-      case 'empowered': all.push({ text: `p${s.stacks}`, color: 'magenta' }); break;
-      case 'fortified': all.push({ text: `f${s.stacks}`, color: 'blue' }); break;
+      case 'vulnerable': all.push({ text: `V${s.stacks}`, color: 'yellow' }); break;
+      case 'weak': all.push({ text: `W${s.stacks}`, color: 'green' }); break;
+      case 'burn': all.push({ text: `B${s.stacks}`, color: 'red' }); break;
+      case 'empowered': all.push({ text: `E${s.stacks}`, color: 'magenta' }); break;
+      case 'fortified': all.push({ text: `F${s.stacks}`, color: 'blue' }); break;
     }
   }
   let used = 0;

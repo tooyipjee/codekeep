@@ -1,6 +1,6 @@
 import type { CombatState, Emplacement, CardDef, CardEffect, EnemyInstance } from '@codekeep/shared';
 import { getCardDef } from '@codekeep/shared';
-import { getDamageMult } from './status.js';
+import { getDamageMult, applyStatus } from './status.js';
 
 export function placeEmplacement(state: CombatState, cardDef: CardDef, column: number, hpBonus: number = 0): boolean {
   if (column < 0 || column >= state.columns.length) return false;
@@ -97,16 +97,12 @@ function applyEmplacementEffect(state: CombatState, column: number, effect: Card
       break;
     case 'weak':
       for (const enemy of col.enemies) {
-        const existing = enemy.statusEffects.find((s) => s.type === 'weak');
-        if (existing) { existing.stacks += effect.value; }
-        else { enemy.statusEffects.push({ type: 'weak', stacks: effect.value, duration: 2 }); }
+        applyStatus(enemy, 'weak', effect.value, 2);
       }
       break;
     case 'vulnerable':
       for (const enemy of col.enemies) {
-        const existing = enemy.statusEffects.find((s) => s.type === 'vulnerable');
-        if (existing) { existing.stacks += effect.value; }
-        else { enemy.statusEffects.push({ type: 'vulnerable', stacks: effect.value, duration: 2 }); }
+        applyStatus(enemy, 'vulnerable', effect.value, 2);
       }
       break;
   }

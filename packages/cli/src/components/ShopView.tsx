@@ -38,7 +38,7 @@ export function ShopView({ items, selectedIndex, fragments, message }: ShopViewP
       })}
       {items.length === 0 && <Text dimColor>{'  (Shop is empty)'}</Text>}
       <Text> </Text>
-      {message && <Text color="red">{message}</Text>}
+      {message && <Text color={message.startsWith('Purchased') ? 'green' : 'red'}>{message}</Text>}
       <Text dimColor>↑↓ navigate  Enter buy  q leave</Text>
     </Box>
   );

@@ -38,13 +38,13 @@ describe('status effects', () => {
     expect(getDamageMult(enemy)).toBe(1.5);
   });
 
-  it('weak reduces enemy damage per stack (15% per stack)', () => {
+  it('weak reduces enemy damage per stack (25% per stack)', () => {
     const enemy = makeEnemy();
     expect(getEnemyDamageMult(enemy)).toBe(1);
     applyStatus(enemy, 'weak', 1, 2);
-    expect(getEnemyDamageMult(enemy)).toBeCloseTo(0.85);
+    expect(getEnemyDamageMult(enemy)).toBeCloseTo(0.75);
     applyStatus(enemy, 'weak', 1, 2);
-    expect(getEnemyDamageMult(enemy)).toBeCloseTo(0.7);
+    expect(getEnemyDamageMult(enemy)).toBeCloseTo(0.50);
   });
 
   it('empowered increases enemy damage', () => {
@@ -55,7 +55,7 @@ describe('status effects', () => {
 
   it('burn deals damage and reduces stacks', () => {
     const enemy = makeEnemy();
-    applyStatus(enemy, 'burn', 3, 99);
+    applyStatus(enemy, 'burn', 3, 4);
     const damage = applyBurn(enemy);
     expect(damage).toBe(3);
     expect(enemy.hp).toBe(17);

@@ -85,13 +85,17 @@ const TUTORIAL_PAGES = [
   {
     title: 'Status Effects',
     lines: [
-      '  V Vulnerable ... +25% damage taken per stack',
-      '  W Weak ......... -15% damage dealt per stack',
-      '  B Burn ......... Takes damage each turn, decays',
-      '  F Fortified .... -15% damage taken per stack',
-      '  E Empowered .... +25% damage dealt per stack',
+      'Applied to enemies (or by enemies to your Gate):',
       '',
-      'Effects stack: 2x Vulnerable = +50% damage taken.',
+      '  Vulnerable . Enemy takes +25% damage per stack',
+      '  Weak ....... Enemy deals -25% damage per stack',
+      '  Burn ....... Damage per turn equal to stacks, decays by 1',
+      '  Fortified .. Enemy takes -15% damage per stack',
+      '  Empowered .. Enemy deals +25% damage per stack',
+      '',
+      'Effects stack! 2× Vulnerable = +50% damage taken.',
+      'Duration shown as turns (e.g. 2t). ∞ = permanent.',
+      'Press i in combat to inspect an enemy for details.',
     ],
   },
   {

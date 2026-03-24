@@ -143,7 +143,7 @@ export function applyRelicEffect(
         if (diedFromBurn) {
           for (const col of state.columns) {
             for (const enemy of col.enemies) {
-              applyStatus(enemy, 'burn', def.effect.value, 99);
+              applyStatus(enemy, 'burn', def.effect.value, def.effect.value + 1);
             }
           }
         }

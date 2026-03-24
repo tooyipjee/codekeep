@@ -1143,14 +1143,16 @@ function AppContent({ dryRun }: AppProps) {
                 default: return `${enemy.intent.type} (${enemy.intent.value})`;
               }
             })();
+            const fmtDur = (d: number) => d >= 90 ? '∞' : `${d}t`;
             const statusDescs = enemy.statusEffects.map(s => {
+              const dur = fmtDur(s.duration);
               switch (s.type) {
-                case 'vulnerable': return `VLN ×${s.stacks} (${s.duration}t)`;
-                case 'weak': return `WK ×${s.stacks} (${s.duration}t)`;
-                case 'burn': return `BRN ×${s.stacks} (${s.duration}t)`;
-                case 'empowered': return `EMP ×${s.stacks} (${s.duration}t)`;
-                case 'fortified': return `FRT ×${s.stacks} (${s.duration}t)`;
-                default: return `${s.type} ×${s.stacks}`;
+                case 'vulnerable': return { label: `Vulnerable ×${s.stacks}`, detail: `+${s.stacks * 25}% dmg taken`, dur };
+                case 'weak': return { label: `Weak ×${s.stacks}`, detail: `-${s.stacks * 25}% dmg dealt`, dur };
+                case 'burn': return { label: `Burn ×${s.stacks}`, detail: `${s.stacks} dmg/turn, -1/turn`, dur };
+                case 'empowered': return { label: `Empowered ×${s.stacks}`, detail: `+${s.stacks * 25}% dmg dealt`, dur };
+                case 'fortified': return { label: `Fortified ×${s.stacks}`, detail: `-${s.stacks * 15}% dmg taken`, dur };
+                default: return { label: `${s.type} ×${s.stacks}`, detail: '', dur };
               }
             });
             return (
@@ -1162,7 +1164,7 @@ function AppContent({ dryRun }: AppProps) {
                 <Text dimColor italic>{tmpl?.description ?? ''}</Text>
                 <Text>Next: <Text color="red" bold>{intentDesc}</Text></Text>
                 {statusDescs.length > 0 && statusDescs.map((sd, i) => (
-                  <Text key={i} color="yellow">{sd}</Text>
+                  <Text key={i} color="yellow">{sd.label} <Text dimColor>({sd.detail}, {sd.dur})</Text></Text>
                 ))}
                 {statusDescs.length === 0 && <Text dimColor>No effects</Text>}
                 <Text dimColor>←→ ↑↓ nav  i close</Text>

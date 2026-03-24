@@ -255,21 +255,21 @@ function applyEffect(
       if (effect.target === 'all') {
         for (const col of state.columns) {
           for (const enemy of col.enemies) {
-            applyStatus(enemy, 'burn', effect.value, 99);
+            applyStatus(enemy, 'burn', effect.value, effect.value + 1);
           }
         }
       } else if (effect.target === 'column') {
         const col = state.columns[targetColumn];
         if (col) {
           for (const enemy of col.enemies) {
-            applyStatus(enemy, 'burn', effect.value, 99);
+            applyStatus(enemy, 'burn', effect.value, effect.value + 1);
           }
         }
       } else {
         const col = state.columns[targetColumn];
         if (col && col.enemies.length > 0) {
           const front = col.enemies.reduce((a, b) => (a.row >= b.row ? a : b));
-          applyStatus(front, 'burn', effect.value, 99);
+          applyStatus(front, 'burn', effect.value, effect.value + 1);
         }
       }
       break;
@@ -367,7 +367,7 @@ function applyEffect(
       const burnAmount = anyBurning ? effect.value + 2 : effect.value;
       for (const col of state.columns) {
         for (const enemy of col.enemies) {
-          applyStatus(enemy, 'burn', burnAmount, 99);
+          applyStatus(enemy, 'burn', burnAmount, burnAmount + 1);
         }
       }
       break;

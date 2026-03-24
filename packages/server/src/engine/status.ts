@@ -33,7 +33,7 @@ export function getDamageMult(enemy: EnemyInstance): number {
 export function getEnemyDamageMult(enemy: EnemyInstance): number {
   let mult = 1;
   const weakStacks = hasStatus(enemy, 'weak');
-  if (weakStacks > 0) mult *= Math.max(0.25, 1 - weakStacks * 0.15);
+  if (weakStacks > 0) mult *= Math.max(0.25, 1 - weakStacks * 0.25);
   if (hasStatus(enemy, 'empowered') > 0) mult *= 1 + hasStatus(enemy, 'empowered') * 0.25;
   return mult;
 }

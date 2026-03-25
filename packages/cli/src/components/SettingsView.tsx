@@ -9,6 +9,7 @@ export interface GameSettings {
   combatLogSize: number;
   skipEnemyAnimation: boolean;
   difficulty: DifficultyPreset;
+  gitIntegration: boolean;
 }
 
 interface SettingsViewProps {
@@ -31,6 +32,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   combatLogSize: 4,
   skipEnemyAnimation: false,
   difficulty: 'normal',
+  gitIntegration: true,
 };
 
 const DIFFICULTY_LABELS: Record<DifficultyPreset, string> = {
@@ -46,6 +48,7 @@ export function SettingsView({ settings, selectedIndex, saveInfo, confirmingRese
     { id: 'log', label: `Combat Log Lines: ${settings.combatLogSize}`, description: 'Number of recent combat events shown (0-8)' },
     { id: 'anim', label: `Enemy Animations: ${settings.skipEnemyAnimation ? 'OFF' : 'ON'}`, description: 'Step through enemy moves one by one' },
     { id: 'difficulty', label: `Difficulty: ${settings.difficulty.charAt(0).toUpperCase() + settings.difficulty.slice(1)}`, description: DIFFICULTY_LABELS[settings.difficulty] },
+    { id: 'git', label: `Git Integration: ${settings.gitIntegration ? 'ON' : 'OFF'}`, description: 'Bonus Gate HP from git activity (commits, staged, streak)' },
     { id: 'tutorial', label: 'View Tutorial', description: 'Re-read the game tutorial' },
     { id: 'controls', label: 'Controls Reference', description: 'View all keybindings' },
     { id: 'reset', label: 'Reset Save Data', description: 'Delete all progress and start fresh' },

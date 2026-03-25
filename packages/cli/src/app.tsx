@@ -15,6 +15,7 @@ import {
   getCurrentStoryLayer, getDifficultyModifiers,
   pickRelicReward, getBossDef,
   syncInstanceIdCounter, syncEnemyIdCounter,
+  detectGitBonuses, getGitHpBonus, clearGitBonusCache,
 } from '@codekeep/server';
 import type { ShopItem, GameEvent } from '@codekeep/server';
 import {
@@ -168,6 +169,24 @@ function AppContent({ dryRun }: AppProps) {
     setCachedSave(save);
   }, [dryRun, keep, ensureSave]);
 
+  useEffect(() => {
+    if (screen !== 'map' || !run || !settings.gitIntegration) return;
+    const bonuses = detectGitBonuses();
+    const newTotal = getGitHpBonus(bonuses);
+    const oldTotal = getGitHpBonus(run.gitBonuses);
+    if (newTotal > oldTotal) {
+      const diff = newTotal - oldTotal;
+      const updated = { ...run, gateHp: run.gateHp + diff, gateMaxHp: run.gateMaxHp + diff, gitBonuses: bonuses };
+      setRun(updated);
+      doSave(updated);
+    } else if (bonuses.length > 0 && !run.gitBonuses) {
+      const updated = { ...run, gateHp: run.gateHp + newTotal, gateMaxHp: run.gateMaxHp + newTotal, gitBonuses: bonuses };
+      setRun(updated);
+      doSave(updated);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
+
   const beginRun = useCallback(() => {
     const save = ensureSave();
     if (save.keep.totalRuns === 0) {
@@ -182,6 +201,15 @@ function AppContent({ dryRun }: AppProps) {
     }
     const seedStr = `run-${Date.now()}`;
     const r = createRun(seedStr, save.keep.highestAscension, settings.difficulty);
+    if (settings.gitIntegration) {
+      const bonuses = detectGitBonuses();
+      if (bonuses.length > 0) {
+        const hpBonus = getGitHpBonus(bonuses);
+        r.gateHp += hpBonus;
+        r.gateMaxHp += hpBonus;
+        r.gitBonuses = bonuses;
+      }
+    }
     setRun(r);
     setSelectedNodeIdx(0);
     save.activeRun = r;
@@ -452,7 +480,7 @@ function AppContent({ dryRun }: AppProps) {
     }
 
     if (screen === 'settings') {
-      const settingsItems = ['ascii', 'hints', 'log', 'anim', 'difficulty', 'tutorial', 'controls', 'reset', 'back'];
+      const settingsItems = ['ascii', 'hints', 'log', 'anim', 'difficulty', 'git', 'tutorial', 'controls', 'reset', 'back'];
       if (key.upArrow) { setSettingsIndex(i => Math.max(0, i - 1)); setConfirmingReset(false); }
       else if (key.downArrow) { setSettingsIndex(i => Math.min(settingsItems.length - 1, i + 1)); setConfirmingReset(false); }
       else if (input === 'q' || key.escape) { setScreen('menu'); setConfirmingReset(false); }
@@ -474,6 +502,10 @@ function AppContent({ dryRun }: AppProps) {
           const next = cycle[settings.difficulty];
           setSettings(s => ({ ...s, difficulty: next }));
           setSettingsMessage(`Difficulty set to ${next.charAt(0).toUpperCase() + next.slice(1)}. Takes effect on next run.`);
+        } else if (item === 'git') {
+          setSettings(s => ({ ...s, gitIntegration: !s.gitIntegration }));
+          clearGitBonusCache();
+          setSettingsMessage('Git integration ' + (!settings.gitIntegration ? 'enabled' : 'disabled') + '. Takes effect on next run.');
         } else if (item === 'tutorial') {
           setTutorialPage(0);
           setTutorialSource('settings');
@@ -957,6 +989,15 @@ function AppContent({ dryRun }: AppProps) {
           )}
           <Text>Deck <Text dimColor>{run.deck.length}</Text></Text>
         </Box>
+        {run.gitBonuses && run.gitBonuses.length > 0 && !run.currentNodeId && (
+          <Box flexDirection="column" borderStyle="single" borderColor="cyan" paddingX={1} marginX={1}>
+            <Text bold color="cyan">⚒ The Forge</Text>
+            {run.gitBonuses.map((b, i) => (
+              <Text key={i} dimColor>{'  '}⚒ {b.description}</Text>
+            ))}
+            <Text bold color="cyan">{'  '}Total: +{getGitHpBonus(run.gitBonuses)} Gate HP</Text>
+          </Box>
+        )}
         {(() => {
           const currentNode = run.currentNodeId ? run.map.nodes.find(n => n.id === run.currentNodeId) : null;
           if (currentNode && !currentNode.visited) {
@@ -1098,6 +1139,7 @@ function AppContent({ dryRun }: AppProps) {
           {'Act '}{run.act}{'  |  Gate '}{run.gateHp}/{run.gateMaxHp}{'  |  Fragments '}{run.fragments}
           {run.potions.filter(p => p !== null).length > 0 && `  |  Potions ${run.potions.filter(p => p !== null).map(p => { const pd = POTION_DEFS.find(d => d.id === p); return pd?.name ?? p; }).join(', ')}`}
           {run.relics.length > 0 && `  |  ★ ${run.relics.length}`}
+          {run.gitBonuses && run.gitBonuses.length > 0 && `  |  ⚒+${getGitHpBonus(run.gitBonuses)}`}
           {'  |  d=deck  i=inspect'}
         </Text>
         {tutorialHint && <Text color="green" bold>{tutorialHint}</Text>}

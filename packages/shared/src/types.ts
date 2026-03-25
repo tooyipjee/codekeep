@@ -207,6 +207,12 @@ export interface RelicDef {
   effect: RelicEffect;
 }
 
+export interface GitBonusInfo {
+  type: 'commits_today' | 'staged' | 'unstaged' | 'streak';
+  value: number;
+  description: string;
+}
+
 export interface RunState {
   id: string;
   seed: string;
@@ -221,6 +227,7 @@ export interface RunState {
   relics: string[];
   ascensionLevel: number;
   combat: CombatState | null;
+  gitBonuses?: GitBonusInfo[];
 }
 
 // ── The Keep (meta-progression) ──

@@ -125,6 +125,22 @@ const TUTORIAL_PAGES = [
     ],
   },
   {
+    title: 'The Forge (Git Integration)',
+    lines: [
+      'Run CodeKeep inside a git repository and the Forge',
+      'will sense your craft, granting bonus Gate HP:',
+      '',
+      '  ⚒ Commits today .... +2 HP each (max +10)',
+      '  ⚒ Staged changes ... +3 HP',
+      '  ⚒ Unstaged changes . +2 HP',
+      '  ⚒ Commit streak .... +1 HP/day (max +5)',
+      '',
+      'Total bonus is capped at +20 HP.',
+      'No git repo? No problem — the game plays the same.',
+      'Toggle in Settings > Git Integration.',
+    ],
+  },
+  {
     title: 'Ready to Play!',
     lines: [
       '  1-5 = card    ←→ = column    Enter = play',

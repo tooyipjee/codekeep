@@ -9,7 +9,7 @@ describe('App', () => {
       <App asciiMode={false} compact={false} forceTutorial={false} />,
     );
     const frame = lastFrame();
-    expect(frame).toContain('CodeKeep');
+    expect(frame).toContain('The Pale');
   });
 
   it('shows game title', () => {

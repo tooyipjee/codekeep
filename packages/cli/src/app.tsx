@@ -63,7 +63,7 @@ export interface AppProps {
 
 type Screen = 'menu' | 'tutorial' | 'settings' | 'controls' | 'keep' | 'map' | 'combat' | 'reward' | 'relic_reward' | 'deck' | 'deck_remove' | 'shop' | 'shop_remove' | 'event' | 'rest' | 'result';
 
-function AppContent({ dryRun }: AppProps) {
+function AppContent({ asciiMode, dryRun }: AppProps) {
   const { exit } = useApp();
   const { columns, rows } = useTerminalSize();
   const [screen, setScreen] = useState<Screen>('menu');
@@ -903,11 +903,29 @@ function AppContent({ dryRun }: AppProps) {
       ? ['The fortress stands at the edge of the Pale.', 'You\'ve stood here before. You\'re sure of it.']
       : ['The fortress stands at the edge of the Pale.', 'Beyond the walls, something stirs.'];
 
+    const version = (globalThis as any).__CODEKEEP_VERSION || 'dev';
+
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold color="yellow">{'┌──────────────────────────────┐'}</Text>
-        <Text bold color="yellow">{'│    ◆ CodeKeep — The Pale     │'}</Text>
-        <Text bold color="yellow">{'└──────────────────────────────┘'}</Text>
+        {asciiMode ? (
+          <Box flexDirection="column">
+            <Text bold color="yellow">{'   ____ ___  ____  _____ _  _______ _____ ____  '}</Text>
+            <Text bold color="yellow">{'  / ___/ _ \\|  _ \\| ____| |/ / ____| ____|  _ \\ '}</Text>
+            <Text bold color="yellow">{' | |  | | | | | | |  _| | \' /|  _| |  _| | |_) |'}</Text>
+            <Text bold color="yellow">{' | |__| |_| | |_| | |___| . \\| |___| |___|  __/ '}</Text>
+            <Text bold color="yellow">{'  \\____\\___/|____/|_____|_|\\_\\_____|_____|_|    '}</Text>
+          </Box>
+        ) : (
+          <Box flexDirection="column">
+            <Text bold color="yellow">{' ██████╗ ██████╗ ██████╗ ███████╗██╗  ██╗███████╗███████╗██████╗ '}</Text>
+            <Text bold color="yellow">{'██╔════╝██╔═══██╗██╔══██╗██╔════╝██║ ██╔╝██╔════╝██╔════╝██╔══██╗'}</Text>
+            <Text bold color="yellow">{'██║     ██║   ██║██║  ██║█████╗  █████╔╝ █████╗  █████╗  ██████╔╝'}</Text>
+            <Text bold color="yellow">{'██║     ██║   ██║██║  ██║██╔══╝  ██╔═██╗ ██╔══╝  ██╔══╝  ██╔═══╝ '}</Text>
+            <Text bold color="yellow">{'╚██████╗╚██████╔╝██████╔╝███████╗██║  ██╗███████╗███████╗██║     '}</Text>
+            <Text bold color="yellow">{' ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝╚═╝     '}</Text>
+          </Box>
+        )}
+        <Text>{'                       '}<Text bold color="cyan">{'◆ The Pale ◆'}</Text>{'              '}<Text dimColor>{'v'}{version}</Text></Text>
         <Text> </Text>
         {flavorText.map((line, i) => <Text key={i} dimColor italic>{line}</Text>)}
         <Text> </Text>

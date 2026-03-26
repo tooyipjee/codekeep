@@ -36,7 +36,7 @@ const TUTORIAL_PAGES = [
       'Each turn you gain 3 Resolve (mana) to play cards.',
       'Unspent Resolve carries over (up to 6 max). Your hand refreshes each turn.',
       '',
-      '  1-5 .... Select a card from your hand',
+      '  1-9 .... Select a card from your hand',
       '  ←→  .... Choose target column',
       '  Enter .. Play the selected card',
       '  Space .. End your turn',
@@ -143,7 +143,7 @@ const TUTORIAL_PAGES = [
   {
     title: 'Ready to Play!',
     lines: [
-      '  1-5 = card    ←→ = column    Enter = play',
+      '  1-9 = card    ←→ = column    Enter = play',
       '  Space = end    e = emplace    p = potion',
       '  i = inspect    d = deck       q = menu',
       '',
@@ -164,7 +164,7 @@ export function TutorialView({ page, totalPages, source = 'new_game' }: Tutorial
   if (!content) return null;
 
   const isLast = page >= totalPages - 1;
-  const lastPageAction = source === 'new_game' ? 'Enter begin' : 'Enter return';
+  const lastPageAction = source === 'new_game' ? 'Enter to begin' : 'Enter to return';
 
   return (
     <Box flexDirection="column" padding={1}>

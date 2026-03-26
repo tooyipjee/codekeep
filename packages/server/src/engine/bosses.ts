@@ -91,7 +91,7 @@ export const BOSS_DEFS: BossDef[] = [
       ] },
     ],
     dialogue: [
-      { storyLayer: 'surface', onAppear: 'I am the memory of everything. And everything remembers its end.', onDefeat: 'The pale recedes. Something stirs beneath — not an end, but a question.' },
+      { storyLayer: 'surface', onAppear: 'I am the memory of everything. And everything remembers its end.', onDefeat: 'The Pale recedes. Something stirs beneath — not an end, but a question.' },
       { storyLayer: 'cracks', onAppear: "You've learned to read the patterns. But patterns are cages too.", onDefeat: 'The cracks widen. Through them, light — or perhaps just a different kind of darkness.' },
       { storyLayer: 'truth', onAppear: 'The Architect made me to preserve. I preserved so perfectly that nothing could change. Is that not love?', onDefeat: 'Preservation without change is just another word for death. You taught me that.' },
       { storyLayer: 'true_ending', onAppear: 'You carry the same question the Architect carried. The answer hasn\'t changed. Only the one asking.', onDefeat: 'Then the answer is yours. Guard it well — the next keeper will come seeking it too.' },

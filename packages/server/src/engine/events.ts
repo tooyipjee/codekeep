@@ -112,7 +112,7 @@ const ACT1_EVENTS_CRACKS: GameEvent[] = [
     description: "The smith again. You've seen this forge before — the same cracks in the stone, the same angle of the cloak. They look up and for the first time, you notice their hands are shaking.",
     choices: [
       { label: '"How long have you been here?" (Heal 15 HP)', effect: { type: 'heal', value: 15 } },
-      { label: '"You\'re not real, are you." (Gain 20 fragments)', effect: { type: 'fragments', value: 20 } },
+      { label: '"You\'re not real, are you?" (Gain 20 fragments)', effect: { type: 'fragments', value: 20 } },
       { label: 'Say nothing. The kindness is worse than the lie.', effect: { type: 'nothing' } },
     ],
   },

@@ -8,7 +8,16 @@ let cachedBonuses: GitBonusInfo[] | null = null;
 let cacheTimestamp = 0;
 
 function git(cmd: string): string {
-  return execSync(cmd, { encoding: 'utf-8', timeout: 3000 }).trim();
+  return execSync(cmd, {
+    encoding: 'utf-8',
+    timeout: 3000,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  }).trim();
+}
+
+function countLines(output: string): number {
+  if (!output) return 0;
+  return output.split('\n').filter(Boolean).length;
 }
 
 export function detectGitBonuses(): GitBonusInfo[] {
@@ -20,7 +29,7 @@ export function detectGitBonuses(): GitBonusInfo[] {
   const bonuses: GitBonusInfo[] = [];
 
   try {
-    git('git rev-parse --git-dir 2>/dev/null');
+    git('git rev-parse --git-dir');
   } catch {
     cachedBonuses = bonuses;
     cacheTimestamp = now;
@@ -29,7 +38,8 @@ export function detectGitBonuses(): GitBonusInfo[] {
 
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const count = parseInt(git(`git log --oneline --since="${today}" 2>/dev/null | wc -l`), 10) || 0;
+    const output = git(`git log --oneline --since="${today}"`);
+    const count = countLines(output);
     if (count > 0) {
       const hp = Math.min(count * 2, 10);
       bonuses.push({
@@ -41,7 +51,7 @@ export function detectGitBonuses(): GitBonusInfo[] {
   } catch { /* no commits data */ }
 
   try {
-    const staged = git('git diff --cached --stat 2>/dev/null');
+    const staged = git('git diff --cached --stat');
     if (staged.length > 0) {
       bonuses.push({
         type: 'staged',
@@ -52,7 +62,7 @@ export function detectGitBonuses(): GitBonusInfo[] {
   } catch { /* no staged data */ }
 
   try {
-    const unstaged = git('git diff --stat 2>/dev/null');
+    const unstaged = git('git diff --stat');
     if (unstaged.length > 0) {
       bonuses.push({
         type: 'unstaged',
@@ -63,7 +73,7 @@ export function detectGitBonuses(): GitBonusInfo[] {
   } catch { /* no unstaged data */ }
 
   try {
-    const dates = git('git log --format=%cd --date=short 2>/dev/null');
+    const dates = git('git log --since="31 days ago" --format=%cd --date=short');
     if (dates.length > 0) {
       const uniqueDates = new Set(dates.split('\n').filter(Boolean));
       let streak = 0;

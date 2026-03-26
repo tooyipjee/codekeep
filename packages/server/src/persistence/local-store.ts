@@ -37,17 +37,23 @@ export function createNewGameSave(playerName: string): GameSave {
   };
 }
 
-export function saveGame(save: GameSave): void {
-  const savePath = getSavePath();
-  const dir = dirname(savePath);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
+export function saveGame(save: GameSave): boolean {
+  try {
+    const savePath = getSavePath();
+    const dir = dirname(savePath);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
 
-  const tmpPath = savePath + '.tmp';
-  const data = JSON.stringify({ ...save, savedAtUnixMs: Date.now() }, null, 2);
-  writeFileSync(tmpPath, data, 'utf-8');
-  renameSync(tmpPath, savePath);
+    const tmpPath = savePath + '.tmp';
+    const data = JSON.stringify({ ...save, savedAtUnixMs: Date.now() }, null, 2);
+    writeFileSync(tmpPath, data, 'utf-8');
+    renameSync(tmpPath, savePath);
+    return true;
+  } catch (err) {
+    process.stderr.write(`[codekeep] Failed to save: ${(err as Error).message}\n`);
+    return false;
+  }
 }
 
 export function loadGame(): GameSave | null {

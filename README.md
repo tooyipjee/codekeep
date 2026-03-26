@@ -12,7 +12,7 @@ Build a deck. Defend the Gate. Push back the Pale.
 npx codekeep
 ```
 
-No download. No account. No telemetry. Just a terminal (108+ cols).
+No download. No account. No telemetry. Just a terminal (108×24 or larger).
 
 **Alternative installs:**
 
@@ -52,11 +52,11 @@ Every emplace card is a choice: burn it for the instant effect, or invest it as 
 - **3-act campaign** with procedural branching maps, shops, events, rest sites
 - **The Keep** — Persistent hub with 5 structures to upgrade and 5 NPCs with evolving relationships
 - **15 Ascension levels** — Stacking difficulty modifiers for replayability
-- **15 relics** — Passive bonuses from bosses and elites
+- **20 relics** — Passive bonuses from bosses and elites
 - **5 potions** — Consumable tactical options
 - **Difficulty settings** — Easy, Normal, Hard
 - **Layered narrative** — Inscryption-style story that unfolds across 50+ runs
-- **12 lore entries** revealing the mystery of the Pale
+- **15 lore entries** revealing the mystery of the Pale
 - **Save/resume** — Autosaves on every action; crash recovery on next launch
 - **Local-first** — No backend, no account, no telemetry
 

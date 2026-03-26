@@ -290,6 +290,9 @@ export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn
               for (const e of c.enemies) e.hp -= effect.value;
             }
           }
+          for (const c of state.columns) {
+            c.enemies = c.enemies.filter(e => e.hp > 0);
+          }
           break;
         }
         case 'draw': {

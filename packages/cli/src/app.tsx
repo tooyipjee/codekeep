@@ -35,6 +35,9 @@ import { SettingsView, DEFAULT_SETTINGS } from './components/SettingsView.js';
 import type { GameSettings } from './components/SettingsView.js';
 import { ControlsView } from './components/ControlsView.js';
 import { useCombatState } from './hooks/useCombatState.js';
+import { BugReportView } from './components/BugReportView.js';
+import type { BugReportPhase } from './components/BugReportView.js';
+import { submitBugReport, openUrl } from './utils/bug-report.js';
 
 const MIN_COLS = 108;
 const MIN_ROWS = 24;
@@ -61,7 +64,7 @@ export interface AppProps {
   dryRun?: boolean;
 }
 
-type Screen = 'menu' | 'tutorial' | 'settings' | 'controls' | 'keep' | 'map' | 'combat' | 'reward' | 'relic_reward' | 'deck' | 'deck_remove' | 'shop' | 'shop_remove' | 'event' | 'rest' | 'result';
+type Screen = 'menu' | 'tutorial' | 'settings' | 'controls' | 'keep' | 'map' | 'combat' | 'reward' | 'relic_reward' | 'deck' | 'deck_remove' | 'shop' | 'shop_remove' | 'event' | 'rest' | 'result' | 'bug_report';
 
 function AppContent({ asciiMode, dryRun }: AppProps) {
   const { exit } = useApp();
@@ -133,6 +136,13 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
 
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [confirmingNewRun, setConfirmingNewRun] = useState(false);
+
+  // Bug report state
+  const [bugDescription, setBugDescription] = useState('');
+  const [bugReportPhase, setBugReportPhase] = useState<BugReportPhase>('input');
+  const [bugIssueUrl, setBugIssueUrl] = useState<string | null>(null);
+  const [bugFallbackUrl, setBugFallbackUrl] = useState<string | null>(null);
+  const [bugError, setBugError] = useState<string | null>(null);
 
   // Cached save data (avoid disk I/O on every render)
   const [cachedSave, setCachedSave] = useState<GameSave | null>(() => loadGame());
@@ -224,6 +234,9 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
     const save = loadGame();
     if (save?.activeRun) {
       syncInstanceIdCounter(save.activeRun.deck);
+      if (save.activeRun.combat) {
+        syncEnemyIdCounter(save.activeRun.combat.columns);
+      }
       setRun(save.activeRun);
       setKeep(save.keep);
       setSelectedNodeIdx(0);
@@ -451,6 +464,7 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
     ]),
     { label: 'Tutorial', action: 'tutorial' },
     { label: 'Settings', action: 'settings' },
+    { label: 'Report Bug', action: 'bug_report' },
     { label: 'Quit', action: 'quit' },
   ];
 
@@ -476,6 +490,39 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
 
     if (screen === 'controls') {
       if (input === 'q' || key.escape) setScreen('settings');
+      return;
+    }
+
+    if (screen === 'bug_report') {
+      if (bugReportPhase === 'done') {
+        if (key.return || key.escape) setScreen('menu');
+        return;
+      }
+      if (bugReportPhase !== 'input') return;
+      if (key.escape) { setScreen('menu'); return; }
+      if (key.return) {
+        setBugReportPhase('submitting');
+        const version = (globalThis as any).__CODEKEEP_VERSION || 'dev';
+        const result = submitBugReport(
+          { version, screen: previousScreen, run, combat, settings, termCols: columns, termRows: rows },
+          bugDescription,
+        );
+        setBugIssueUrl(result.issueUrl ?? null);
+        setBugFallbackUrl(result.fallbackUrl ?? null);
+        setBugError(result.error ?? null);
+        if (result.fallbackUrl && !result.success) {
+          openUrl(result.fallbackUrl);
+        }
+        setBugReportPhase('done');
+        return;
+      }
+      if (key.backspace || key.delete) {
+        setBugDescription(d => d.slice(0, -1));
+        return;
+      }
+      if (input && !key.ctrl && !key.meta && input.length === 1) {
+        setBugDescription(d => d + input);
+      }
       return;
     }
 
@@ -558,6 +605,14 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
         else if (action === 'resume') resumeRun();
         else if (action === 'tutorial') { setTutorialPage(0); setTutorialSource('menu'); setScreen('tutorial'); }
         else if (action === 'settings') { setSettingsIndex(0); setSettingsMessage(''); setConfirmingReset(false); setScreen('settings'); }
+        else if (action === 'bug_report') {
+          setBugDescription('');
+          setBugReportPhase('input');
+          setBugIssueUrl(null);
+          setBugFallbackUrl(null);
+          setBugError(null);
+          setScreen('bug_report');
+        }
         else exit();
       }
       else if (input === 'q') exit();
@@ -950,6 +1005,10 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
 
   if (screen === 'controls') {
     return <ControlsView />;
+  }
+
+  if (screen === 'bug_report') {
+    return <BugReportView phase={bugReportPhase} description={bugDescription} issueUrl={bugIssueUrl} fallbackUrl={bugFallbackUrl} error={bugError} />;
   }
 
   if (screen === 'settings') {

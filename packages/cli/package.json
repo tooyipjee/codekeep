@@ -4,6 +4,11 @@
   "type": "module",
   "description": "CodeKeep: The Pale — deck-building tactical roguelike in your terminal",
   "license": "MIT",
+  "author": "Jason Too",
+  "homepage": "https://github.com/tooyipjee/codekeep",
+  "bugs": {
+    "url": "https://github.com/tooyipjee/codekeep/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/tooyipjee/codekeep.git",

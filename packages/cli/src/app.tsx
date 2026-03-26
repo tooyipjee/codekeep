@@ -36,7 +36,7 @@ import type { GameSettings } from './components/SettingsView.js';
 import { ControlsView } from './components/ControlsView.js';
 import { useCombatState } from './hooks/useCombatState.js';
 
-const MIN_COLS = 90;
+const MIN_COLS = 108;
 const MIN_ROWS = 24;
 
 function useTerminalSize() {
@@ -1185,7 +1185,7 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
             const col = combat.columns[inspectCol];
             const enemy = col?.enemies[inspectEnemy];
             if (!enemy) return (
-              <Box flexDirection="column" width={28} borderStyle="single" borderColor="cyan" paddingX={1} marginLeft={1}>
+              <Box flexDirection="column" width={32} borderStyle="single" borderColor="cyan" paddingX={1} marginLeft={1}>
                 <Text dimColor>No enemy in col {inspectCol + 1}.</Text>
                 <Text dimColor>←→ to navigate.</Text>
               </Box>
@@ -1216,7 +1216,7 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
               }
             });
             return (
-              <Box flexDirection="column" width={28} borderStyle="single" borderColor="cyan" paddingX={1} marginLeft={1}>
+              <Box flexDirection="column" width={32} borderStyle="single" borderColor="cyan" paddingX={1} marginLeft={1}>
                 <Text bold color="cyan">{tmpl?.symbol ?? '?'} {tmpl?.name ?? enemy.templateId}</Text>
                 <Text dimColor>Col {inspectCol + 1}, Row {enemy.row}</Text>
                 <Text>HP: <Text bold color={enemy.hp > enemy.maxHp * 0.6 ? 'green' : enemy.hp > enemy.maxHp * 0.3 ? 'yellow' : 'red'}>{enemy.hp}/{enemy.maxHp}</Text></Text>

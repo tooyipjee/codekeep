@@ -60,7 +60,7 @@ export function SettingsView({ settings, selectedIndex, saveInfo, confirmingRese
       <Text bold color="yellow">◆ Settings</Text>
       <Text> </Text>
       <Box paddingX={1}>
-        <Box flexDirection="column" width={40}>
+        <Box flexDirection="column" width={50}>
           <Text bold dimColor>Save Info</Text>
           <Text dimColor>Runs: {saveInfo.totalRuns}  Wins: {saveInfo.totalWins}  Echoes: {saveInfo.echoes}</Text>
           <Text dimColor>Highest Ascension: {saveInfo.highestAscension}</Text>

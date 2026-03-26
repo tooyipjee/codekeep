@@ -42,7 +42,7 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, em
   const totalEnemies = combat.columns.reduce((s, c) => s + c.enemies.length, 0);
 
   return (
-    <Box flexDirection="column" width={82}>
+    <Box flexDirection="column" width={100}>
       {/* Status bar */}
       <Box justifyContent="space-between">
         <Text bold color="yellow">{'◆ The Pale'}</Text>

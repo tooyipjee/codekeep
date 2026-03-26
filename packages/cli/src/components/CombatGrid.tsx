@@ -14,7 +14,8 @@ interface CombatGridProps {
   inspectEnemyIdx?: number;
 }
 
-const INNER = 12;
+const INNER = 16;
+const COL_W = INNER + 2;
 
 function hpBar(current: number, max: number, width: number): string {
   const pct = max > 0 ? current / max : 0;
@@ -77,10 +78,10 @@ function EnemyCard({ enemy, isPrimaryTarget, isInColumn, isInspected }: { enemy:
     : nameTag;
   const topFill = Math.max(0, INNER - 1 - displayTag.length);
 
-  const bar = hpBar(enemy.hp, enemy.maxHp, 4);
+  const bar = hpBar(enemy.hp, enemy.maxHp, 6);
   const hp = `${enemy.hp}`;
   const intent = intentInfo(enemy.intent);
-  const leftWidth = 1 + 4 + 1 + hp.length;
+  const leftWidth = 1 + 6 + 1 + hp.length;
   const gap = Math.max(0, INNER - leftWidth - intent.text.length);
 
   const tags = statusTags(enemy);
@@ -123,11 +124,12 @@ function EnemyCard({ enemy, isPrimaryTarget, isInColumn, isInspected }: { enemy:
 }
 
 function EmptySlot() {
+  const pad = Math.floor((COL_W - 1) / 2);
   return (
     <Box flexDirection="column">
-      <Text>{' '.repeat(14)}</Text>
-      <Text dimColor>{'      ·       '}</Text>
-      <Text>{' '.repeat(14)}</Text>
+      <Text>{' '.repeat(COL_W)}</Text>
+      <Text dimColor>{' '.repeat(pad)}{'·'}{' '.repeat(COL_W - pad - 1)}</Text>
+      <Text>{' '.repeat(COL_W)}</Text>
     </Box>
   );
 }
@@ -145,9 +147,9 @@ function EmplacementCard({ col }: { col: Column }) {
   const empDef = getCardDef(col.emplacement.cardDefId);
   const rawName = empDef?.name ?? 'Wall';
   const hp = col.emplacement.hp;
-  const bar = hpBar(hp, col.emplacement.maxHp, 4);
+  const bar = hpBar(hp, col.emplacement.maxHp, 6);
   const hpStr = `${hp}`;
-  const fixedLen = 2 + 1 + 4 + hpStr.length; // " ◇" (2) + space (1) + bar (4) + hp
+  const fixedLen = 2 + 1 + 6 + hpStr.length; // " ◇" (2) + space (1) + bar (6) + hp
   const maxName = INNER - fixedLen;
   const empName = rawName.length > maxName ? rawName.slice(0, Math.max(1, maxName - 1)) + '…' : rawName;
   const content = ` ◇${empName} ${bar}${hpStr}`.padEnd(INNER).slice(0, INNER);
@@ -188,12 +190,12 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
   return (
     <Box flexDirection="column">
       <Box justifyContent="center">
-        <Text dimColor>{'· · · · · · ·  t h e   p a l e  · · · · · · ·'}</Text>
+        <Text dimColor>{'· · · · · · · · · · ·  t h e   p a l e  · · · · · · · · · · ·'}</Text>
       </Box>
 
       <Box>
         {columns.map((_, i) => (
-          <Box key={i} width={16} justifyContent="center">
+          <Box key={i} width={20} justifyContent="center">
             {showTarget && i === targetColumn
               ? <Text color="yellow" bold>{'  ▼▼▼'}</Text>
               : <Text>{' '}</Text>}
@@ -209,7 +211,7 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
             const isPrimary = isInColumn && !!enemy && frontEnemyIds.has(enemy.instanceId);
             const isInspected = inspectCol === ci && !!enemy && col.enemies.indexOf(enemy) === (inspectEnemyIdx ?? -1);
             return (
-              <Box key={ci} width={16}>
+              <Box key={ci} width={20}>
                 {enemy
                   ? <EnemyCard enemy={enemy} isPrimaryTarget={isPrimary} isInColumn={isInColumn && !isPrimary} isInspected={isInspected} />
                   : <EmptySlot />}
@@ -221,7 +223,7 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
 
       <Box>
         {columns.map((col, i) => (
-          <Box key={i} width={16}>
+          <Box key={i} width={20}>
             <EmplacementCard col={col} />
           </Box>
         ))}
@@ -229,7 +231,7 @@ export function CombatGrid({ columns, targetColumn, showTarget, gateHp, gateMaxH
 
       <Box paddingX={1}>
         <Text bold color={gateColor}>
-          {'◆ GATE  '}{hpBar(gateHp, gateMaxHp, 20)}{' '}{gateHp}/{gateMaxHp}
+          {'◆ GATE  '}{hpBar(gateHp, gateMaxHp, 30)}{' '}{gateHp}/{gateMaxHp}
         </Text>
         {gateBlock > 0 && <Text color="cyan">{'   ◇ Block: '}{gateBlock}</Text>}
       </Box>

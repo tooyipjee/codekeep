@@ -9,7 +9,7 @@ interface MapViewProps {
   selectedNodeId: string | null;
 }
 
-const COL_SP = 6;
+const COL_SP = 10;
 const NUM_COLS = 4;
 const MAP_W = (NUM_COLS - 1) * COL_SP + 6;
 

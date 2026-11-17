@@ -111,8 +111,7 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
 
   // Combat
   const combatHook = useCombatState(settings.skipEnemyAnimation);
-  const { combat, selectedCard, targetColumn, message, emplaceMode, animating, selectCard, selectTarget, confirmPlay, endTurn, toggleEmplace, startCombat, applyPotion: _applyPotion, needsTarget } = combatHook;
-
+  const { combat, selectedCard, targetColumn, message, emplaceMode, animating, selectCard, selectTarget, confirmPlay, endTurn, toggleEmplace, startCombat, applyPotion: _applyPotion, needsTarget, isFirstCardFree } = combatHook;
   // Inspect mode
   const [inspectMode, setInspectMode] = useState(false);
   const [inspectCol, setInspectCol] = useState(0);
@@ -272,6 +271,7 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
       const seed = hashSeed(run.seed + node.id);
       const rng = mulberry32(seed);
       const encounter = pickEncounter(run.act, rng, node.type === 'elite');
+      setConfirmEndTurn(false);
       startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, encounter.enemies, r.relics, getDifficultyModifiers(run.act, run.ascensionLevel, settings.difficulty));
       setRun(r);
       doSave(r);
@@ -281,8 +281,8 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
       const r = { ...run, currentNodeId: node.id };
       const seed = hashSeed(run.seed + '-boss-' + run.act);
       const wave = getBossWave(run.act);
+      setConfirmEndTurn(false);
       startCombat(r.deck, seed, r.gateHp, r.gateMaxHp, wave, r.relics, getDifficultyModifiers(run.act, run.ascensionLevel, settings.difficulty));
-
       const bossDef = getBossDef(run.act);
       if (bossDef?.dialogue) {
         const layerDialogue = bossDef.dialogue.find(d => d.storyLayer === storyLayer)
@@ -887,9 +887,9 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
         else if (key.escape) setInspectMode(false);
         return;
       }
-      if (input === 'q') { setScreen('menu'); return; }
-      if (input === 'd' && run) { setPreviousScreen('combat'); setScreen('deck'); return; }
-      if (input === 'e') { toggleEmplace(); return; }
+      if (input === 'q') { setConfirmEndTurn(false); setScreen('menu'); return; }
+      if (input === 'd' && run) { setConfirmEndTurn(false); setPreviousScreen('combat'); setScreen('deck'); return; }
+      if (input === 'e') { setConfirmEndTurn(false); toggleEmplace(); return; }
       if (input === 'p' && run) {
         const slotIdx = run.potions.findIndex((p) => p !== null);
         if (slotIdx >= 0) {
@@ -928,7 +928,13 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
       }
       if (key.return && selectedCard >= 0) { setConfirmEndTurn(false); confirmPlay(); return; }
       if (input === ' ') {
-        if (combat.resolve > 0 && combat.hand.some(c => { const d = getCardDef(c.defId); return d && d.cost <= combat.resolve; }) && !confirmEndTurn) {
+        const hasPlayableCard = combat.hand.some(c => {
+          const d = getCardDef(c.defId);
+          if (!d) return false;
+          const effectiveCost = isFirstCardFree ? 0 : d.cost;
+          return effectiveCost <= combat.resolve;
+        });
+        if (combat.resolve > 0 && hasPlayableCard && !confirmEndTurn) {
           setConfirmEndTurn(true);
           return;
         }
@@ -936,7 +942,7 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
         endTurn();
         return;
       }
-      if (key.escape) { selectCard(-1); return; }
+      if (key.escape) { setConfirmEndTurn(false); selectCard(-1); return; }
     }
   });
 
@@ -1233,6 +1239,7 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
               targetColumn={targetColumn}
               needsTarget={needsTarget}
               emplaceMode={emplaceMode}
+              firstCardFree={isFirstCardFree}
               message={confirmEndTurn ? `End turn with ${combat.resolve} Resolve remaining? (carries over) Press Space again to confirm.` : message}
               animating={animating}
               inspectCol={inspectCol}

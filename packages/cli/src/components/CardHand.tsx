@@ -7,8 +7,8 @@ interface CardHandProps {
   hand: CardInstance[];
   selectedIndex: number;
   resolve: number;
+  firstCardFree?: boolean;
 }
-
 const MAX_HAND_W = 98;
 const MAX_CARD_W = 19;
 const MIN_CARD_W = 10;
@@ -67,11 +67,11 @@ function padRight(str: string, len: number): string {
   return visual >= len ? str.slice(0, len) : str + ' '.repeat(len - visual);
 }
 
-function CardBox({ def, index, isSelected, resolve, cardW }: { def: CardDef; index: number; isSelected: boolean; resolve: number; cardW: number }) {
+function CardBox({ def, index, isSelected, resolve, cardW, firstCardFree }: { def: CardDef; index: number; isSelected: boolean; resolve: number; cardW: number; firstCardFree: boolean }) {
   const inner = cardW - 2;
   const bc = isSelected ? 'yellow' : undefined;
   const dim = !isSelected;
-  const canAfford = def.cost <= resolve;
+  const canAfford = (firstCardFree ? 0 : def.cost) <= resolve;
   const pips = costPipsStr(def.cost);
   const emplace = def.type === 'emplace' ? '⚒' : '';
   const showSummary = cardW >= 13;
@@ -110,7 +110,7 @@ function CardBox({ def, index, isSelected, resolve, cardW }: { def: CardDef; ind
   );
 }
 
-export function CardHand({ hand, selectedIndex, resolve }: CardHandProps) {
+export function CardHand({ hand, selectedIndex, resolve, firstCardFree = false }: CardHandProps) {
   if (hand.length === 0) {
     return <Text dimColor>{'  '}No cards in hand.</Text>;
   }
@@ -124,7 +124,7 @@ export function CardHand({ hand, selectedIndex, resolve }: CardHandProps) {
         {hand.map((card, i) => {
           const def = getCardDef(card.defId);
           if (!def) return null;
-          return <CardBox key={card.instanceId} def={def} index={i} isSelected={i === selectedIndex} resolve={resolve} cardW={cardW} />;
+          return <CardBox key={card.instanceId} def={def} index={i} isSelected={i === selectedIndex} resolve={resolve} cardW={cardW} firstCardFree={firstCardFree} />;
         })}
       </Box>
       {selectedDef && (

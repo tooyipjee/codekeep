@@ -111,4 +111,30 @@ describe('combat', () => {
     expect(state.gateHp).toBe(0);
     expect(state.outcome).toBe('lose');
   });
+  it('retains all events past 100 so event diffs and first-card tracking do not stall', () => {
+    const deck = Array.from({ length: 10 }, () => ({ instanceId: 'c1', defId: 'strike', upgraded: false }));
+    const state = createCombatState(deck, 42, STARTING_GATE_HP, STARTING_GATE_HP, [
+      { templateId: 'boss_pale', column: 2 },
+    ], ['siege_engine']);
+
+    for (let i = 0; i < 105; i++) {
+      state.events.push({ type: 'damage_dealt', turn: 1, data: { damage: 1 } });
+    }
+    state.events.push({ type: 'card_played', turn: 2, data: { cardId: 'strike' } });
+    state.turn = 2;
+    state.resolve = 1;
+    state.hand = [
+      { instanceId: 'c1', defId: 'strike', upgraded: false },
+      { instanceId: 'c2', defId: 'strike', upgraded: false },
+    ];
+    state.columns[2].enemies[0].hp = 6;
+
+    const eventsBefore = state.events.length;
+    playCard(state, 0, 2);
+
+    expect(state.events.length).toBeGreaterThan(eventsBefore);
+    expect(state.resolve).toBe(0);
+    expect(state.outcome).toBe('win');
+    expect(state.phase).toBe('ended');
+  });
 });

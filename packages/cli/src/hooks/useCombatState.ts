@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { CombatState, CombatEvent, CardInstance, PotionDef, DifficultyModifiers } from '@codekeep/shared';
 import { getCardDef, getEnemyTemplate, HAND_SIZE } from '@codekeep/shared';
-import { createCombatState, playCard, endPlayerTurn, createStarterDeck, mulberry32, drawCards, hasFirstCardFree } from '@codekeep/server';
+import { createCombatState, playCard, endPlayerTurn, checkCombatEnd, createStarterDeck, mulberry32, drawCards, hasFirstCardFree } from '@codekeep/server';
 
 export interface UseCombatStateReturn {
   combat: CombatState | null;
@@ -18,6 +18,7 @@ export interface UseCombatStateReturn {
   startCombat: (deck?: CardInstance[], seed?: number, gateHp?: number, gateMaxHp?: number, wave?: { templateId: string; column: number }[], relics?: string[], difficulty?: DifficultyModifiers) => void;
   applyPotion: (potionDef: PotionDef | null) => void;
   needsTarget: boolean;
+  isFirstCardFree: boolean;
 }
 
 function describeEnemyEvent(evt: CombatEvent): string | null {
@@ -130,8 +131,13 @@ export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn
   })();
 
   const selectCard = useCallback((index: number) => {
+    if (index < 0) {
+      setSelectedCard(-1);
+      setEmplaceMode(false);
+      return;
+    }
     if (!combatRef.current || combatRef.current.phase !== 'player') return;
-    if (index < 0 || index >= combatRef.current.hand.length) return;
+    if (index >= combatRef.current.hand.length) return;
     const card = combatRef.current.hand[index];
     const def = getCardDef(card.defId);
     if (!def) return;
@@ -145,6 +151,7 @@ export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn
       return;
     }
     setSelectedCard(index);
+    setEmplaceMode(false);
     const needsTgt = def.effects.some((e) =>
       TARGETING_EFFECT_TYPES.has(e.type) && (e.target === 'single' || e.target === 'column'),
     );
@@ -220,7 +227,6 @@ export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn
       setMessage(`${action} ${def.name}. ${state.resolve} Resolve left.`);
     }
   }, [selectedCard, targetColumn, emplaceMode]);
-
   const toggleEmplace = useCallback(() => {
     if (selectedCard < 0 || !combatRef.current) return;
     const card = combatRef.current.hand[selectedCard];
@@ -229,6 +235,17 @@ export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn
     if (!def || def.type !== 'emplace') {
       setMessage('This card cannot be emplaced.');
       return;
+    }
+    if (!emplaceMode && def.emplaceCost !== undefined) {
+      const isFirstCardThisTurn = !combatRef.current.events.some(
+        (e) => e.type === 'card_played' && e.turn === combatRef.current!.turn,
+      );
+      const firstCardFree = hasFirstCardFree(combatRef.current.relics) && isFirstCardThisTurn;
+      const effectiveEmplaceCost = firstCardFree ? 0 : def.emplaceCost;
+      if (effectiveEmplaceCost > combatRef.current.resolve) {
+        setMessage(`Not enough Resolve to emplace ${def.name} (costs ${def.emplaceCost}).`);
+        return;
+      }
     }
     setEmplaceMode((prev) => !prev);
     setMessage(emplaceMode ? `${def.name}: cast mode` : `${def.name}: EMPLACE mode — place in a column`);
@@ -293,6 +310,7 @@ export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn
           for (const c of state.columns) {
             c.enemies = c.enemies.filter(e => e.hp > 0);
           }
+          checkCombatEnd(state);
           break;
         }
         case 'draw': {
@@ -304,14 +322,24 @@ export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn
           break;
         }
         case 'resolve':
-          state.resolve = Math.min(state.maxResolve + 5, state.resolve + effect.value);
+          state.resolve = Math.min(state.maxResolve * 2, state.resolve + effect.value);
           break;
       }
     }
     combatRef.current = state;
     setCombat({ ...state });
-    setMessage(`Used ${potionDef.name}.`);
+    if (state.outcome === 'win') {
+      setMessage('Victory! The Pale recedes.');
+    } else if (state.outcome === 'lose') {
+      setMessage('The Gate has fallen...');
+    } else {
+      setMessage(`Used ${potionDef.name}.`);
+    }
   }, [targetColumn]);
+
+  const isFirstCardFree = !!combat && hasFirstCardFree(combat.relics) && !combat.events.some(
+    (e) => e.type === 'card_played' && e.turn === combat.turn,
+  );
 
   return {
     combat,
@@ -328,5 +356,6 @@ export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn
     startCombat,
     applyPotion,
     needsTarget,
+    isFirstCardFree,
   };
 }

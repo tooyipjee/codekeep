@@ -31,6 +31,7 @@ interface CombatViewProps {
   targetColumn: number;
   needsTarget: boolean;
   emplaceMode?: boolean;
+  firstCardFree?: boolean;
   message: string;
   animating?: boolean;
   inspectCol?: number;
@@ -38,9 +39,8 @@ interface CombatViewProps {
   inspectMode?: boolean;
 }
 
-export function CombatView({ combat, selectedCard, targetColumn, needsTarget, emplaceMode = false, message, animating = false, inspectCol, inspectEnemyIdx, inspectMode = false }: CombatViewProps) {
+export function CombatView({ combat, selectedCard, targetColumn, needsTarget, emplaceMode = false, firstCardFree = false, message, animating = false, inspectCol, inspectEnemyIdx, inspectMode = false }: CombatViewProps) {
   const totalEnemies = combat.columns.reduce((s, c) => s + c.enemies.length, 0);
-
   return (
     <Box flexDirection="column" width={100}>
       {/* Status bar */}
@@ -76,6 +76,7 @@ export function CombatView({ combat, selectedCard, targetColumn, needsTarget, em
           hand={combat.hand}
           selectedIndex={selectedCard}
           resolve={combat.resolve}
+          firstCardFree={firstCardFree}
         />
       )}
 

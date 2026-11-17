@@ -87,8 +87,22 @@ export function createCombatState(
 
 function pushEvent(state: CombatState, type: CombatEvent['type'], data: Record<string, unknown>): void {
   state.events.push({ type, turn: state.turn, data });
-  if (state.events.length > 100) {
-    state.events = state.events.slice(-100);
+}
+
+export function checkCombatEnd(state: CombatState): void {
+  const totalEnemies = state.columns.reduce((sum, col) => sum + col.enemies.length, 0);
+  if (totalEnemies === 0) {
+    state.gateHp = Math.max(1, state.gateHp);
+    state.outcome = 'win';
+    state.phase = 'ended';
+    pushEvent(state, 'combat_end', { outcome: 'win' });
+    return;
+  }
+  if (state.gateHp <= 0) {
+    state.gateHp = 0;
+    state.outcome = 'lose';
+    state.phase = 'ended';
+    pushEvent(state, 'combat_end', { outcome: 'lose' });
   }
 }
 
@@ -649,21 +663,5 @@ function executeEnemyIntent(state: CombatState, enemy: EnemyInstance, intent: In
   }
 }
 
-function checkCombatEnd(state: CombatState): void {
-  const totalEnemies = state.columns.reduce((sum, col) => sum + col.enemies.length, 0);
-  if (totalEnemies === 0) {
-    state.gateHp = Math.max(1, state.gateHp);
-    state.outcome = 'win';
-    state.phase = 'ended';
-    pushEvent(state, 'combat_end', { outcome: 'win' });
-    return;
-  }
-  if (state.gateHp <= 0) {
-    state.gateHp = 0;
-    state.outcome = 'lose';
-    state.phase = 'ended';
-    pushEvent(state, 'combat_end', { outcome: 'lose' });
-  }
-}
 
 export type { CombatState, CardInstance, Column };
